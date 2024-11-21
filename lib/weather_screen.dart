@@ -5,14 +5,13 @@ void main() {
   runApp(const MyApp());
 }
 
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: WeatherScreen(),//ホーム画面として設定
+      home: WeatherScreen(), // ホーム画面として設定
     );
   }
 }
@@ -25,42 +24,39 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  final WeatherApi weatherApi = WeatherApi();//WeatherApiクラスのインスタンを生成
-  String cityName = "Sendai"; // 取得したい都市名
-  String weatherDescription = ""; // 天気の説明をするための変数
-  double temperature = 0.0; // 温度を格納するための変数
+  final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
 
-  int humidity = 0; // 湿度を格納するための変数
-  String weather = ""; // 天気を格納するための変数
-  String detailedWeather = ""; // 詳しい天気を格納するための変数
-  int clouds = 0; // 雲の量を格納するための変数
-  int atmosphericPressure = 0; // 大気圧を格納するための変数
+  final List<String> cityNames = ["Ninohe", "Kazuno", "Miyako", "Hanamaki"]; // 取得したい都市名のリスト
+  List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
 
   bool isLoading = true; // ローディング状態を示す変数
 
   @override
   void initState() {
     super.initState();
-    fetchWeather();
+    fetchWeatherForCities();
   }
 
-  Future<void> fetchWeather() async {
+  Future<void> fetchWeatherForCities() async {
     try {
-      final weatherData = await weatherApi.fetchWeather(cityName);
+      List<Map<String, dynamic>> tempList = [];
+      for (String cityName in cityNames) {
+        final weatherData = await weatherApi.fetchWeather(cityName);
+        tempList.add({
+          "cityName": cityName,
+          "humidity": weatherData["humidity"],
+          "weather": weatherData["weather"],
+          "detailedWeather": weatherData["detailed_weather"],
+          "clouds": weatherData["clouds"],
+          "atmosphericPressure": weatherData["atmospheric_pressure"]
+        });
+      }
       setState(() {
-        weatherDescription = weatherData["description"];//天気の説明を取得
-        temperature = weatherData["temperature"];//温度を取得
-
-        humidity=weatherData["humidity"];//湿度を取得
-        weather=weatherData["weather"];//天気を取得
-        detailedWeather=weatherData["detailed_weather"];//詳しい天気を取得
-        clouds=weatherData["clouds"];//雲の量を取得
-        atmosphericPressure=weatherData["atmospheric_pressure"];//大気圧を取得
-
+        weatherDataList = tempList;
         isLoading = false; // ローディング完了
       });
     } catch (e) {
-      print(e);
+      print("Error: $e");
       setState(() {
         isLoading = false; // ローディング完了
       });
@@ -76,43 +72,47 @@ class _WeatherScreenState extends State<WeatherScreen> {
       body: Center(
         child: isLoading
             ? const CircularProgressIndicator() // ローディング中はインジケーターを表示
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center, // 中央に配置
-                children: [
-                  Text(
-                    "$cityName の天気", // 都市名を表示
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "説明: $weatherDescription", // 天気の説明を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    "温度: $temperature °C", // 温度を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    "湿度: $humidity %", // 湿度を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    "天気: $weather ", // 天気を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    "詳しい天気: $detailedWeather ", // 詳しい天気を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    "雲の量: $clouds %", // 雲の量を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    "大気圧: $atmosphericPressure hPa", // 大気圧を表示
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ],
+            : ListView.builder(
+                itemCount: weatherDataList.length,
+                itemBuilder: (context, index) {
+                  final weatherData = weatherDataList[index];
+                  return Card(
+                    margin: const EdgeInsets.all(10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "${weatherData['cityName']} の天気", // 都市名を表示
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            "湿度: ${weatherData['humidity']} %", // 湿度を表示
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            "天気: ${weatherData['weather']}", // 天気を表示
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            "詳しい天気: ${weatherData['detailedWeather']}", // 詳しい天気を表示
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            "雲の量: ${weatherData['clouds']} %", // 雲の量を表示
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            "大気圧: ${weatherData['atmosphericPressure']} hPa", // 大気圧を表示
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
       ),
     );

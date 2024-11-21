@@ -22,8 +22,6 @@ class WeatherApi {
           "detailed_weather":data["weather"][0]["description"],//詳しい天気を取得
           "clouds":data["clouds"]["all"],//雲の量を取得
           "atmospheric_pressure":data["main"]["pressure"],//大気圧を取得
-          "temperature": data["main"]["temp"],//温度を取得
-          "description": data["weather"][0]["description"]//天気の説明を取得
         };
       } else {
         throw Exception("気象データの読み込みに失敗しました");
