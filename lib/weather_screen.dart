@@ -25,16 +25,16 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  final WeatherApi weatherApi = WeatherApi();
+  final WeatherApi weatherApi = WeatherApi();//WeatherApiクラスのインスタンを生成
   String cityName = "Sendai"; // 取得したい都市名
   String weatherDescription = ""; // 天気の説明をするための変数
   double temperature = 0.0; // 温度を格納するための変数
 
-  double humidity = 0.0; // 湿度を格納するための変数
+  int humidity = 0; // 湿度を格納するための変数
   String weather = ""; // 天気を格納するための変数
   String detailedWeather = ""; // 詳しい天気を格納するための変数
-  double clouds = 0.0; // 雲の量を格納するための変数
-  double atmosphericPressure = 0.0; // 大気圧を格納するための変数
+  int clouds = 0; // 雲の量を格納するための変数
+  int atmosphericPressure = 0; // 大気圧を格納するための変数
 
   bool isLoading = true; // ローディング状態を示す変数
 
@@ -55,7 +55,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
         weather=weatherData["weather"];//天気を取得
         detailedWeather=weatherData["detailed_weather"];//詳しい天気を取得
         clouds=weatherData["clouds"];//雲の量を取得
-        atmosphericPressure-weatherData["atmospheric_pressure"];//大気圧を取得
+        atmosphericPressure=weatherData["atmospheric_pressure"];//大気圧を取得
 
         isLoading = false; // ローディング完了
       });
@@ -89,27 +89,27 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     style: const TextStyle(fontSize: 18),
                   ),
                   Text(
-                    "温度: $temperature°C", // 温度を表示
+                    "温度: $temperature °C", // 温度を表示
                     style: const TextStyle(fontSize: 18),
                   ),
                   Text(
-                    "湿度: $humidity%", // 湿度を表示
+                    "湿度: $humidity %", // 湿度を表示
                     style: const TextStyle(fontSize: 18),
                   ),
                   Text(
-                    "天気: $weather", // 天気を表示
+                    "天気: $weather ", // 天気を表示
                     style: const TextStyle(fontSize: 18),
                   ),
                   Text(
-                    "詳しい天気: $detailedWeather", // 詳しい天気を表示
+                    "詳しい天気: $detailedWeather ", // 詳しい天気を表示
                     style: const TextStyle(fontSize: 18),
                   ),
                   Text(
-                    "雲の量: $clouds%", // 雲の量を表示
+                    "雲の量: $clouds %", // 雲の量を表示
                     style: const TextStyle(fontSize: 18),
                   ),
                   Text(
-                    "大気圧: $atmosphericPressure%", // 大気圧を表示
+                    "大気圧: $atmosphericPressure hPa", // 大気圧を表示
                     style: const TextStyle(fontSize: 18),
                   ),
                 ],
