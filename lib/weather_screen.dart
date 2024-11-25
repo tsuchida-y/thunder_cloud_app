@@ -26,7 +26,7 @@ class WeatherScreen extends StatefulWidget {
 class _WeatherScreenState extends State<WeatherScreen> {
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
 
-  final List<String> cityNames = ["Ninohe", "Kazuno", "Miyako", "Hanamaki"]; // 取得したい都市名のリスト
+  final List<String> cityNames = ["Miyako", "Kazuno", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
   List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
 
   bool isLoading = true; // ローディング状態を示す変数
@@ -42,7 +42,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       List<Map<String, dynamic>> tempList = [];
       for (String cityName in cityNames) {
         final weatherData = await weatherApi.fetchWeather(cityName);
-        tempList.add({
+        tempList.add({// 各都市の気象情報をリストに追加
           "cityName": cityName,
           "humidity": weatherData["humidity"],
           "weather": weatherData["weather"],
@@ -73,8 +73,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
         child: isLoading
             ? const CircularProgressIndicator() // ローディング中はインジケーターを表示
             : ListView.builder(
-                itemCount: weatherDataList.length,
-                itemBuilder: (context, index) {
+                itemCount: weatherDataList.length,//リストビューに表示するアイテムの数を指定
+                itemBuilder: (context, index) {//リストビューの各アイテムをビルドするための関数。contextとindexを引数に取る
                   final weatherData = weatherDataList[index];
                   return Card(
                     margin: const EdgeInsets.all(10),
