@@ -50,6 +50,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
           "clouds": weatherData["clouds"],
           "atmosphericPressure": weatherData["atmospheric_pressure"]
         });
+    if(weatherData["weather"] == "Clear" && ){
+      print("晴れ");
+    }
       }
       setState(() {
         weatherDataList = tempList;
@@ -61,6 +64,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
         isLoading = false; // ローディング完了
       });
     }
+
   }
 
   @override
