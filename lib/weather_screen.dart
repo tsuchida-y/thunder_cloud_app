@@ -40,6 +40,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   Future<void> fetchWeatherForCities() async {
     try {
       List<Map<String, dynamic>> tempList = [];
+      List<String> tempMatchingCities = [];
       for (String cityName in cityNames) {
         final weatherData = await weatherApi.fetchWeather(cityName);
         tempList.add({// 各都市の気象情報をリストに追加
@@ -50,8 +51,13 @@ class _WeatherScreenState extends State<WeatherScreen> {
           "clouds": weatherData["clouds"],
           "atmosphericPressure": weatherData["atmospheric_pressure"]
         });
-    if(weatherData["weather"] == "Clear" && ){
-      print("晴れ");
+        //湿度が10%以上、天気が晴れ、詳しい天気が快晴、雲の量が10%以上、大気圧が1000hPa以上の都市をリストに追加
+    if(weatherData["humidity"] >= 10 &&
+      weatherData["weather"] == "Clear" &&
+      weatherData["detailed_weather"] == "clear sky" &&
+      weatherData["clouds"] >= 10 &&
+      weatherData["atmospheric_pressure"] >= 1000){
+      tempMatchingCities.add(cityName);
     }
       }
       setState(() {
