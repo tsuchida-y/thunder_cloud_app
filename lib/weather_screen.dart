@@ -28,6 +28,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   final List<String> cityNames = ["Miyako", "Kazuno", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
   List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
+  List<String> matchingCities = []; // 条件に一致する都市名を格納するリスト
+
 
   bool isLoading = true; // ローディング状態を示す変数
 
@@ -53,15 +55,16 @@ List<String> tempMatchingCities = [];
         });
         //湿度が10%以上、天気が晴れ、詳しい天気が快晴、雲の量が10%以上、大気圧が1000hPa以上の都市をリストに追加
     if(weatherData["humidity"] >= 10 &&
-      weatherData["weather"] == "Clear" &&
-      weatherData["detailed_weather"] == "clear sky" &&
-      weatherData["clouds"] >= 10 &&
+      // weatherData["weather"] == "Clear" &&
+      // weatherData["detailed_weather"] == "clear sky" &&
+      // weatherData["clouds"] >= 10 &&
       weatherData["atmospheric_pressure"] >= 1000){
       tempMatchingCities.add(cityName);
     }
       }
       setState(() {
         weatherDataList = tempList;
+        matchingCities = tempMatchingCities;
         isLoading = false; // ローディング完了
       });
     } catch (e) {
@@ -94,25 +97,31 @@ List<String> tempMatchingCities = [];
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if(tempMatchingCities[0] != null){
                             Text(
-                              tempMatchingCities[0],      // 都市名を表示
-                              style: const TextStyle(fontSize: 18),
+                              "${weatherData['cityName']} の天気", // 都市名を表示
+                              style: const TextStyle(fontSize: 24),
                             ),
-                          }
 
                           const SizedBox(height: 10),
+                            Text(
+                              "湿度: ${weatherData['humidity']} %", // 湿度を表示
+                              style: const TextStyle(fontSize: 18),
+                            ),
                           Text(
-                            tempMatchingCities[1], // 湿度を表示
-                            style: const TextStyle(fontSize: 18),
+                              "天気: ${weatherData['weather']}", // 天気を表示
+                              style: const TextStyle(fontSize: 18),
                           ),
                           Text(
-                            tempMatchingCities[2], // 天気を表示
-                            style: const TextStyle(fontSize: 18),
+                              "詳しい天気: ${weatherData['detailedWeather']}", // 詳しい天気を表示
+                              style: const TextStyle(fontSize: 18),
                           ),
                           Text(
-                            tempMatchingCities[3], // 詳しい天気を表示
-                            style: const TextStyle(fontSize: 18),
+                              "雲の量: ${weatherData['clouds']} %", // 雲の量を表示
+                              style: const TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                              "大気圧: ${weatherData['atmosphericPressure']} hPa", // 大気圧を表示
+                              style: const TextStyle(fontSize: 18),
                           ),
                         ],
                       ),
