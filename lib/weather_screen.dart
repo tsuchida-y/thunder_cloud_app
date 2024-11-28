@@ -36,7 +36,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     super.initState();
     fetchWeatherForCities();
   }
-
+List<String> tempMatchingCities = [];
   Future<void> fetchWeatherForCities() async {
     try {
       List<Map<String, dynamic>> tempList = [];
@@ -71,6 +71,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       });
     }
 
+
   }
 
   @override
@@ -93,29 +94,24 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "${weatherData['cityName']} の天気", // 都市名を表示
-                            style: const TextStyle(fontSize: 24),
-                          ),
+                          if(tempMatchingCities[0] != null){
+                            Text(
+                              tempMatchingCities[0],      // 都市名を表示
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                          }
+
                           const SizedBox(height: 10),
                           Text(
-                            "湿度: ${weatherData['humidity']} %", // 湿度を表示
+                            tempMatchingCities[1], // 湿度を表示
                             style: const TextStyle(fontSize: 18),
                           ),
                           Text(
-                            "天気: ${weatherData['weather']}", // 天気を表示
+                            tempMatchingCities[2], // 天気を表示
                             style: const TextStyle(fontSize: 18),
                           ),
                           Text(
-                            "詳しい天気: ${weatherData['detailedWeather']}", // 詳しい天気を表示
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                          Text(
-                            "雲の量: ${weatherData['clouds']} %", // 雲の量を表示
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                          Text(
-                            "大気圧: ${weatherData['atmosphericPressure']} hPa", // 大気圧を表示
+                            tempMatchingCities[3], // 詳しい天気を表示
                             style: const TextStyle(fontSize: 18),
                           ),
                         ],
