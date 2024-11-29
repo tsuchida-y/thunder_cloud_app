@@ -83,14 +83,27 @@ List<String> tempMatchingCities = [];
       appBar: AppBar(
         title: const Text("Weather App"),
       ),
-      body: Container(
+      body: Stack(
+        children: <Widget>[
+          Container(
           decoration: const BoxDecoration(
-          image: DecorationImage(
-          image: AssetImage('image/入道雲写真.png'),
-          fit: BoxFit.cover,// 画像を全体に表示
+            image: DecorationImage(
+              image: AssetImage('image/入道雲写真.png'),
+              fit: BoxFit.cover,// 画像を全体に表示
+            )
+          ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child:Image.asset('image/direction.png', 
+             width: 80, // 幅を200ピクセルに設定
+             height: 80, // 高さを200ピクセルに設定
           )
           ),
-      )
+          
+        ]
+    ),
     );
   }
 }
