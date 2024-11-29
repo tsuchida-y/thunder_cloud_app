@@ -83,76 +83,27 @@ List<String> tempMatchingCities = [];
       appBar: AppBar(
         title: const Text("Weather App"),
       ),
-      body: Center(
-        child: isLoading
-            ? const CircularProgressIndicator() // ローディング中はインジケーターを表示
-            : Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: weatherDataList.length, // リストビューに表示するアイテムの数を指定
-                      itemBuilder: (context, index) { // リストビューの各アイテムをビルドするための関数
-                        final weatherData = weatherDataList[index]; // リストの特定の要素を取得
-                        return Card(
-                          margin: const EdgeInsets.all(10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "${weatherData['cityName']} の天気", // 都市名を表示
-                                  style: const TextStyle(fontSize: 24),
-                                ),
-
-                              const SizedBox(height: 10),
-                                Text(
-                                  "湿度: ${weatherData['humidity']} %", // 湿度を表示
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                              Text(
-                                  "天気: ${weatherData['weather']}", // 天気を表示
-                                  style: const TextStyle(fontSize: 18),
-                              ),
-                              Text(
-                                  "詳しい天気: ${weatherData['detailedWeather']}", // 詳しい天気を表示
-                                  style: const TextStyle(fontSize: 18),
-                              ),
-                              Text(
-                                  "雲の量: ${weatherData['clouds']} %", // 雲の量を表示
-                                  style: const TextStyle(fontSize: 18),
-                              ),
-                              Text(
-                                  "大気圧: ${weatherData['atmosphericPressure']} hPa", // 大気圧を表示
-                                  style: const TextStyle(fontSize: 18),
-                             ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "条件に一致する都市:",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  // 条件に一致する都市名を表示
-                  Wrap(
-                    spacing: 8.0,
-                    runSpacing: 4.0,
-                    children: matchingCities.isNotEmpty
-                        ? matchingCities.map((city) => Text(
-                            city,
-                            style: const TextStyle(fontSize: 18),
-                          )).toList()
-                        : [const Text("なし", style: TextStyle(fontSize: 18))],
-                  ),
-                ],
-              ),
-      ),
+      body: Stack(
+        children: <Widget>[
+          Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('image/入道雲写真.png'),
+              fit: BoxFit.cover,// 画像を全体に表示
+            )
+          ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child:Image.asset('image/direction.png', 
+             width: 80, // 幅を200ピクセルに設定
+             height: 80, // 高さを200ピクセルに設定
+          )
+          ),
+          
+        ]
+    ),
     );
   }
 }
