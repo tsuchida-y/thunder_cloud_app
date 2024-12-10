@@ -38,6 +38,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
     super.initState();
     fetchWeatherForCities();
   }
+
+
 List<String> tempMatchingCities = [];
   Future<void> fetchWeatherForCities() async {
     try {
@@ -77,31 +79,72 @@ List<String> tempMatchingCities = [];
 
   }
 
+  double cradius = 50;//入道雲の幅
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Weather App"),
+        title: const Text("入道雲サーチ画面"),
+        backgroundColor: const Color.fromARGB(255, 196, 248, 199),
       ),
       body: Stack(
         children: <Widget>[
           Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('image/入道雲写真.png'),
+              
+              image: AssetImage('image/map1.png'),
               fit: BoxFit.cover,// 画像を全体に表示
+              colorFilter: ColorFilter.mode(
+               Colors.white.withOpacity(0.8),
+                BlendMode.dstATop,
+              ),
             )
           ),
           ),
-          Positioned(
-            top: 10,
-            right: 10,
-            child:Image.asset('image/direction.png', 
-             width: 80, // 幅を200ピクセルに設定
-             height: 80, // 高さを200ピクセルに設定
-          )
+          Positioned(//方角の画像
+            top: 10.0,
+            left: 300.0,
+            width: 80.0,
+            height: 80.0,
+            child: Image.asset("image/direction.png"),
           ),
-          
+          Positioned(//北の入道雲
+            top: 100.0,
+            left: 150.0,
+            child: CircleAvatar(
+            radius: cradius,
+            backgroundColor: Colors.white,
+            backgroundImage: AssetImage("image/cloud2.jpg"),
+            ),    
+          ),
+          Positioned(//南の入道雲
+            top: 500.0,
+            left: 150.0,
+            child: CircleAvatar(
+            radius: cradius,
+            backgroundColor: Colors.white,
+            backgroundImage: AssetImage("image/cloud2.jpg"),
+            ),    
+          ),
+          Positioned(//東の入道雲
+            top: 300.0,
+            left: 280.0,
+            child: CircleAvatar(
+            radius: cradius,
+            backgroundColor: Colors.white,
+            backgroundImage: AssetImage("image/cloud2.jpg"),
+            ),    
+          ),
+          Positioned(//北の入道雲
+            top: 300.0,
+            left: 10.0,
+            child: CircleAvatar(
+            radius: cradius,
+            backgroundColor: Colors.white,
+            backgroundImage: AssetImage("image/cloud2.jpg"),
+            ),    
+          ),
         ]
     ),
     );

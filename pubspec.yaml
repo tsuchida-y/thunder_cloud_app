@@ -18,12 +18,17 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
- flutter_lints: ^4.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
 
   uses-material-design: true
   assets:
     - image/map.png
+    - image/map1.png
+    - image/transeparent.jpg
     - image/direction.png
+    - image/cloud.png
+    - image/cloud1.png
+    - image/cloud2.jpg
     - assets/
