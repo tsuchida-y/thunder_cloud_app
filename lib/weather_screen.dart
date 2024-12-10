@@ -79,6 +79,18 @@ List<String> tempMatchingCities = [];
 
   }
 
+
+  String name='';
+  Future hyouzi(String name){
+    If(matchingCities.toString().contains(name)){
+      return const AssetImage("image/cloud2.jpg");
+    }else{
+      return AssetImage("image/transparent.jpg");
+    }
+  }
+
+
+
   double cradius = 50;//入道雲の幅
   @override
   Widget build(BuildContext context) {
@@ -93,7 +105,7 @@ List<String> tempMatchingCities = [];
           decoration: BoxDecoration(
             image: DecorationImage(
               
-              image: AssetImage('image/map1.png'),
+              image: const AssetImage('image/map1.png'),
               fit: BoxFit.cover,// 画像を全体に表示
               colorFilter: ColorFilter.mode(
                Colors.white.withOpacity(0.8),
@@ -115,7 +127,7 @@ List<String> tempMatchingCities = [];
             child: CircleAvatar(
             radius: cradius,
             backgroundColor: Colors.white,
-            backgroundImage: AssetImage("image/cloud2.jpg"),
+            backgroundImage: hyouzi("Miyako"),
             ),    
           ),
           Positioned(//南の入道雲
