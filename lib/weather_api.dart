@@ -6,14 +6,14 @@ class WeatherApi {
 
   Future<Map<String, dynamic>> fetchWeather(String cityName) async {
     try {
+      
       // APIエンドポイント
       final url =//// OpenWeatherMapで取得したAPIキーを設定
           "https://api.openweathermap.org/data/2.5/weather?q=$cityName&appid=$apiKey&units=metric";
-
+      
       // HTTP GETリクエストを非同期に送信し、そのレスポンスを取得する
       final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200) {  
         // HTTPレスポンスのボディをJSON形式からDartのオブジェクトにデコード
         final data = jsonDecode(response.body);
         return {

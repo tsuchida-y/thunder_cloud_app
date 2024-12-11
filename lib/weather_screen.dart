@@ -16,6 +16,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
+
+
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
 
@@ -23,7 +25,10 @@ class WeatherScreen extends StatefulWidget {
   _WeatherScreenState createState() => _WeatherScreenState();
 }
 
+
+
 class _WeatherScreenState extends State<WeatherScreen> {
+  
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
 
   final List<String> cityNames = ["Miyako", "Senboku", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
@@ -35,6 +40,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   @override
   void initState() {
+
     super.initState();
     fetchWeatherForCities();
   }
@@ -42,30 +48,33 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
 List<String> tempMatchingCities = [];
   Future<void> fetchWeatherForCities() async {
+    
     try {
-      List<Map<String, dynamic>> tempList = [];
+      //List<Map<String, dynamic>> tempList = [];
       List<String> tempMatchingCities = [];
       for (String cityName in cityNames) {
-        final weatherData = await weatherApi.fetchWeather(cityName);
-        tempList.add({// 各都市の気象情報をリストに追加
-          "cityName": cityName,
-          "humidity": weatherData["humidity"],
-          "weather": weatherData["weather"],
-          "detailedWeather": weatherData["detailed_weather"],
-          "clouds": weatherData["clouds"],
-          "atmosphericPressure": weatherData["atmospheric_pressure"]
-        });
+        final weatherData = await weatherApi.fetchWeather(cityName); 
+        // tempList.add({// 各都市の気象情報をリストに追加
+        //   "cityName": cityName,
+        //   "humidity": weatherData["humidity"],
+        //   "weather": weatherData["weather"],
+        //   "detailedWeather": weatherData["detailed_weather"],
+        //   "clouds": weatherData["clouds"],
+        //   "atmosphericPressure": weatherData["atmospheric_pressure"]
+        // });
         //湿度が10%以上、天気が晴れ、詳しい天気が快晴、雲の量が10%以上、大気圧が1000hPa以上の都市をリストに追加
-    if(weatherData["humidity"] >= 10 &&
-       weatherData["weather"] == "Clouds" &&
-       weatherData["detailed_weather"] == "broken clouds" &&
-       weatherData["clouds"] >= 10 &&
-      weatherData["atmospheric_pressure"] >= 1000){
-      tempMatchingCities.add(cityName);
-    }
+        if(weatherData["humidity"] >= 10 &&
+          weatherData["weather"] == "Clouds" &&
+          weatherData["detailed_weather"] == "broken clouds" &&
+          weatherData["clouds"] >= 10 &&
+          weatherData["atmospheric_pressure"] >= 1000){
+          tempMatchingCities.add(cityName);
+          print(cityName);
+        }
+        
       }
       setState(() {
-        weatherDataList = tempList;
+        //weatherDataList = tempList;
         matchingCities = tempMatchingCities;
         isLoading = false; // ローディング完了
       });
@@ -76,13 +85,11 @@ List<String> tempMatchingCities = [];
       });
     }
 
-
+  
   }
 
 
-  String name='';
-AssetImage hyouzi(String name) {
-  
+AssetImage hyouzi(String name) { 
   for (int i = 0; i < matchingCities.length; i++) {
     if (matchingCities[i] == name) {
       return const AssetImage("image/cloud2.jpg");
