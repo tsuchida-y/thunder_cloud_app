@@ -32,7 +32,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
 
   final List<String> cityNames = ["Miyako", "Senboku", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
-  List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
+  //List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
   List<String> matchingCities = []; // 条件に一致する都市名を格納するリスト
 
 
@@ -51,7 +51,6 @@ List<String> tempMatchingCities = [];
     
     try {
       //List<Map<String, dynamic>> tempList = [];
-      List<String> tempMatchingCities = [];
       for (String cityName in cityNames) {
         final weatherData = await weatherApi.fetchWeather(cityName); 
         // tempList.add({// 各都市の気象情報をリストに追加
@@ -95,7 +94,7 @@ AssetImage hyouzi(String name) {
       return const AssetImage("image/cloud2.jpg");
     }
   }
-  return const AssetImage("image/transparent.jpg");
+  return const AssetImage("image/bluesky.jpg");
 }
 
   double cradius = 50;//入道雲の幅
