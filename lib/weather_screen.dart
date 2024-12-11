@@ -26,7 +26,7 @@ class WeatherScreen extends StatefulWidget {
 class _WeatherScreenState extends State<WeatherScreen> {
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
 
-  final List<String> cityNames = ["Miyako", "Kazuno", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
+  final List<String> cityNames = ["Miyako", "Senboku", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
   List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
   List<String> matchingCities = []; // 条件に一致する都市名を格納するリスト
 
@@ -57,8 +57,8 @@ List<String> tempMatchingCities = [];
         });
         //湿度が10%以上、天気が晴れ、詳しい天気が快晴、雲の量が10%以上、大気圧が1000hPa以上の都市をリストに追加
     if(weatherData["humidity"] >= 10 &&
-       weatherData["weather"] == "Rain" &&
-       weatherData["detailed_weather"] == "light rain" &&
+       weatherData["weather"] == "Clouds" &&
+       weatherData["detailed_weather"] == "broken clouds" &&
        weatherData["clouds"] >= 10 &&
       weatherData["atmospheric_pressure"] >= 1000){
       tempMatchingCities.add(cityName);
@@ -81,15 +81,15 @@ List<String> tempMatchingCities = [];
 
 
   String name='';
-  Future hyouzi(String name){
-    If(matchingCities.toString().contains(name)){
+AssetImage hyouzi(String name) {
+  
+  for (int i = 0; i < matchingCities.length; i++) {
+    if (matchingCities[i] == name) {
       return const AssetImage("image/cloud2.jpg");
-    }else{
-      return AssetImage("image/transparent.jpg");
     }
   }
-
-
+  return const AssetImage("image/transparent.jpg");
+}
 
   double cradius = 50;//入道雲の幅
   @override
@@ -127,7 +127,7 @@ List<String> tempMatchingCities = [];
             child: CircleAvatar(
             radius: cradius,
             backgroundColor: Colors.white,
-            backgroundImage: hyouzi("Miyako"),
+            backgroundImage: hyouzi("Ninohe"),
             ),    
           ),
           Positioned(//南の入道雲
@@ -136,7 +136,7 @@ List<String> tempMatchingCities = [];
             child: CircleAvatar(
             radius: cradius,
             backgroundColor: Colors.white,
-            backgroundImage: AssetImage("image/cloud2.jpg"),
+            backgroundImage: hyouzi("Hanamaki"),
             ),    
           ),
           Positioned(//東の入道雲
@@ -145,16 +145,16 @@ List<String> tempMatchingCities = [];
             child: CircleAvatar(
             radius: cradius,
             backgroundColor: Colors.white,
-            backgroundImage: AssetImage("image/cloud2.jpg"),
+            backgroundImage: hyouzi("Miyako"),
             ),    
           ),
-          Positioned(//北の入道雲
+          Positioned(//西の入道雲
             top: 300.0,
             left: 10.0,
             child: CircleAvatar(
             radius: cradius,
             backgroundColor: Colors.white,
-            backgroundImage: AssetImage("image/cloud2.jpg"),
+            backgroundImage: hyouzi("Senboku"),
             ),    
           ),
         ]

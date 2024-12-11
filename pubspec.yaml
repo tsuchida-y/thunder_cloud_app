@@ -26,7 +26,7 @@ flutter:
   assets:
     - image/map.png
     - image/map1.png
-    - image/transeparent.jpg
+    - image/transparent.jpg
     - image/direction.png
     - image/cloud.png
     - image/cloud1.png
