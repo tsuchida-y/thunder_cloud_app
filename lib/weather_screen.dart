@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'weather_api.dart';
-
+import 'dart:async';
 void main() {
   runApp(const MyApp());
 }
@@ -40,9 +40,16 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   @override
   void initState() {
-
+    Timer.periodic(
+      const Duration(seconds: 5),
+      (Timer timer){
+      fetchWeatherForCities();
+      },
+    );
     super.initState();
-    fetchWeatherForCities();
+    
+
+    
   }
 
 
@@ -100,6 +107,7 @@ AssetImage hyouzi(String name) {
   double cradius = 50;//入道雲の幅
   @override
   Widget build(BuildContext context) {
+    print("再描画");
     return Scaffold(
       appBar: AppBar(
         title: const Text("入道雲サーチ画面"),

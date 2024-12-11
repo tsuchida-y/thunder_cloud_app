@@ -6,7 +6,7 @@ class WeatherApi {
 
   Future<Map<String, dynamic>> fetchWeather(String cityName) async {
     try {
-      
+      print("api取得");
       // APIエンドポイント
       final url =//// OpenWeatherMapで取得したAPIキーを設定
           "https://api.openweathermap.org/data/2.5/weather?q=$cityName&appid=$apiKey&units=metric";
