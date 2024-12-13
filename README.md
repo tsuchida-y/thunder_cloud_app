@@ -1,16 +1,25 @@
-# thunder_cloud_app
+# ThunderCloudApp
 
-A new Flutter project.
+## 背景・目的
 
-## Getting Started
+- 入道雲が好きなので、自分が見える範囲で入道雲を見逃したくないと思い作成した。
+- 自分の好きなもののためにアプリ開発を行なってみたかったから作成した。
 
-This project is a starting point for a Flutter application.
+## 機能
 
-A few resources to get you started if this is your first Flutter project:
+- 自分から見て東西南北のどこに入道雲が出現したか表示する
+- 5秒に一度、天気情報を取得しUIを更新する
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 工夫した点
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- アプリの背景を地図にし、右上に方角がわかる画像を配置することで自分の位置からどこに入道雲が出現したか分かりやすくした。
+
+## ファイル構成
+
+- `weather_screen.dart`: 天気情報を表示する画面の UI とロジックを含みます。
+- `weather_api.dart`: 天気情報を取得するための API 呼び出しを含みます。
+
+## 使用方法
+
+1. アプリを起動するとホーム画面が表示されます。
+2. アプリは定期的に天気情報を取得し、画面に表示します。
