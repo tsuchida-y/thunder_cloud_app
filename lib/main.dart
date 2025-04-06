@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'weather_api.dart';
 import 'dart:async';
+import 'geolocator.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -46,6 +47,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       const Duration(seconds: 5),
       (Timer timer){
       fetchWeatherForCities();
+      _getLocation(); // 位置情報を取得
       },
     );
 
@@ -55,8 +57,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
 
 List<String> tempMatchingCities = [];
+  Future<void> _getLocation() async {
+    await getCurrentLocation(); // geolocator.dart のメソッドを呼び出す
+  }
   Future<void> fetchWeatherForCities() async {
-    
+
     try {
       //List<Map<String, dynamic>> tempList = [];
       for (String cityName in cityNames) {

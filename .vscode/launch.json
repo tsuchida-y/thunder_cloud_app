@@ -8,21 +8,21 @@
             "name": "thunder_cloud_app",
             "request": "launch",
             "type": "dart",
-            "program": "lib/weather_screen.dart"
+            "program": "lib/main.dart"
         },
         {
             "name": "thunder_cloud_app (profile mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile",
-            "program": "lib/weather_screen.dart"
+            "program": "lib/main.dart"
         },
         {
             "name": "thunder_cloud_app (release mode)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release",
-            "program": "lib/weather_screen.dart"
+            "program": "lib/main.dart"
         }
     ]
 }
