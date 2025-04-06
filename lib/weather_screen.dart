@@ -40,16 +40,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   @override
   void initState() {
+
+    
     Timer.periodic(
       const Duration(seconds: 5),
       (Timer timer){
       fetchWeatherForCities();
       },
     );
-    super.initState();
-    
 
-    
+
+    super.initState();
   }
 
 
