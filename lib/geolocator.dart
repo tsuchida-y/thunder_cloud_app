@@ -20,6 +20,7 @@ Future<void> checkPermission() async {
 
 Future<void> getCurrentLocation() async {
   try {
+    await checkPermission();
     Position position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
