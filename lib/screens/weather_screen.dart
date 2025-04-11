@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../geolocator.dart';
-import '../weather_api.dart';
-import '../cloud_avatar.dart';
-import '../direction_image.dart';
+import '../services/geolocator.dart';
+import '../services/weather_api.dart';
+import '../widgets/cloud_avatar.dart';
+import '../widgets/direction_image.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
