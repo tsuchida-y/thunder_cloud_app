@@ -18,15 +18,17 @@ Future<void> checkPermission() async {
   }
 }
 
-Future<void> getCurrentLocation() async {
+// 現在地を取得する関数
+Future<Position> getCurrentLocation() async {
   try {
-    await checkPermission();
+    await checkPermission(); // 権限を確認
     Position position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
-    
     print("現在地: 緯度 ${position.latitude}, 経度 ${position.longitude}");
+    return position; // 現在地を返す
   } catch (e) {
     print("位置情報の取得に失敗しました: $e");
+    rethrow; // エラーを呼び出し元に伝える
   }
 }

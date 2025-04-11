@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thunder_cloud_app/geolocator.dart';
 import 'weather_api.dart';
 import 'dart:async';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -35,23 +36,30 @@ class _WeatherScreenState extends State<WeatherScreen> {
   final List<String> cityNames = ["Miyako", "Senboku", "Hanamaki", "Ninohe"]; // 取得したい都市名のリスト
   //List<Map<String, dynamic>> weatherDataList = []; // 各都市の気象情報を格納するリスト
   List<String> matchingCities = []; // 条件に一致する都市名を格納するリスト
-
-
   bool isLoading = true; // ローディング状態を示す変数
+  LatLng? _currentLocation;
+  GoogleMapController? _mapController;
 
+  //定期処理
   @override
   void initState() {
-
-    
+    super.initState();
+    _getLocation(); // 現在地を取得
     Timer.periodic(
       const Duration(seconds: 5),
       (Timer timer){
       fetchWeatherForCities();
       },
     );
+  }
 
-
-    super.initState();
+  Future<void> _getLocation() async {
+    final locationData = await getCurrentLocation(); // geolocator.dart のメソッドを呼び出す
+    if (locationData != null && locationData.latitude != null && locationData.longitude != null) {
+      setState(() {
+        _currentLocation = LatLng(locationData.latitude!, locationData.longitude!);
+      });
+    }
   }
 
 
@@ -117,19 +125,23 @@ AssetImage hyouzi(String name) {
       ),
       body: Stack(
         children: <Widget>[
-          Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              
-              image: const AssetImage('image/map1.png'),
-              fit: BoxFit.cover,// 画像を全体に表示
-              colorFilter: ColorFilter.mode(
-               Colors.white.withOpacity(0.8),
-                BlendMode.dstATop,
+          if (_currentLocation != null)
+            GoogleMap(
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+              },
+              initialCameraPosition: CameraPosition(
+                target: _currentLocation!,
+                zoom: 12.0,
               ),
-            )
-          ),
-          ),
+              myLocationEnabled: true, // 背景なので現在地表示はオフにする
+              myLocationButtonEnabled: false,
+              scrollGesturesEnabled: false, // スクロール操作を無効にする
+              zoomControlsEnabled: false, // ズームコントロールを無効にする
+              zoomGesturesEnabled: false, // ズーム操作を無効にする
+              tiltGesturesEnabled: false, // チルト操作を無効にする
+              rotateGesturesEnabled: false, // 回転操作を無効にする
+            ),
           Positioned(//方角の画像
             top: 10.0,
             left: 300.0,
