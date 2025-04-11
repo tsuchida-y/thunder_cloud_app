@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:thunder_cloud_app/geolocator.dart';
 import 'weather_api.dart';
@@ -85,7 +87,7 @@ List<String> tempMatchingCities = [];
           weatherData["clouds"] >= 10 &&
           weatherData["atmospheric_pressure"] >= 1000){
           tempMatchingCities.add(cityName);
-          print(cityName);
+          log(cityName);
         }
         
       }
@@ -95,7 +97,7 @@ List<String> tempMatchingCities = [];
         isLoading = false; // ローディング完了
       });
     } catch (e) {
-      print("Error: $e");
+      log("Error: $e");
       setState(() {
         isLoading = false; // ローディング完了
       });
@@ -117,7 +119,7 @@ AssetImage hyouzi(String name) {
   double cradius = 50;//入道雲の幅
   @override
   Widget build(BuildContext context) {
-    print("再描画");
+    log("再描画");
     return Scaffold(
       appBar: AppBar(
         title: const Text("入道雲サーチ画面"),
