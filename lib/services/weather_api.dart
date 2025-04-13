@@ -10,9 +10,8 @@ class WeatherApi {
   Future<Map<String, dynamic>> fetchWeather(double latitude, double longitude) async {
     try {
       log("api取得 (緯度経度)");
-      // APIエンドポイント
-      final url =//// OpenWeatherMapで取得したAPIキーを設定
-          "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$apiKey&units=metric";
+      // エンドポイント
+      final url ="https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$apiKey&units=metric";
       
       // HTTP GETリクエストを非同期に送信し、そのレスポンスを取得する
       final response = await http.get(Uri.parse(url));

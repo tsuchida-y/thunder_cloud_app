@@ -16,8 +16,7 @@ class WeatherScreen extends StatefulWidget {
 
 class _WeatherScreenState extends State<WeatherScreen> {
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
-  //final List<String> cityNames = ["Miyako", "Senboku", "Hanamaki", "Ninohe"];
-  List<String> matchingCities = [];// 条件に一致する方向を格納するリスト (例: "north", "south")
+  List<String> matchingCities = [];// 条件に一致する方向を格納
   bool isLoading = true;
   LatLng? _currentLocation;
   GoogleMapController? _mapController;
@@ -36,6 +35,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
     );
   }
 
+
+  //現在地を取得するに格納する関数
   Future<void> _getLocation() async {
     final locationData = await getCurrentLocation();
     if (locationData != null) {
