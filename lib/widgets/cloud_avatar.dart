@@ -4,17 +4,19 @@ class CloudAvatar extends StatelessWidget {
   final String name;
   final double top;
   final double left;
+  final bool isCloudy; 
 
   const CloudAvatar({
     super.key,
     required this.name,
     required this.top,
     required this.left,
+    required this.isCloudy, 
   });
 
   AssetImage _getImage(String name) {
     // 条件に応じて画像を切り替える
-    if (name == "Ninohe" || name == "Hanamaki" || name == "Miyako" || name == "Senboku") {
+    if (name == "north" || name == "south" || name == "east" || name == "west") {
       return const AssetImage("image/cloud2.jpg");
     }
     return const AssetImage("image/bluesky.jpg");
