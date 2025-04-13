@@ -39,33 +39,30 @@ class _WeatherScreenState extends State<WeatherScreen> {
   //現在地を取得するに格納する関数
   Future<void> _getLocation() async {
     final locationData = await getCurrentLocation();
-    if (locationData != null) {
-      setState(() {
+    setState(() {
         _currentLocation = LatLng(locationData.latitude, locationData.longitude);
-      });
-    }
+    });
   }
 
   Future<void> _checkWeatherInDirections(double currentLatitude, double currentLongitude) async {
     List<String> tempMatchingCities = [];
     bool isCloudyConditionMet(Map<String, dynamic> weatherData) {
       return 
-        (weatherData["weather"] == "Thunderstorm" ||
-          (weatherData["weather"] == "Clouds" &&
-            (weatherData["detailed_weather"].contains("thunderstorm") ||
-              weatherData["detailed_weather"].contains("heavy rain") ||
-              weatherData["detailed_weather"].contains("squalls") ||
-              weatherData["detailed_weather"].contains("hail")
-            ) 
-          ) ||
-        //(weatherData.containsKey("rain") && weatherData["rain"] > 1.0) || // 例：1mm以上の雨
-        //(weatherData.containsKey("snow") && weatherData["snow"] > 0.5)|| // 例：0.5mm以上の雪
-        (weatherData["temperature"] > 25.0) // 例：気温が25度以上
-      ); 
+        (weatherData["weather"] == "Thunderstorm" || // 天候が雷雨
+        (weatherData["weather"] == "Clouds" && // 天候が曇りで、詳細条件を満たす
+          (weatherData["detailed_weather"].contains("thunderstorm") ||
+          weatherData["detailed_weather"].contains("heavy rain") ||
+          weatherData["detailed_weather"].contains("squalls") ||
+          weatherData["detailed_weather"].contains("hail")
+          )
+        )
+        ) &&
+        (weatherData["temperature"] > 25.0); // 気温が25度以上
     }
     try {
     // 北方向の天候チェック
     final northWeather = await weatherApi.fetchNorthWeather(currentLatitude, currentLongitude);
+    log("北$northWeather");
     if (isCloudyConditionMet(northWeather)) {
       tempMatchingCities.add("north");
       log("北に入道雲の可能性");
@@ -73,6 +70,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     // 南方向の天候チェック
     final southWeather = await weatherApi.fetchSouthWeather(currentLatitude, currentLongitude);
+    log("南$southWeather");
     if (isCloudyConditionMet(southWeather)) {
       tempMatchingCities.add("south");
       log("南に入道雲の可能性");
@@ -80,6 +78,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     // 東方向の天候チェック
     final eastWeather = await weatherApi.fetchEastWeather(currentLatitude, currentLongitude);
+    log("東$eastWeather");
     if (isCloudyConditionMet(eastWeather)) {
       tempMatchingCities.add("east");
       log("東に入道雲の可能性");
@@ -87,6 +86,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     // 西方向の天候チェック
     final westWeather = await weatherApi.fetchWestWeather(currentLatitude, currentLongitude);
+    log("西$westWeather");
     if (isCloudyConditionMet(westWeather)) {
       tempMatchingCities.add("west");
       log("西に入道雲の可能性");
@@ -94,6 +94,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
       setState(() {
         matchingCities = tempMatchingCities;
+        log("一致する方向: $matchingCities");
         isLoading = false;
       });
     } catch (e) {

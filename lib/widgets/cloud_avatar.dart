@@ -14,12 +14,11 @@ class CloudAvatar extends StatelessWidget {
     required this.isCloudy, 
   });
 
-  AssetImage _getImage(String name) {
+  AssetImage _getImage(bool isCloudy) {
     // 条件に応じて画像を切り替える
-    if (name == "north" || name == "south" || name == "east" || name == "west") {
-      return const AssetImage("image/cloud2.jpg");
-    }
-    return const AssetImage("image/bluesky.jpg");
+    return isCloudy
+      ? const AssetImage("image/cloud2.jpg") // 入道雲の画像
+      : const AssetImage("image/bluesky.jpg"); // 晴れの画像
   }
 
   @override
@@ -30,7 +29,7 @@ class CloudAvatar extends StatelessWidget {
       child: CircleAvatar(
         radius: 50,
         backgroundColor: Colors.white,
-        backgroundImage: _getImage(name),
+        backgroundImage: _getImage(isCloudy),
       ),
     );
   }
