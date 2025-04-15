@@ -39,4 +39,17 @@
 - 入道雲サーチの数値があっているかを実際に確認する
 
 ## 実際の画面
-<img width="485" alt="スクリーンショット 2025-04-15 13 24 14" src="https://github.com/user-attachments/assets/b3f9dd55-85d6-46da-b439-bdd5b95dcced" />
+
+
+<table>
+  <tr>
+    <td align="center">
+      <p><strong>Pixel 4 API 35</strong></p>
+      <img src="https://github.com/user-attachments/assets/b3f9dd55-85d6-46da-b439-bdd5b95dcced" width="300px" />
+    </td>
+    <td align="center">
+      <p><strong>iPhone 16 Plus</strong></p>
+      <img src="https://github.com/user-attachments/assets/2a06f13c-1b97-4542-b6ff-11f37fe3cdd1" width="300px" />
+    </td>
+  </tr>
+</table>
