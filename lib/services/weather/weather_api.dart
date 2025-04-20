@@ -41,13 +41,17 @@ class WeatherApi {
           "temperature": data["main"]["temp"],
         };
       } else {
+        log("APIエラー: ステータスコード ${response.statusCode}, レスポンス: ${response.body}");
         throw WeatherApiException("APIエラー: ステータスコード ${response.statusCode}");
       }
     } on FormatException catch (e) {
+      log("デコードエラー: $e");
       throw WeatherApiException("デコードエラー: $e");
     } on http.ClientException catch (e) {
+      log("ネットワークエラー: $e");
       throw WeatherApiException("ネットワークエラー: $e");
     } catch (e) {
+      log("不明なエラー: $e");
       throw WeatherApiException("不明なエラー: $e");
     }
   }
