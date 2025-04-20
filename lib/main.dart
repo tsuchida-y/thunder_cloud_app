@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/weather_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Flutter の初期化を保証
+  await dotenv.load(fileName: ".env"); // .env ファイルを読み込む
   runApp(const MyApp());
 }
 

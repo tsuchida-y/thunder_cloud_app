@@ -11,15 +11,14 @@ class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
 
   @override
-  _WeatherScreenState createState() => _WeatherScreenState();
+  WeatherScreenState createState() => WeatherScreenState();
 }
 
-class _WeatherScreenState extends State<WeatherScreen> {
+class WeatherScreenState extends State<WeatherScreen> {
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
-  List<String> matchingCities = [];// 条件に一致する方向を格納
+  List<String> matchingCities = []; // 条件に一致する方向を格納
   bool isLoading = true;
   LatLng? _currentLocation;
-  GoogleMapController? _mapController;
 
   @override
   void initState() {
@@ -29,68 +28,70 @@ class _WeatherScreenState extends State<WeatherScreen> {
       const Duration(seconds: 5),
       (Timer timer) {
         if (_currentLocation != null) {
-          _checkWeatherInDirections(_currentLocation!.latitude, _currentLocation!.longitude);
+          _checkWeatherInDirections(
+              _currentLocation!.latitude, _currentLocation!.longitude);
         }
       },
     );
   }
 
-
   //現在地を取得するに格納する関数
   Future<void> _getLocation() async {
     final locationData = await getCurrentLocation();
     setState(() {
-        _currentLocation = LatLng(locationData.latitude, locationData.longitude);
+      _currentLocation = LatLng(locationData.latitude, locationData.longitude);
     });
   }
 
-  Future<void> _checkWeatherInDirections(double currentLatitude, double currentLongitude) async {
+  Future<void> _checkWeatherInDirections(
+      double currentLatitude, double currentLongitude) async {
     List<String> tempMatchingCities = [];
     bool isCloudyConditionMet(Map<String, dynamic> weatherData) {
-      return 
-        (weatherData["weather"] == "Thunderstorm" || // 天候が雷雨
-        (weatherData["weather"] == "Clouds" && // 天候が曇りで、詳細条件を満たす
-          (weatherData["detailed_weather"].contains("thunderstorm") ||
-          weatherData["detailed_weather"].contains("heavy rain") ||
-          weatherData["detailed_weather"].contains("squalls") ||
-          weatherData["detailed_weather"].contains("hail")
-          )
-        )
-        ) &&
-        (weatherData["temperature"] > 25.0); // 気温が25度以上
+      return (weatherData["weather"] == "Thunderstorm" ||
+              (weatherData["weather"] == "Clouds" &&
+                  (weatherData["detailed_weather"].contains("thunderstorm") ||
+                      weatherData["detailed_weather"].contains("heavy rain") ||
+                      weatherData["detailed_weather"].contains("squalls") ||
+                      weatherData["detailed_weather"].contains("hail")))) &&
+          (weatherData["temperature"] > 25.0);
     }
+
     try {
-    // 北方向の天候チェック
-    final northWeather = await weatherApi.fetchNorthWeather(currentLatitude, currentLongitude);
-    log("北$northWeather");
-    if (isCloudyConditionMet(northWeather)) {
-      tempMatchingCities.add("north");
-      log("北に入道雲の可能性");
-    }
+      // 北方向の天候チェック
+      final northWeather =
+          await weatherApi.fetchNorthWeather(currentLatitude, currentLongitude);
+      log("北$northWeather");
+      if (isCloudyConditionMet(northWeather)) {
+        tempMatchingCities.add("north");
+        log("北に入道雲の可能性");
+      }
 
-    // 南方向の天候チェック
-    final southWeather = await weatherApi.fetchSouthWeather(currentLatitude, currentLongitude);
-    log("南$southWeather");
-    if (isCloudyConditionMet(southWeather)) {
-      tempMatchingCities.add("south");
-      log("南に入道雲の可能性");
-    }
+      // 南方向の天候チェック
+      final southWeather =
+          await weatherApi.fetchSouthWeather(currentLatitude, currentLongitude);
+      log("南$southWeather");
+      if (isCloudyConditionMet(southWeather)) {
+        tempMatchingCities.add("south");
+        log("南に入道雲の可能性");
+      }
 
-    // 東方向の天候チェック
-    final eastWeather = await weatherApi.fetchEastWeather(currentLatitude, currentLongitude);
-    log("東$eastWeather");
-    if (isCloudyConditionMet(eastWeather)) {
-      tempMatchingCities.add("east");
-      log("東に入道雲の可能性");
-    }
+      // 東方向の天候チェック
+      final eastWeather =
+          await weatherApi.fetchEastWeather(currentLatitude, currentLongitude);
+      log("東$eastWeather");
+      if (isCloudyConditionMet(eastWeather)) {
+        tempMatchingCities.add("east");
+        log("東に入道雲の可能性");
+      }
 
-    // 西方向の天候チェック
-    final westWeather = await weatherApi.fetchWestWeather(currentLatitude, currentLongitude);
-    log("西$westWeather");
-    if (isCloudyConditionMet(westWeather)) {
-      tempMatchingCities.add("west");
-      log("西に入道雲の可能性");
-    }
+      // 西方向の天候チェック
+      final westWeather =
+          await weatherApi.fetchWestWeather(currentLatitude, currentLongitude);
+      log("西$westWeather");
+      if (isCloudyConditionMet(westWeather)) {
+        tempMatchingCities.add("west");
+        log("西に入道雲の可能性");
+      }
 
       setState(() {
         matchingCities = tempMatchingCities;
@@ -116,9 +117,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
         children: <Widget>[
           if (_currentLocation != null)
             GoogleMap(
-              onMapCreated: (GoogleMapController controller) {
-                _mapController = controller;
-              },
               initialCameraPosition: CameraPosition(
                 target: _currentLocation!,
                 zoom: 12.0,
@@ -132,10 +130,26 @@ class _WeatherScreenState extends State<WeatherScreen> {
               rotateGesturesEnabled: false,
             ),
           const DirectionImage(),
-          CloudAvatar(name: "north", top: 100.0, left: 150.0, isCloudy: matchingCities.contains("north")),
-          CloudAvatar(name: "south", top: 500.0, left: 150.0, isCloudy: matchingCities.contains("south")),
-          CloudAvatar(name: "east", top: 300.0, left: 280.0, isCloudy: matchingCities.contains("east")),
-          CloudAvatar(name: "west", top: 300.0, left: 10.0, isCloudy: matchingCities.contains("west")),
+          CloudAvatar(
+              name: "north",
+              top: 100.0,
+              left: 150.0,
+              isCloudy: matchingCities.contains("north")),
+          CloudAvatar(
+              name: "south",
+              top: 500.0,
+              left: 150.0,
+              isCloudy: matchingCities.contains("south")),
+          CloudAvatar(
+              name: "east",
+              top: 300.0,
+              left: 280.0,
+              isCloudy: matchingCities.contains("east")),
+          CloudAvatar(
+              name: "west",
+              top: 300.0,
+              left: 10.0,
+              isCloudy: matchingCities.contains("west")),
         ],
       ),
     );

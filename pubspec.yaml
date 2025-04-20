@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_dotenv: ^5.0.2
+  flutter_dotenv: ^5.2.1
 
   cupertino_icons: ^1.0.8
   http: ^1.2.2
@@ -25,6 +25,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - .env
     - image/transparent.jpg
     - image/direction.png
     - image/bluesky.jpg
