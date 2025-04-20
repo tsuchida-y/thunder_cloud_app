@@ -12,10 +12,8 @@ class WeatherApi {
   /// このクラスは、指定した緯度・経度の天候データを取得するほか、
   /// 東西南北それぞれ30km離れた地点の天候データを取得するメソッドを提供します。
 
-  final String apiKey;
-
-  WeatherApi(this.apiKey);
-  //final String apiKey = dotenv.env['OpenWhetherAPI_Key'] ?? '';
+  WeatherApi();
+  final String apiKey = '4647b7a69711570dbc2b475779b61ded';
   static const double distanceKm = 30.0; // 入道雲を探す距離 (km)
   static const double latitudePerDegreeKm = 111.0; //緯度1度あたり約111km
 
