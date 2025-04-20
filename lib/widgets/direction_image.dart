@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+///画面右上に方向を示す画像を表示するウィジェット
 class DirectionImage extends StatelessWidget {
-  //画面右上に方向を示す画像を表示するウィジェット
   const DirectionImage({super.key});
 
   @override

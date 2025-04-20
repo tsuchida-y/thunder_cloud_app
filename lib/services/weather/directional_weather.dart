@@ -9,37 +9,37 @@ class DirectionalWeather {
   static const double distanceKm = WeatherApi.distanceKm;
   static const double latitudePerDegreeKm = WeatherApi.latitudePerDegreeKm;
 
-  /// 北方向の天候を取得
-  Future<Map<String, dynamic>> fetchNorthWeather(
-      double currentLatitude, double currentLongitude) async {
-    const double latitudeOffset = distanceKm / latitudePerDegreeKm;
-    return weatherApi.fetchWeather(
-        currentLatitude + latitudeOffset, currentLongitude);
-  }
+  /// 指定した方向の天候を取得
+  ///
+  /// [direction]: 方向を指定する文字列 ("north", "south", "east", "west")。
+  /// [currentLatitude]: 現在の緯度。
+  /// [currentLongitude]: 現在の経度。
+  /// 戻り値: 指定した方向の天候データを含むマップ。
+  Future<Map<String, dynamic>> fetchWeatherInDirection(
+      String direction, double currentLatitude, double currentLongitude) async {
+    double latitudeOffset = 0.0;
+    double longitudeOffset = 0.0;
 
-  /// 南方向の天候を取得
-  Future<Map<String, dynamic>> fetchSouthWeather(
-      double currentLatitude, double currentLongitude) async {
-    const double latitudeOffset = distanceKm / latitudePerDegreeKm;
-    return weatherApi.fetchWeather(
-        currentLatitude - latitudeOffset, currentLongitude);
-  }
+    switch (direction.toLowerCase()) {
+      case "north":
+        latitudeOffset = distanceKm / latitudePerDegreeKm;
+        break;
+      case "south":
+        latitudeOffset = -distanceKm / latitudePerDegreeKm;
+        break;
+      case "east":
+        longitudeOffset = distanceKm /
+            (latitudePerDegreeKm * math.cos(currentLatitude * math.pi / 180.0));
+        break;
+      case "west":
+        longitudeOffset = -distanceKm /
+            (latitudePerDegreeKm * math.cos(currentLatitude * math.pi / 180.0));
+        break;
+      default:
+        throw ArgumentError("無効な方向: $direction");
+    }
 
-  /// 東方向の天候を取得
-  Future<Map<String, dynamic>> fetchEastWeather(
-      double currentLatitude, double currentLongitude) async {
-    final double longitudeOffset = distanceKm /
-        (latitudePerDegreeKm * math.cos(currentLatitude * math.pi / 180.0));
     return weatherApi.fetchWeather(
-        currentLatitude, currentLongitude + longitudeOffset);
-  }
-
-  /// 西方向の天候を取得
-  Future<Map<String, dynamic>> fetchWestWeather(
-      double currentLatitude, double currentLongitude) async {
-    final double longitudeOffset = distanceKm /
-        (latitudePerDegreeKm * math.cos(currentLatitude * math.pi / 180.0));
-    return weatherApi.fetchWeather(
-        currentLatitude, currentLongitude - longitudeOffset);
+        currentLatitude + latitudeOffset, currentLongitude + longitudeOffset);
   }
 }
