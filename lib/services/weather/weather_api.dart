@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'dart:math' as math;
 
 import 'package:thunder_cloud_app/exception/weatherapi_exc.dart';
 
@@ -51,36 +50,5 @@ class WeatherApi {
     } catch (e) {
       throw WeatherApiException("不明なエラー: $e");
     }
-  }
-
-  /// 北方向に30km離れた地点の天候データを取得します。
-  Future<Map<String, dynamic>> fetchNorthWeather(
-      double currentLatitude, double currentLongitude) async {
-    const double latitudeOffset = distanceKm / latitudePerDegreeKm;
-    return fetchWeather(currentLatitude + latitudeOffset, currentLongitude);
-  }
-
-  // 南方向の天候を取得
-  Future<Map<String, dynamic>> fetchSouthWeather(
-      double currentLatitude, double currentLongitude) async {
-    const double latitudeOffset = distanceKm / latitudePerDegreeKm;
-    return fetchWeather(currentLatitude - latitudeOffset, currentLongitude);
-  }
-
-  // 東方向の天候を取得
-  // 経度1度あたりの距離は緯度によって変わるため、簡易的な計算
-  Future<Map<String, dynamic>> fetchEastWeather(
-      double currentLatitude, double currentLongitude) async {
-    final double longitudeOffset = distanceKm /
-        (latitudePerDegreeKm * math.cos(currentLatitude * math.pi / 180.0));
-    return fetchWeather(currentLatitude, currentLongitude + longitudeOffset);
-  }
-
-  // 西方向の天候を取得
-  Future<Map<String, dynamic>> fetchWestWeather(
-      double currentLatitude, double currentLongitude) async {
-    final double longitudeOffset = distanceKm /
-        (latitudePerDegreeKm * math.cos(currentLatitude * math.pi / 180.0));
-    return fetchWeather(currentLatitude, currentLongitude - longitudeOffset);
   }
 }

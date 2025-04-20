@@ -3,7 +3,8 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../services/geolocator.dart';
-import '../services/weather_api.dart';
+import '../services/weather/directional_weather.dart';
+import '../services/weather/weather_api.dart';
 import '../widgets/cloud_avatar.dart';
 import '../widgets/direction_image.dart';
 
@@ -16,6 +17,7 @@ class WeatherScreen extends StatefulWidget {
 
 class WeatherScreenState extends State<WeatherScreen> {
   final WeatherApi weatherApi = WeatherApi(); // WeatherApiクラスのインスタンスを生成
+  late final DirectionalWeather directionalWeather;
   List<String> matchingCities = []; // 条件に一致する方向を格納
   bool isLoading = true;
   LatLng? _currentLocation;
@@ -23,6 +25,7 @@ class WeatherScreenState extends State<WeatherScreen> {
   @override
   void initState() {
     super.initState();
+    directionalWeather = DirectionalWeather(weatherApi);
     _getLocation();
     Timer.periodic(
       const Duration(seconds: 5),
@@ -58,8 +61,8 @@ class WeatherScreenState extends State<WeatherScreen> {
 
     try {
       // 北方向の天候チェック
-      final northWeather =
-          await weatherApi.fetchNorthWeather(currentLatitude, currentLongitude);
+      final northWeather = await directionalWeather.fetchNorthWeather(
+          currentLatitude, currentLongitude);
       log("北$northWeather");
       if (isCloudyConditionMet(northWeather)) {
         tempMatchingCities.add("north");
@@ -67,8 +70,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       }
 
       // 南方向の天候チェック
-      final southWeather =
-          await weatherApi.fetchSouthWeather(currentLatitude, currentLongitude);
+      final southWeather = await directionalWeather.fetchSouthWeather(
+          currentLatitude, currentLongitude);
       log("南$southWeather");
       if (isCloudyConditionMet(southWeather)) {
         tempMatchingCities.add("south");
@@ -76,8 +79,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       }
 
       // 東方向の天候チェック
-      final eastWeather =
-          await weatherApi.fetchEastWeather(currentLatitude, currentLongitude);
+      final eastWeather = await directionalWeather.fetchEastWeather(
+          currentLatitude, currentLongitude);
       log("東$eastWeather");
       if (isCloudyConditionMet(eastWeather)) {
         tempMatchingCities.add("east");
@@ -85,8 +88,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       }
 
       // 西方向の天候チェック
-      final westWeather =
-          await weatherApi.fetchWestWeather(currentLatitude, currentLongitude);
+      final westWeather = await directionalWeather.fetchWestWeather(
+          currentLatitude, currentLongitude);
       log("西$westWeather");
       if (isCloudyConditionMet(westWeather)) {
         tempMatchingCities.add("west");
