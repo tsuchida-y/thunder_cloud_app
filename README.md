@@ -1,4 +1,4 @@
-# ThunderCloudApp
+# 入道雲サーチアプリ
 
 ## 背景・目的
 
