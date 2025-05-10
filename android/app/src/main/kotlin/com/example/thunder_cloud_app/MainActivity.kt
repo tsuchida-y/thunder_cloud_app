@@ -1,4 +1,4 @@
-package com.example.thunder_cloud_app
+package io.github.tsuchida.thunder_cloud_app
 
 import io.flutter.embedding.android.FlutterActivity
 
