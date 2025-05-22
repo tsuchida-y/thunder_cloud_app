@@ -83,7 +83,12 @@ thunder_cloud_app/
 
 以下は、アプリを実際に動作させた際のスクリーンショットです。
 
-<img src="./assets/images/thunder_cloud.png" alt="アプリのメイン画面" width="300"/>
+<table>
+  <tr>
+    <td><img src="./assets/images/place_permission.png" alt="アプリのメイン画面2" width="300"/></td>
+    <td><img src="./assets/images/thunder_cloud.png" alt="アプリのメイン画面1" width="300"/></td>
+  </tr>
+</table>
 
 
 ## 今後の展望
