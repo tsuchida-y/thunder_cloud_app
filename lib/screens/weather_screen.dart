@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/constants/avatar_positions.dart';
 import 'package:thunder_cloud_app/services/weather/weather_logic.dart';
@@ -57,7 +58,17 @@ class WeatherScreenState extends State<WeatherScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("入道雲サーチ画面"),
+        centerTitle: true,
         backgroundColor: const Color.fromARGB(255, 196, 248, 199),
+        elevation: 3,
+        shadowColor: Colors.black54,
+        
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
+        ),
       ),
       body: Stack(
         children: <Widget>[
