@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 import 'package:thunder_cloud_app/services/weather/weather_api.dart';
 
+
+
+///指定方向の天気情報を取得するクラス
 class DirectionalWeather {
   final WeatherApi weatherApi;
 

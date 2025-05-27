@@ -3,8 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/weather_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Flutter の初期化を保証
-  await dotenv.load(fileName: ".env"); // .env ファイルを読み込む
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
@@ -13,8 +13,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: WeatherScreen(), // WeatherScreen をホーム画面として設定
+    return MaterialApp(
+      title: 'Thunder Cloud App',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        useMaterial3: true,
+      ),
+      home: const WeatherScreen(),
+      // 将来的なルーティング用
+      // routes: {
+      //   '/weather': (context) => const WeatherScreen(),
+      //   '/settings': (context) => const SettingsScreen(),
+      // },
     );
   }
 }

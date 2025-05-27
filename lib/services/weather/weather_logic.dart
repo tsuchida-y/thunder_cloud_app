@@ -5,6 +5,8 @@ import 'package:thunder_cloud_app/services/weather/weather_api.dart';
 final WeatherApi weatherApi = WeatherApi();
 final DirectionalWeather directionalWeather = DirectionalWeather(weatherApi);
 
+
+///入道雲判定ロジック
 bool isCloudyConditionMet(Map<String, dynamic> weatherData) {
   final isThunderstorm = weatherData["weather"] == "Thunderstorm";
   final isCloudy = weatherData["weather"] == "Clouds" &&
@@ -17,6 +19,8 @@ bool isCloudyConditionMet(Map<String, dynamic> weatherData) {
   return (isThunderstorm || isCloudy) && isHot;
 }
 
+
+///上記をもとに各方向の天気チェック
 Future<List<String>> fetchWeatherInDirections(
     double currentLatitude, double currentLongitude) async {
   List<String> tempMatchingCities = [];
