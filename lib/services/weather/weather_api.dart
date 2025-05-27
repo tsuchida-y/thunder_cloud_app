@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:thunder_cloud_app/exception/weatherapi_exc.dart';
 
 /// OpenWeatherMap API を使用して天候データを取得するクラス。
 /// このクラスは、指定した緯度・経度の天候データを取得するほか、東西南北それぞれ30km離れた地点の天候データを取得するメソッドを提供します。
@@ -49,14 +48,14 @@ class WeatherApi {
           .get(Uri.parse(url))
           .timeout(const Duration(seconds: 10), onTimeout: () {
         log("タイムアウトエラー: リクエストが10秒以内に完了しませんでした");
-        throw WeatherApiException("タイムアウトエラー: リクエストが10秒以内に完了しませんでした");
+        throw Exception("タイムアウトエラー: リクエストが10秒以内に完了しませんでした");
       });
 
       if (response.statusCode == 200) {
         return await _parseWeatherResponse(response.body);
       } else {
         log("APIエラー: ステータスコード ${response.statusCode}, レスポンス: ${response.body}");
-        throw WeatherApiException("APIエラー: ステータスコード ${response.statusCode}");
+        throw Exception("APIエラー: ステータスコード ${response.statusCode}");
       }
     } catch (e) {
       log("エラー: $e");

@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:thunder_cloud_app/constants/avatar_positions.dart';
-import 'package:thunder_cloud_app/services/weather/weather_logic.dart';
-import '../services/geolocator.dart';
-import '../widgets/cloud_avatar.dart';
-import '../widgets/direction_image.dart';
+import '../services/location_service.dart';
+import '../services/weather_service.dart';
+import '../widgets/weather_app_bar.dart';
+import '../widgets/weather_map_view.dart';
+import '../widgets/weather_overlay.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -15,88 +14,86 @@ class WeatherScreen extends StatefulWidget {
   WeatherScreenState createState() => WeatherScreenState();
 }
 
+
+///入道雲サーチアプリのメイン画面を管理するStateクラス
 class WeatherScreenState extends State<WeatherScreen> {
-  List<String> matchingCities = []; // 条件に一致する方向を格納
+  List<String> matchingCities = [];
   bool isLoading = true;
   LatLng? _currentLocation;
+  Timer? _weatherTimer;
 
   @override
   void initState() {
     super.initState();
-    _getLocation();
-    Timer.periodic(
+    _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    _weatherTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeApp() async {
+    await _getLocation();
+    _startWeatherUpdates();
+  }
+
+  //現在地を取得する関数
+  Future<void> _getLocation() async {
+    final location = await LocationService.getCurrentLocationAsLatLng();
+    if (mounted) {
+      setState(() {
+        _currentLocation = location;
+      });
+    }
+  }
+
+  //天気情報を定期的(5秒)に取得する関数
+  void _startWeatherUpdates() {
+    _weatherTimer = Timer.periodic(
       const Duration(seconds: 5),
       (Timer timer) {
         if (_currentLocation != null) {
-          _checkWeatherInDirections(
-              _currentLocation!.latitude, _currentLocation!.longitude);
+          _checkWeatherInDirections();
         }
       },
     );
   }
 
-  //現在地を取得するに格納する関数
-  Future<void> _getLocation() async {
-    final locationData = await getCurrentLocation();
-    setState(() {
-      _currentLocation = LatLng(locationData.latitude, locationData.longitude);
-    });
-  }
+  //各方向の天気をチェックして、入道雲がある方向を特定する関数
+  Future<void> _checkWeatherInDirections() async {
+    if (_currentLocation == null) return;
 
-  Future<void> _checkWeatherInDirections(
-      double currentLatitude, double currentLongitude) async {
-    final result =
-        await fetchWeatherInDirections(currentLatitude, currentLongitude);
-    setState(() {
-      matchingCities = result;
-      isLoading = false;
-    });
+    try {
+      final result = await WeatherService.getThunderCloudDirections(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+      );
+      
+      if (mounted) {
+        setState(() {
+          matchingCities = result;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("入道雲サーチ画面"),
-        centerTitle: true,
-        backgroundColor: const Color.fromARGB(255, 196, 248, 199),
-        elevation: 3,
-        shadowColor: Colors.black54,
-        
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(30),
-            bottomRight: Radius.circular(30),
-          ),
-        ),
-      ),
+      appBar: const WeatherAppBar(),
       body: Stack(
-        children: <Widget>[
-          if (_currentLocation != null)
-            GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _currentLocation!,
-                zoom: 12.0,
-              ),
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              scrollGesturesEnabled: false,
-              zoomControlsEnabled: false,
-              zoomGesturesEnabled: false,
-              tiltGesturesEnabled: false,
-              rotateGesturesEnabled: false,
-            ),
-          const DirectionImage(),
-          ...avatarPositions.entries.map((entry) {
-            final direction = entry.key;
-            final position = entry.value;
-            return CloudAvatar(
-              name: direction,
-              top: position.dy,
-              left: position.dx,
-              isCloudy: matchingCities.contains(direction),
-            );
-          })
+        children: [
+          WeatherMapView(currentLocation: _currentLocation),//背景
+          WeatherOverlay(matchingCities: matchingCities),//天気オーバーレイ
         ],
       ),
     );

@@ -26,19 +26,22 @@ thunder_cloud_app/
 │   ├── main.dart                          // アプリのエントリーポイント
 │   ├── constants/
 │   │   └── avatar_positions.dart          // ウィジェットの配置位置などの定数
-│   ├── exception/
-│   │   └── weatherapi_exc.dart            // API 呼び出し時の例外クラス
 │   ├── screens/
-│   │   └── weather_screen.dart            // 天気情報表示画面のUIとロジック
+│   │   └── weather_screen.dart            // 天気情報表示画面の状態管理
 │   ├── services/
 │   │   ├── geolocator.dart                // 現在地取得のロジック
+│   │   ├── location_service.dart          // 位置情報サービス（Google Maps用型変換）
+│   │   ├── weather_service.dart           // 天気サービス統合インターフェース
 │   │   └── weather/
 │   │       ├── weather_api.dart           // OpenWeatherMap API へのリクエスト実装
 │   │       ├── directional_weather.dart   // 方向ごとの天気取得ロジック
-│   │       └── weather_logic.dart         // 天気情報の取得・評価ロジック
+│   │       └── weather_logic.dart         // 入道雲判定ロジック
 │   └── widgets/
 │       ├── cloud_avatar.dart              // 入道雲または青空の画像を表示するウィジェット
-│       └── direction_image.dart           // 画面上に方向を示す画像
+│       ├── direction_image.dart           // 画面上に方向を示す画像
+│       ├── weather_app_bar.dart           // AppBar専用ウィジェット
+│       ├── weather_map_view.dart          // GoogleMap背景表示ウィジェット
+│       └── weather_overlay.dart           // 天気情報オーバーレイウィジェット
 ```
 ## 工夫した点
 - 位置情報と距離計算
@@ -110,6 +113,7 @@ xcrun simctl list devices
 - シミュレータの起動
 ```
 xcrun simctl boot <UDID>
+xcrun simctl boot CD928AEE-F546-4212-A73D-E491C33E041F
 ```
 - シミュレータを開く
 ```
