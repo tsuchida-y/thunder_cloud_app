@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:thunder_cloud_app/services/background_service.dart';
 import 'package:thunder_cloud_app/services/notification_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
@@ -17,72 +17,41 @@ class WeatherScreen extends StatefulWidget {
 }
 
 ///入道雲サーチアプリのメイン画面を管理するStateクラス
-class WeatherScreenState extends State<WeatherScreen>
-    with WidgetsBindingObserver {
+class WeatherScreenState extends State<WeatherScreen>{
   List<String> matchingCities = [];
   bool isLoading = true;
   LatLng? _currentLocation;
   Timer? _weatherTimer;
+  List<String> _previousMatchingCities = []; // 前回の結果を保存
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _initializeApp();
   }
 
   @override
   void dispose() {
     _weatherTimer?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  /// アプリのライフサイクル変更時の処理
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.detached:
-        // アプリがバックグラウンドに移行またはクローズ
-        _startBackgroundMonitoring();
-        break;
-      case AppLifecycleState.resumed:
-        // アプリがフォアグラウンドに復帰
-        _stopBackgroundMonitoring();
-        break;
-      default:
-        break;
-    }
-  }
-
-  /// バックグラウンド監視の開始
-  Future<void> _startBackgroundMonitoring() async {
-    await BackgroundService.startPeriodicCheck();
-  }
-
-  /// バックグラウンド監視の停止
-  Future<void> _stopBackgroundMonitoring() async {
-    await BackgroundService.stopPeriodicCheck();
   }
 
   Future<void> _initializeApp() async {
     await _getLocation();
     _startWeatherUpdates();
-
-    // 初回バックグラウンド監視開始
-    await _startBackgroundMonitoring();
   }
 
   //現在地を取得する関数
   Future<void> _getLocation() async {
-    final location = await LocationService.getCurrentLocationAsLatLng();
-    if (mounted) {
-      setState(() {
-        _currentLocation = location;
-      });
+    try {
+      final location = await LocationService.getCurrentLocationAsLatLng();
+      if (mounted) {
+        setState(() {
+          _currentLocation = location;
+        });
+      }
+    } catch (e) {
+      print("位置情報取得エラー: $e");
     }
   }
 
@@ -108,13 +77,25 @@ class WeatherScreenState extends State<WeatherScreen>
         _currentLocation!.longitude,
       );
 
+      // 新しい入道雲が出現した場合のみ通知
+      final newClouds = result
+          .where((direction) => !_previousMatchingCities.contains(direction))
+          .toList();
+
+      if (newClouds.isNotEmpty) {
+        print("新しい入道雲を検出: $newClouds");
+        await NotificationService.showThunderCloudNotification(newClouds);
+      }
+
       if (mounted) {
         setState(() {
           matchingCities = result;
+          _previousMatchingCities = List.from(result);
           isLoading = false;
         });
       }
     } catch (e) {
+      print("天気チェックエラー: $e");
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -129,16 +110,70 @@ class WeatherScreenState extends State<WeatherScreen>
       appBar: const WeatherAppBar(),
       body: Stack(
         children: [
-          WeatherMapView(currentLocation: _currentLocation), //背景
-          WeatherOverlay(matchingCities: matchingCities), //天気オーバーレイ
+          WeatherMapView(currentLocation: _currentLocation),
+          WeatherOverlay(matchingCities: matchingCities),
+        ],
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
 
-          // デバッグ用のテスト機能をWeatherScreenに追加
+          if (Platform.isIOS) ...[
+            FloatingActionButton(
+              heroTag: "ios_permission",
+              onPressed: () async {
+                await NotificationService.requestiOSPermissionsAgain();
+                await NotificationService.checkPermissionStatus();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('iOS権限を再確認しました')),
+                );
+              },
+              backgroundColor: Colors.purple,
+              child: const Icon(Icons.settings),
+            ),
+            const SizedBox(height: 10),
+          ],
+          
+          // 即座テスト通知ボタン
           FloatingActionButton(
+            heroTag: "immediate_test",
+            onPressed: () async {
+              await NotificationService.showImmediateTestNotification();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('即座テスト通知を送信しました')),
+              );
+            },
+            backgroundColor: Colors.orange,
+            child: const Icon(Icons.notifications_active),
+          ),
+          const SizedBox(height: 10),
+          // 入道雲テスト通知ボタン
+          FloatingActionButton(
+            heroTag: "thunder_test",
             onPressed: () async {
               await NotificationService.showTestNotification();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('入道雲テスト通知を送信しました')),
+              );
             },
-            child: const Icon(Icons.notifications),
-          )
+            backgroundColor: Colors.blue,
+            child: const Icon(Icons.cloud),
+          ),
+          const SizedBox(height: 10),
+          // 手動天気チェックボタン
+          FloatingActionButton(
+            heroTag: "manual_check",
+            onPressed: () async {
+              if (_currentLocation != null) {
+                await _checkWeatherInDirections();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('手動で天気をチェックしました')),
+                );
+              }
+            },
+            backgroundColor: Colors.green,
+            child: const Icon(Icons.refresh),
+          ),
         ],
       ),
     );
