@@ -9,11 +9,11 @@ class WeatherService {
     return await fetchAdvancedWeatherInDirections(latitude, longitude);
   }
   
-  /// 従来の入道雲方向取得（フォールバック）
-  static Future<List<String>> getThunderCloudDirections(
-    double latitude, 
-    double longitude
-  ) async {
-    return await fetchWeatherInDirections(latitude, longitude);
-  }
+  // /// 従来の入道雲方向取得（フォールバック）
+  // static Future<List<String>> getThunderCloudDirections(
+  //   double latitude, 
+  //   double longitude
+  // ) async {
+  //   return await fetchWeatherInDirections(latitude, longitude);
+  // }
 }

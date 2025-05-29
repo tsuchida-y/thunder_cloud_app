@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:thunder_cloud_app/services/notification_service.dart';
 import 'screens/weather_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await dotenv.load(fileName: ".env");
+    // await dotenv.load(fileName: ".env");
     
     // 通知サービスの初期化（権限リクエストも含む）
     await NotificationService.initialize();

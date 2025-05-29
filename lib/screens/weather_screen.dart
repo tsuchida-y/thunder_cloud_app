@@ -58,7 +58,7 @@ class WeatherScreenState extends State<WeatherScreen> {
   //天気情報を定期的(5秒)に取得する関数
   void _startWeatherUpdates() {
     _weatherTimer = Timer.periodic(
-      const Duration(seconds: 30),
+      const Duration(seconds: 60),
       (Timer timer) {
         if (_currentLocation != null) {
           _checkWeatherInDirections();
@@ -95,38 +95,13 @@ class WeatherScreenState extends State<WeatherScreen> {
         });
       }
     } catch (e) {
-      print("高度な天気チェックエラー、従来手法で再試行: $e");
-
-      // フォールバック: 従来の判定方法
-      try {
-        final result = await WeatherService.getThunderCloudDirections(
-          _currentLocation!.latitude,
-          _currentLocation!.longitude,
-        );
-
-        final newClouds = result
-            .where((direction) => !_previousMatchingCities.contains(direction))
-            .toList();
-
-        if (newClouds.isNotEmpty) {
-          print("新しい入道雲を検出（従来分析）: $newClouds");
-          await NotificationService.showThunderCloudNotification(newClouds);
-        }
-
-        if (mounted) {
-          setState(() {
-            matchingCities = result;
-            _previousMatchingCities = List.from(result);
-            isLoading = false;
-          });
-        }
-      } catch (fallbackError) {
-        print("従来天気チェックもエラー: $fallbackError");
-        if (mounted) {
-          setState(() {
-            isLoading = false;
-          });
-        }
+      print("Open-Meteo分析エラー: $e");
+      // フォールバック処理を削除、エラー時は空の結果を設定
+      if (mounted) {
+        setState(() {
+          matchingCities = [];
+          isLoading = false;
+        });
       }
     }
   }
