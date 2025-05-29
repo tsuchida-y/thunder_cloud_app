@@ -1,8 +1,15 @@
 import 'weather/weather_logic.dart';
 
-///入力：現在地の経度と緯度
-///出力：入道雲がある方向のリスト
 class WeatherService {
+  /// 高度な入道雲方向取得
+  static Future<List<String>> getAdvancedThunderCloudDirections(
+    double latitude, 
+    double longitude
+  ) async {
+    return await fetchAdvancedWeatherInDirections(latitude, longitude);
+  }
+  
+  /// 従来の入道雲方向取得（フォールバック）
   static Future<List<String>> getThunderCloudDirections(
     double latitude, 
     double longitude

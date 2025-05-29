@@ -17,7 +17,7 @@ class WeatherScreen extends StatefulWidget {
 }
 
 ///入道雲サーチアプリのメイン画面を管理するStateクラス
-class WeatherScreenState extends State<WeatherScreen>{
+class WeatherScreenState extends State<WeatherScreen> {
   List<String> matchingCities = [];
   bool isLoading = true;
   LatLng? _currentLocation;
@@ -58,7 +58,7 @@ class WeatherScreenState extends State<WeatherScreen>{
   //天気情報を定期的(5秒)に取得する関数
   void _startWeatherUpdates() {
     _weatherTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      const Duration(seconds: 30),
       (Timer timer) {
         if (_currentLocation != null) {
           _checkWeatherInDirections();
@@ -72,7 +72,7 @@ class WeatherScreenState extends State<WeatherScreen>{
     if (_currentLocation == null) return;
 
     try {
-      final result = await WeatherService.getThunderCloudDirections(
+      final result = await WeatherService.getAdvancedThunderCloudDirections(
         _currentLocation!.latitude,
         _currentLocation!.longitude,
       );
@@ -95,11 +95,38 @@ class WeatherScreenState extends State<WeatherScreen>{
         });
       }
     } catch (e) {
-      print("天気チェックエラー: $e");
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+      print("高度な天気チェックエラー、従来手法で再試行: $e");
+
+      // フォールバック: 従来の判定方法
+      try {
+        final result = await WeatherService.getThunderCloudDirections(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+        );
+
+        final newClouds = result
+            .where((direction) => !_previousMatchingCities.contains(direction))
+            .toList();
+
+        if (newClouds.isNotEmpty) {
+          print("新しい入道雲を検出（従来分析）: $newClouds");
+          await NotificationService.showThunderCloudNotification(newClouds);
+        }
+
+        if (mounted) {
+          setState(() {
+            matchingCities = result;
+            _previousMatchingCities = List.from(result);
+            isLoading = false;
+          });
+        }
+      } catch (fallbackError) {
+        print("従来天気チェックもエラー: $fallbackError");
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
     }
   }
@@ -117,7 +144,32 @@ class WeatherScreenState extends State<WeatherScreen>{
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-
+          FloatingActionButton(
+            heroTag: "advanced_test",
+            onPressed: () async {
+              if (_currentLocation != null) {
+                try {
+                  final result =
+                      await WeatherService.getAdvancedThunderCloudDirections(
+                    _currentLocation!.latitude,
+                    _currentLocation!.longitude,
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            '高度分析結果: ${result.isEmpty ? "入道雲なし" : result.join(", ")}')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('高度分析エラー: $e')),
+                  );
+                }
+              }
+            },
+            backgroundColor: Colors.indigo,
+            child: const Icon(Icons.analytics),
+          ),
+          const SizedBox(height: 10),
           if (Platform.isIOS) ...[
             FloatingActionButton(
               heroTag: "ios_permission",
@@ -133,7 +185,7 @@ class WeatherScreenState extends State<WeatherScreen>{
             ),
             const SizedBox(height: 10),
           ],
-          
+
           // 即座テスト通知ボタン
           FloatingActionButton(
             heroTag: "immediate_test",
