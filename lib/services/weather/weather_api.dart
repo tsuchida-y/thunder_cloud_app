@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:http/http.dart' as http;
+import 'package:thunder_cloud_app/constants/weather_constants.dart';
 
 /// Open-Meteo API を使用して天候データを取得するクラス。
 /// OpenWeatherMap APIは削除し、Open-Meteoのみを使用します。
 class WeatherApi {
   static const String baseUrl = 'https://api.open-meteo.com/v1/forecast';
-  static const double distanceKm = 30.0; // 入道雲を探す距離 (km)
-  static const double latitudePerDegreeKm = 111.0; //緯度1度あたり約111km
-
+  static List<double> get searchDistances => WeatherConstants.getAllSearchDistances();
+  static double get latitudePerDegreeKm => WeatherConstants.latitudePerDegreeKm;
   /// 指定した緯度・経度の天候データを取得するメソッド。
   /// [latitude]: 緯度
   /// [longitude]: 経度

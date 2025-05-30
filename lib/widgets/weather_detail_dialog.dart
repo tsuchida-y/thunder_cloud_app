@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/thunder_cloud_assessment.dart';
 
-/// 詳細分析結果表示ダイアログ
 class WeatherDetailDialog extends StatelessWidget {
   final ThunderCloudAssessment assessment;
+  final Map<String, dynamic>? detailedResults; // 詳細結果（オプション）
   
   const WeatherDetailDialog({
     super.key,
     required this.assessment,
+    this.detailedResults,
   });
   
   @override
@@ -24,6 +25,19 @@ class WeatherDetailDialog extends StatelessWidget {
             _buildScoreRow('信頼度', '${(assessment.confidence * 100).toStringAsFixed(1)}%'),
             _buildScoreRow('リスクレベル', assessment.riskLevel),
             const Divider(),
+            
+            // 距離別詳細表示（新規追加）
+            if (detailedResults != null) ...[
+              const Text('距離別検出結果:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              ...detailedResults!.entries.map((entry) {
+                final direction = entry.key;
+                final results = entry.value as List<Map<String, dynamic>>;
+                return _buildDistanceDetails(direction, results);
+              }).toList(),
+              const Divider(),
+            ],
+            
             const Text('推奨アクション:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text(assessment.recommendation),
@@ -47,6 +61,34 @@ class WeatherDetailDialog extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           Text(value),
+        ],
+      ),
+    );
+  }
+  
+  // 距離別詳細表示ウィジェット（新規追加）
+  Widget _buildDistanceDetails(String direction, List<Map<String, dynamic>> results) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$direction方向:', style: const TextStyle(fontWeight: FontWeight.w500)),
+          ...results.map((result) {
+            final distance = result['distance'];
+            final hasCloud = result['hasThunderCloud'];
+            
+            return Padding(
+              padding: const EdgeInsets.only(left: 16, top: 2),
+              child: Text(
+                '${distance}km: ${hasCloud ? '⛈️ 積乱雲あり' : '☀️ 積乱雲なし'}',
+                style: TextStyle(
+                  color: hasCloud ? Colors.red : Colors.green,
+                  fontSize: 12,
+                ),
+              ),
+            );
+          }).toList(),
         ],
       ),
     );

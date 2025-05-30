@@ -7,6 +7,7 @@ class ThunderCloudAssessment {
   final Map<String, double> individualScores;
   final Map<String, String> details;
   final String recommendation;
+  final Map<String, dynamic> analysisDetails;
 
   ThunderCloudAssessment({
     required this.isThunderCloudLikely,
@@ -16,6 +17,7 @@ class ThunderCloudAssessment {
     required this.individualScores,
     required this.details,
     required this.recommendation,
+    required this.analysisDetails,
   });
 
   @override

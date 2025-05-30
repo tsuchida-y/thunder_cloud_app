@@ -17,6 +17,7 @@ class WeatherMapView extends StatelessWidget {
     }
 
     return GoogleMap(
+      key: const ValueKey('weather_map_view'),
       initialCameraPosition: CameraPosition(
         target: currentLocation!,
         zoom: 12.0,
