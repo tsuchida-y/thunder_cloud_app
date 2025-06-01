@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-///GoogleMapを背景として表示するウィジェット
-class WeatherMapView extends StatelessWidget {
+///　GoogleMapを背景として表示するウィジェット
+class BackgroundMapWidget extends StatelessWidget {
   final LatLng? currentLocation;
 
-  const WeatherMapView({
+  const BackgroundMapWidget({
     super.key,
     required this.currentLocation,
   });
@@ -13,10 +13,12 @@ class WeatherMapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (currentLocation == null) {
+      //非表示ウィジェット
       return const SizedBox.shrink();
     }
 
     return GoogleMap(
+      key: const ValueKey('weather_map_view'),
       initialCameraPosition: CameraPosition(
         target: currentLocation!,
         zoom: 12.0,
