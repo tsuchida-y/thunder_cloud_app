@@ -1,4 +1,11 @@
 class WeatherConstants {
+
+  static const Map<String, double> analysisWeights = {
+    'cape': 0.5,           // 50%
+    'lifted_index': 0.35,  // 35%
+    'cin': 0.05,          // 5%
+    'temperature': 0.1,    // 10%
+  };
   // CAPE閾値
   static const double capeHighThreshold = 2500.0;
   static const double capeMediumThreshold = 1000.0;
@@ -34,14 +41,6 @@ class WeatherConstants {
   
   // 座標計算用定数
   static const double latitudePerDegreeKm = 111.0; // 緯度1度あたりのkm
-  
-  // 重み係数（CIN追加版）
-  static const Map<String, double> analysisWeights = {
-    'cape': 0.5,
-    'lifted_index': 0.3,
-    'cin': 0.1,
-    'temperature': 0.1,
-  };
   
   // ヘルパーメソッド：距離ラベル取得
   static String getDistanceLabel(double distance) {

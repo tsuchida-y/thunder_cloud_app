@@ -60,7 +60,7 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
-//天気情報を定期的に取得する関数（最適化版）
+  //天気情報を定期的に取得する関数（最適化版）
   void _startWeatherUpdates() {
     // ✅ WeatherConstantsから推奨間隔を計算
     final configInfo = WeatherConstants.getConfigInfo();
@@ -131,8 +131,8 @@ class WeatherScreenState extends State<WeatherScreen> {
       appBar: const WeatherAppBar(),
       body: Stack(
         children: [
-          WeatherMapView(currentLocation: _currentLocation),
-          WeatherOverlay(matchingCities: matchingCities),
+          BackgroundMapWidget(currentLocation: _currentLocation),
+          CloudStatusOverlay(matchingCities: matchingCities),
         ],
       ),
       floatingActionButton: Column(
@@ -209,90 +209,6 @@ class WeatherScreenState extends State<WeatherScreen> {
             },
             backgroundColor: Colors.blue,
             child: const Icon(Icons.analytics),
-          ),
-
-          const SizedBox(height: 10),
-          FloatingActionButton(
-            heroTag: "advanced_test",
-            onPressed: () async {
-              if (_currentLocation != null) {
-                try {
-                  final result =
-                      await WeatherService.getAdvancedThunderCloudDirections(
-                    _currentLocation!.latitude,
-                    _currentLocation!.longitude,
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            '高度分析結果: ${result.isEmpty ? "入道雲なし" : result.join(", ")}')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('高度分析エラー: $e')),
-                  );
-                }
-              }
-            },
-            backgroundColor: Colors.indigo,
-            child: const Icon(Icons.analytics),
-          ),
-          const SizedBox(height: 10),
-          if (Platform.isIOS) ...[
-            FloatingActionButton(
-              heroTag: "ios_permission",
-              onPressed: () async {
-                await NotificationService.requestiOSPermissionsAgain();
-                await NotificationService.checkPermissionStatus();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('iOS権限を再確認しました')),
-                );
-              },
-              backgroundColor: Colors.purple,
-              child: const Icon(Icons.settings),
-            ),
-            const SizedBox(height: 10),
-          ],
-
-          // 即座テスト通知ボタン
-          FloatingActionButton(
-            heroTag: "immediate_test",
-            onPressed: () async {
-              await NotificationService.showImmediateTestNotification();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('即座テスト通知を送信しました')),
-              );
-            },
-            backgroundColor: Colors.orange,
-            child: const Icon(Icons.notifications_active),
-          ),
-          const SizedBox(height: 10),
-          // 入道雲テスト通知ボタン
-          FloatingActionButton(
-            heroTag: "thunder_test",
-            onPressed: () async {
-              await NotificationService.showTestNotification();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('入道雲テスト通知を送信しました')),
-              );
-            },
-            backgroundColor: Colors.blue,
-            child: const Icon(Icons.cloud),
-          ),
-          const SizedBox(height: 10),
-          // 手動天気チェックボタン
-          FloatingActionButton(
-            heroTag: "manual_check",
-            onPressed: () async {
-              if (_currentLocation != null) {
-                await _checkWeatherInDirections();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('手動で天気をチェックしました')),
-                );
-              }
-            },
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.refresh),
           ),
         ],
       ),
