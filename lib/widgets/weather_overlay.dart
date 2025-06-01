@@ -5,10 +5,10 @@ import 'direction_image.dart';
 
 
 ///背景の上に重ねる天気情報オーバーレイを作成するウィジェット
-class WeatherOverlay extends StatelessWidget {
+class CloudStatusOverlay extends StatelessWidget {
   final List<String> matchingCities;
 
-  const WeatherOverlay({
+  const CloudStatusOverlay({
     super.key,
     required this.matchingCities,
   });

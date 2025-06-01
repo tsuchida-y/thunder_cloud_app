@@ -13,8 +13,13 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   http: ^1.2.2
+
+  #背景に現在地を表示するためのパッケージ
   geolocator: ^13.0.4
   google_maps_flutter: ^2.5.0
+
+  #通知機能を実装するためのパッケージ
+  flutter_local_notifications: ^19.2.1
 
 dev_dependencies:
   flutter_test:
