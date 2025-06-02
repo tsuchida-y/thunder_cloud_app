@@ -67,7 +67,7 @@ class ThunderCloudAnalyzer {
         scores['cin']! * 0.05 +
         scores['temperature']! * 0.1);
 
-    final confidence = 1.0;
+    const confidence = 1.0;
     final riskLevel = totalScore >= 0.6
         ? "高い"
         : totalScore >= 0.3

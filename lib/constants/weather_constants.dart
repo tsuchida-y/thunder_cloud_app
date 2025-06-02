@@ -6,6 +6,10 @@ class WeatherConstants {
     'cin': 0.05,          // 5%
     'temperature': 0.1,    // 10%
   };
+
+  // タイマー間隔設定
+  static const int weatherCheckInterval = 120;
+
   // CAPE閾値
   static const double capeHighThreshold = 2500.0;
   static const double capeMediumThreshold = 1000.0;
@@ -29,61 +33,13 @@ class WeatherConstants {
   // 総合判定閾値
   static const double thunderCloudThreshold = 0.6;
   
-  // 検索距離設定（統一管理）
-  static const List<double> searchDistances = [50.0, 160.0, 250.0]; // km
+  // 方向設定
+  static const List<String> checkDirections = ["north", "south", "east", "west"];
+
+  // 距離設定(km)
+  static const List<double> checkDistances = [50.0, 160.0, 250.0];
   
-  // 距離ラベル（searchDistancesと連動）
-  static Map<double, String> distanceLabels = {
-    50.0: "近距離",
-    120.0: "中距離", 
-    200.0: "遠距離",
-  };
-  
-  // 座標計算用定数
-  static const double latitudePerDegreeKm = 111.0; // 緯度1度あたりのkm
-  
-  // ヘルパーメソッド：距離ラベル取得
-  static String getDistanceLabel(double distance) {
-    return distanceLabels[distance] ?? "${distance}km";
-  }
-  
-  // ヘルパーメソッド：すべての距離を取得
-  static List<double> getAllSearchDistances() {
-    return List.from(searchDistances);
-  }
-  
-  // 新規追加：API使用量計算
-  static int calculateDailyApiRequests({
-    int intervalSeconds = 180, // weather_screen.dartの現在設定
-    int directionsCount = 4,
-  }) {
-    final distanceCount = searchDistances.length;
-    final requestsPerInterval = directionsCount * distanceCount;
-    final intervalsPerDay = (24 * 60 * 60) ~/ intervalSeconds;
-    return requestsPerInterval * intervalsPerDay;
-  }
-  
-  // 新規追加：設定情報取得
-  static Map<String, dynamic> getConfigInfo() {
-    return {
-      'distances': searchDistances,
-      'distanceLabels': distanceLabels,
-      'estimatedDailyRequests': calculateDailyApiRequests(),
-      'currentInterval': 180, // 秒
-      'totalCheckPoints': searchDistances.length * 4, // 距離数 × 方向数
-    };
-  }
-  
-  // 新規追加：距離設定の妥当性チェック
-  static bool validateDistanceSettings() {
-    if (searchDistances.isEmpty) return false;
-    if (searchDistances.length != distanceLabels.length) return false;
-    
-    // 距離が昇順になっているかチェック
-    for (int i = 1; i < searchDistances.length; i++) {
-      if (searchDistances[i] <= searchDistances[i - 1]) return false;
-    }
-    
-    return true;
-  }
+  // 座標計算用定数(緯度1度あたりのkm)
+  static const double latitudePerDegreeKm = 111.0;
+
 }

@@ -20,7 +20,7 @@
 - **総合スコア表示**  
   各指標を重み付けした総合スコア（60%以上で積乱雲の可能性あり）を表示します。
 - **定期的な天気情報取得**  
-  3分間隔（API使用量に応じて自動調整）で定期的にチェックし、新しい積乱雲を検出した場合は即座に通知します。
+  2分間隔（120秒）で定期的にチェックし、新しい積乱雲を検出した場合は即座に通知します。ます。
 - **地図表示**  
   現在地や周辺の情報をGoogleMap上に表示し、視覚的に分かりやすくしています。
 - **方向ごとのウィジェット配置**  
@@ -61,32 +61,25 @@ thunder_cloud_app/
 │   │   ├── avatar_positions.dart          // ウィジェットの配置位置などの定数
 │   │   └── weather_constants.dart         // 気象分析の重み係数定数
 │   ├── models/
-│   │   ├── advanced_weather_data.dart     // 高度気象データモデル
-│   │   ├── thunder_cloud_assessment.dart  // 積乱雲評価結果モデル
-│   │   └── weather_data.dart              // 基本天気データモデル
+│   │   └── thunder_cloud_assessment.dart  // 積乱雲評価結果モデル
 │   ├── screens/
 │   │   └── weather_screen.dart            // 天気情報表示画面の状態管理
 │   ├── services/
-│   │   ├── geolocator.dart                // 現在地取得のロジック
-│   │   ├── location_service.dart          // 位置情報サービス（Google Maps用型変換）
+│   │   ├── location_service.dart          // 位置情報サービス（統合版）
 │   │   ├── notification_service.dart      // ローカル通知機能の実装
-│   │   ├── weather_service.dart           // 天気サービス統合インターフェース
 │   │   └── weather/
 │   │       ├── weather_api.dart           // Open-Meteo API へのリクエスト実装
-│   │       ├── advanced_weather_api.dart  // 高度気象データ取得API（削除予定）
 │   │       ├── thunder_cloud_analyzer.dart // 積乱雲分析ロジック
-│   │       ├── meteorological_calculator.dart // 気象学的計算ユーティリティ
 │   │       └── weather_logic.dart         // 入道雲判定ロジック
-│   ├── utils/
-│   │   ├── api_helper.dart                // API共通ヘルパー
-│   │   └── error_handler.dart             // エラーハンドリングユーティリティ
 │   └── widgets/
-│       ├── cloud_avatar.dart              // 入道雲または青空の画像を表示するウィジェット
-│       ├── direction_image.dart           // 画面上に方向を示す画像
-│       ├── weather_app_bar.dart           // AppBar専用ウィジェット
-│       ├── weather_detail_dialog.dart     // 詳細分析結果表示ダイアログ
-│       ├── background_map_widget.dart     // GoogleMap背景表示ウィジェット（旧weather_map_view.dart）
-│       └── thunder_cloud_overlay.dart     // 積乱雲情報オーバーレイウィジェット（旧weather_overlay.dart）
+│       ├── cloud/
+│       │   ├── cloud_avatar.dart          // 入道雲または青空の画像を表示するウィジェット
+│       │   ├── cloud_status_overlay.dart  // 積乱雲情報オーバーレイウィジェット
+│       │   └── direction_image.dart       // 画面上に方向を示す画像
+│       ├── common/
+│       │   └── weather_app_bar.dart       // AppBar専用ウィジェット
+│       └── map/
+│           └── background_map.dart        // GoogleMap背景表示ウィジェット
 ```
 
 ## 通知機能
@@ -96,18 +89,8 @@ thunder_cloud_app/
 - **iOS/Android両対応**: プラットフォーム固有の通知設定に対応
 - **フォアグラウンド動作**: アプリ起動中の通知機能（バックグラウンド処理は無効）
 
-### **操作ボタン（開発・テスト用）**
-画面右下に5つのFloatingActionButtonが配置されています：
-
-| ボタン色 | アイコン | 機能 | 説明 |
-|---------|----------|------|------|
-| 🟦 インディゴ | 📊 分析 | 高度分析実行 | Open-Meteoを使用した詳細な積乱雲分析を実行 |
-
-### **通知の種類(テスト段階。要検討)**
+### **通知の種類**
 - **入道雲発見通知**: 「⛈️ 入道雲を発見！○○方向に入道雲が出現しています」
-- **テスト通知**: 「🧪 テスト通知 - ローカル通知が正常に動作しています」
-
-
 
 ## 工夫した点
 
@@ -123,22 +106,23 @@ thunder_cloud_app/
 
 - **設計とアーキテクチャ**
   * UI・ロジック・定数・モデルなどの責務ごとにファイルを分割し、保守性と再利用性を向上
-  * 例外処理を専用クラスに分離し、エラーハンドリングを統一的に管理
-  * ウィジェットの位置情報を定数として外部管理することで、レイアウト調整を容易に
+  * ファイル構造の最適化：単一ファイルのサブフォルダーを統合し、保守性を向上
+  * 位置情報サービスの統合：複数ファイルを1つに統合し、エラーハンドリングを改善
+  * ウィジェットの機能別分類：cloud/、common/、map/ フォルダーでUIコンポーネントを整理
 
 - **ユーザー体験の向上**
   * Timer.periodicを使用した定期的な天気情報更新により、リアルタイムな情報提供を実現
   * GoogleMapと連携した視覚的なインターフェースで方向感覚を分かりやすく表現
   * 気象学的根拠に基づく精密な判定ロジックにより、より正確な検出を実現
+  * 新規積乱雲のみを通知することで、不要な通知を削減
 
 - **API効率化**
-  * OpenWeatherMap APIを削除し、Open-Meteo APIに一本化することでAPIリクエスト数を削減
-  * 実行間隔を60秒に最適化し、API制限内での安定動作を実現
+  * Open-Meteo APIに一本化することでAPIリクエスト数を削減
+  * 実行間隔を120秒に最適化し、API制限内での安定動作を実現
 
 ## 使用方法
 
 1. **セットアップ**  
-   - ~~プロジェクトルートに `.env` ファイルを作成し、API キーなどの環境変数を設定します。~~（不要になりました）
    - Open-Meteo APIは無料で使用できるため、APIキーの設定は不要です。
    - 必要な依存パッケージをインストールします。
      ```bash
@@ -154,6 +138,7 @@ thunder_cloud_app/
 3. **動作確認**  
    - アプリ起動後、現在地が地図上に表示され、60秒ごとに各方向の高度気象分析が実行されます。
    - 総合スコア60%以上の場合、対応する方向のウィジェット（CloudAvatar）が更新されます。
+   - 新しい積乱雲が検出された場合、即座にプッシュ通知が表示されます。
 
 ## アプリの動作例
 
