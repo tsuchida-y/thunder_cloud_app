@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:thunder_cloud_app/services/notification_service.dart';
+import 'package:thunder_cloud_app/services/notification/notification_service.dart';
 import 'screens/weather_screen.dart';
 
 void main() async {
