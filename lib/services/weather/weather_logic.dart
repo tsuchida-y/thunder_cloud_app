@@ -9,30 +9,33 @@ import 'package:thunder_cloud_app/services/weather/thunder_cloud_analyzer.dart';
 Future<List<String>> fetchAdvancedWeatherInDirections(
     double currentLatitude, double currentLongitude) async {
   List<String> tempMatchingCities = [];
-  const directions = ["north", "south", "east", "west"];
+  const directions = WeatherConstants.checkDirections;
   const distances = WeatherConstants.checkDistances; // 3つの距離（km）
 
   try {
+    //4つの方向でループ
     for (final direction in directions) {
       bool thunderCloudExists = false;
 
-      // 各方向で3つの距離をチェック
+      // 3つの距離でループ
       for (final distance in distances) {
-        final coordinates = _calculateDirectionCoordinates(
-            direction, currentLatitude, currentLongitude, distance);
 
-        final isThunderCloud = await isAdvancedThunderCloudConditionMet(
-            coordinates['latitude']!, coordinates['longitude']!);
+        // 現在地からの座標を計算
+        final coordinates = _calculateDirectionCoordinates(direction, currentLatitude, currentLongitude, distance);
+
+        //入道雲判定ロジック+ログ
+        final isThunderCloud = await isAdvancedThunderCloudConditionMet(coordinates['latitude']!, coordinates['longitude']!);
         log("$direction方向 ${distance}km: ${isThunderCloud ? '積乱雲あり' : '積乱雲なし'}");
 
 
         if (isThunderCloud) {
-          thunderCloudExists = true;
           // 最初に見つかった距離で記録（近い方を優先）
+          thunderCloudExists = true;
           break;
         }
       }
 
+      //判定結果をリストに追加
       if (thunderCloudExists) {
         tempMatchingCities.add(direction);
       }

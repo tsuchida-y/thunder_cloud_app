@@ -33,11 +33,14 @@ class WeatherConstants {
   // 総合判定閾値
   static const double thunderCloudThreshold = 0.6;
   
-  // 検索距離設定（統一管理）
-  static const List<double> checkDistances = [50.0, 160.0, 250.0]; // km
+  // 方向設定
+  static const List<String> checkDirections = ["north", "south", "east", "west"];
+
+  // 距離設定(km)
+  static const List<double> checkDistances = [50.0, 160.0, 250.0];
   
-  // 座標計算用定数
-  static const double latitudePerDegreeKm = 111.0; // 緯度1度あたりのkm
+  // 座標計算用定数(緯度1度あたりのkm)
+  static const double latitudePerDegreeKm = 111.0;
 
 
   // 新規追加：距離設定の妥当性チェック
