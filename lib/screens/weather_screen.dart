@@ -106,6 +106,7 @@ class WeatherScreenState extends State<WeatherScreen> {
         await NotificationService.showThunderCloudNotification(newClouds);
       }
 
+      //ウィジェットの生存確認
       if (mounted) {
         setState(() {
           matchingCities = result;

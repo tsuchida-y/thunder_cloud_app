@@ -125,13 +125,14 @@ class NotificationService {
       List<String> directions) async {
     if (directions.isEmpty) return;
 
-    final directionsText = directions.join('、');
+    final directionsText = directions.join('、');//例["north"] → "north"
     final timestamp = DateTime.now();
 
     try {
+      
       const androidDetails = AndroidNotificationDetails(
         'thunder_cloud_channel',
-        '入道雲通知',
+        '入道雲通知',//ユーザに表示
         channelDescription: '入道雲が出現した時の通知',
         importance: Importance.high,
         priority: Priority.high,
@@ -150,11 +151,13 @@ class NotificationService {
         threadIdentifier: 'thunder_cloud_thread',
       );
 
+      //各プラットフォームの通知設定を統合管理
       const details = NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       );
 
+      //通知を送信
       await _notifications.show(
         timestamp.millisecondsSinceEpoch ~/ 1000, // ユニークなID
         '⛈️ 入道雲を発見！',
