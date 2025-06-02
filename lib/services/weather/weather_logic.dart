@@ -5,12 +5,12 @@ import 'package:thunder_cloud_app/services/weather/weather_api.dart';
 import 'package:thunder_cloud_app/services/weather/thunder_cloud_analyzer.dart';
 
 
-/// 3つの距離(50km,160km,200km)での方向別天気チェック
+/// 4つの方向と3つの距離での方向別天気チェック
 Future<List<String>> fetchAdvancedWeatherInDirections(
     double currentLatitude, double currentLongitude) async {
   List<String> tempMatchingCities = [];
-  const directions = WeatherConstants.checkDirections;
-  const distances = WeatherConstants.checkDistances; // 3つの距離（km）
+  const directions = WeatherConstants.checkDirections;// 4つの方向（北、南、東、西）
+  const distances = WeatherConstants.checkDistances; // 3つの距離（50.0km, 160.0km, 250.0km）
 
   try {
     //4つの方向でループ

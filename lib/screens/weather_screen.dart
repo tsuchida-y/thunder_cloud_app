@@ -89,16 +89,18 @@ class WeatherScreenState extends State<WeatherScreen> {
     if (_currentLocation == null) return;
 
     try {
+      //入道雲判定ロジック
       final result = await fetchAdvancedWeatherInDirections(
         _currentLocation!.latitude,
         _currentLocation!.longitude,
       );
 
-      // 新しい入道雲が出現した場合のみ通知
+      // 新しい入道雲が出現した入道雲だけを格納
       final newClouds = result
           .where((direction) => !_previousMatchingCities.contains(direction))
           .toList();
 
+      // 新しい入道雲が検出された場合に通知を送信
       if (newClouds.isNotEmpty) {
         print("新しい入道雲を検出: $newClouds");
         await NotificationService.showThunderCloudNotification(newClouds);
