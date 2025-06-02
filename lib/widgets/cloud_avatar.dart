@@ -23,16 +23,12 @@ class CloudAvatar extends StatelessWidget {
   });
 
   /// 天候に応じた画像を取得する。
-  ///
-  /// [isCloudy]: 入道雲を表示するかどうかのフラグ。
-  /// 戻り値: 表示する画像。
   AssetImage _getImage(bool isCloudy) {
     return isCloudy
         ? const AssetImage("image/cloud2.jpg") // 入道雲の画像
         : const AssetImage("image/bluesky.jpg"); // 青空の画像
   }
 
-  // TODO: 雲の形状を画像ではなくカスタム描画で表現する。
   @override
   Widget build(BuildContext context) {
     return Positioned(

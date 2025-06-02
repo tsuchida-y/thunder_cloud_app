@@ -5,6 +5,7 @@ import 'direction_image.dart';
 
 
 ///背景の上に重ねる天気情報オーバーレイを作成するウィジェット
+///方角がわかる画像と東西南北の入道雲を表示する
 class CloudStatusOverlay extends StatelessWidget {
   final List<String> matchingCities;
 
@@ -20,18 +21,15 @@ class CloudStatusOverlay extends StatelessWidget {
         const DirectionImage(),
 
         //各方向のCloudAvatarを動的に生成する処理
+        //.entries：キーと値をセットで取得
         ...avatarPositions.entries.map((entry) {
-          final direction = entry.key;
-          final position = entry.value;
           return CloudAvatar(
-            name: direction,
-            top: position.dy,
-            left: position.dx,
-            isCloudy: matchingCities.contains(direction),
+            name: entry.key,
+            top: entry.value.dy,
+            left: entry.value.dx,
+            isCloudy: matchingCities.contains(entry.key),
           );
         })
-
-
       ],
     );
   }

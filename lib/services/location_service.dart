@@ -8,6 +8,8 @@ class LocationService {
   static Future<LatLng?> getCurrentLocationAsLatLng() async {
     try {
       final locationData = await getCurrentLocation();
+
+      //LatLng型(GoogleMapで使用する)に変換
       return LatLng(locationData.latitude, locationData.longitude);
     } catch (e) {
       return null;
