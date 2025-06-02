@@ -89,6 +89,8 @@ Map<String, double> _calculateDirectionCoordinates(String direction,
   };
 }
 
+
+
 /// 入道雲判定ロジック
 Future<bool> isAdvancedThunderCloudConditionMet(
     double latitude, double longitude) async {

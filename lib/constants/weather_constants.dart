@@ -42,16 +42,4 @@ class WeatherConstants {
   // 座標計算用定数(緯度1度あたりのkm)
   static const double latitudePerDegreeKm = 111.0;
 
-
-  // 新規追加：距離設定の妥当性チェック
-  static bool validateDistanceSettings() {
-    if (checkDistances.isEmpty) return false;
-    
-    // 距離が昇順になっているかチェック
-    for (int i = 1; i < checkDistances.length; i++) {
-      if (checkDistances[i] <= checkDistances[i - 1]) return false;
-    }
-    
-    return true;
-  }
 }

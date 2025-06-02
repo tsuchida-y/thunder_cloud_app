@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/avatar_positions.dart';
+import '../../constants/avatar_positions.dart';
 import 'cloud_avatar.dart';
 import 'direction_image.dart';
 
