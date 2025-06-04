@@ -1,1 +1,0 @@
-/Users/tsuchida/Documents/Programming/Myapp/thunder_cloud_app/build/app/intermediates/cxx/RelWithDebInfo/3c5a111x/obj/arm64-v8a

@@ -1,2 +1,0 @@
-/Users/tsuchida/Documents/Programming/Myapp/thunder_cloud_app/android/app/.cxx/RelWithDebInfo/3c5a111x/x86/CMakeFiles/edit_cache.dir
-/Users/tsuchida/Documents/Programming/Myapp/thunder_cloud_app/android/app/.cxx/RelWithDebInfo/3c5a111x/x86/CMakeFiles/rebuild_cache.dir
