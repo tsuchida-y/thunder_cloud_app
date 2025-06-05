@@ -5,6 +5,7 @@
     "dart.flutterSdkPaths": [
         "/Users/tsuchida/dev/flutter"
     ],
+    "dart.flutterRunLogFile": "/tmp/flutter_run.log",
     // ✅ Dart & Flutter開発設定
     "dart.checkForSdkUpdates": false,
     "dart.flutterHotReloadOnSave": "all",
@@ -13,7 +14,6 @@
     "dart.flutterOutline": true,
     "dart.closingLabels": true,
     // ✅ コード整形設定
-    "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
         "source.fixAll": "explicit",
         "source.organizeImports": "explicit"
@@ -36,7 +36,6 @@
     ],
     "editor.wordWrap": "on",
     "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
     // ✅ Flutter固有の設定
     "dart.flutterCreateAndroidLanguage": "kotlin",
     "dart.flutterCreateIOSLanguage": "swift",
