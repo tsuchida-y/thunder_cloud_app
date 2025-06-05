@@ -1,13 +1,16 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/constants/weather_constants.dart';
 import 'package:thunder_cloud_app/services/notification_service.dart';
+import 'package:thunder_cloud_app/services/push_notification_service.dart';
 import 'package:thunder_cloud_app/services/weather/weather_logic.dart';
+
 import '../services/location_service.dart';
+import '../widgets/cloud/cloud_status_overlay.dart';
 import '../widgets/common/weather_app_bar.dart';
 import '../widgets/map/background_map.dart';
-import '../widgets/cloud/cloud_status_overlay.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -44,6 +47,11 @@ class WeatherScreenState extends State<WeatherScreen> {
 
     // ✅ 修正: 位置情報取得後、即座に天気チェックを実行
     if (_currentLocation != null) {
+      await PushNotificationService.saveUserLocation(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+      );
+
       await _checkWeatherInDirections();
     }
 
