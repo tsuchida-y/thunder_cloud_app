@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart'; 
 import 'package:thunder_cloud_app/services/notification_service.dart';
+import 'firebase_options.dart'; 
 import 'screens/weather_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    // await dotenv.load(fileName: ".env");
-    
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("✅ Firebase初期化成功");
     // 通知サービスの初期化（権限リクエストも含む）
     await NotificationService.initialize();
     
