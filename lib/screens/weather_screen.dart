@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/constants/weather_constants.dart';
 import 'package:thunder_cloud_app/services/notification_service.dart';
 import 'package:thunder_cloud_app/services/push_notification_service.dart';
+import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
 
 import '../services/location_service.dart';
 import '../widgets/common/weather_app_bar.dart';
@@ -25,14 +26,14 @@ class WeatherScreenState extends State<WeatherScreen> {
   String _statusMessage = "位置情報取得中...";
   StreamSubscription<Position>? _positionStream; // ← 追加
 
-  // ❌ 削除: Timer? _weatherTimer;
-  // ❌ 削除: List<String> matchingCities = [];
-  // ❌ 削除: List<String> _previousMatchingCities = [];
+  // UI表示用の入道雲検出結果
+  List<String> matchingCities = [];
+  final List<String> _previousMatchingCities = [];
 
   @override
   void initState() {
     super.initState();
-    _initializeLocationAndNotification(); // ← 名前変更
+    _initializeLocationAndNotification();
     _startLocationMonitoring();
   }
 
@@ -193,41 +194,8 @@ void _startLocationMonitoring() {
         children: [
           BackgroundMapWidget(currentLocation: _currentLocation),
 
-          // シンプルな状態表示
-          Center(
-            child: Card(
-              margin: const EdgeInsets.all(20),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isLoading)
-                      const CircularProgressIndicator()
-                    else
-                      const Icon(Icons.cloud, size: 50, color: Colors.blue),
-
-                    const SizedBox(height: 16),
-
-                    Text(
-                      _statusMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    if (!_isLoading)
-                      ElevatedButton.icon(
-                        onPressed: _updateLocation,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text("位置を更新"),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          // 入道雲方向表示オーバーレイ
+          CloudStatusOverlay(matchingCities: matchingCities),
         ],
       ),
     );
