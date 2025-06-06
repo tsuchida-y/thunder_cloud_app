@@ -109,24 +109,36 @@ void _startLocationMonitoring() {
   }
 
 
-
   /// 初期化: 位置情報取得とFirestore保存のみ
   Future<void> _initializeLocationAndNotification() async {
     try {
       setState(() => _isLoading = true);
 
+      print("🚀 初期化開始");
+
       // 位置情報取得
+      print("📍 位置情報取得中...");
       _currentLocation = await LocationService.getCurrentLocationAsLatLng();
+      print("📍 位置情報取得結果: $_currentLocation");
 
       if (_currentLocation != null) {
+        print("💾 Firestore への位置情報保存開始...");
+
+        // FCMトークン確認
+        final fcmToken = PushNotificationService.fcmToken;
+        print("🔑 現在のFCMトークン: ${fcmToken?.substring(0, 20) ?? 'null'}...");
+
         // ユーザー情報をFirestoreに保存（サーバー監視対象に追加）
         await PushNotificationService.saveUserLocation(
           _currentLocation!.latitude,
           _currentLocation!.longitude,
         );
+        print("✅ PushNotificationService.saveUserLocation 呼び出し完了");
 
         // 通知権限確認
+        print("🔔 通知権限確認中...");
         await NotificationService.requestPermissions();
+        print("✅ 通知権限確認完了");
 
         setState(() {
           _isLoading = false;
@@ -139,6 +151,7 @@ void _startLocationMonitoring() {
         });
       }
     } catch (e) {
+      print("❌ 初期化エラー: $e");
       setState(() {
         _isLoading = false;
         _statusMessage = "エラー: 位置情報の取得に失敗しました";

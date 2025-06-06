@@ -1,16 +1,26 @@
-// firestore.rules - 位置履歴対応
+// firestore.rules - 修正版
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow write: if true;
-      allow read: if false;
+    // テスト接続用（一時的）
+    match /_test_connection/{document} {
+      allow read, write: if true;
     }
 
-    // 位置履歴コレクション（オプション）
-    match /location_history/{historyId} {
+    // users コレクション
+    match /users/{userId} {
       allow write: if true;
-      allow read: if false;
+      allow read: if true;  // ← 一時的に読み取りも許可
+    }
+
+    // debug コレクション（テスト用）
+    match /debug/{document} {
+      allow read, write: if true;
+    }
+
+    // その他は全て拒否
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
