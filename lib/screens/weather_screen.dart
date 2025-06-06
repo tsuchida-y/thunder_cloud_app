@@ -1,14 +1,14 @@
+// lib/screens/weather_screen.dart - 大幅シンプル化
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/constants/weather_constants.dart';
 import 'package:thunder_cloud_app/services/notification_service.dart';
 import 'package:thunder_cloud_app/services/push_notification_service.dart';
-import 'package:thunder_cloud_app/services/weather/weather_logic.dart';
 
 import '../services/location_service.dart';
-import '../widgets/cloud/cloud_status_overlay.dart';
 import '../widgets/common/weather_app_bar.dart';
 import '../widgets/map/background_map.dart';
 
@@ -19,121 +19,158 @@ class WeatherScreen extends StatefulWidget {
   WeatherScreenState createState() => WeatherScreenState();
 }
 
-///入道雲サーチアプリのメイン画面を管理するStateクラス
 class WeatherScreenState extends State<WeatherScreen> {
-  List<String> matchingCities = [];
-  bool isLoading = true;
+  bool _isLoading = true;
   LatLng? _currentLocation;
-  Timer? _weatherTimer;
-  List<String> _previousMatchingCities = []; // 前回の結果を保存
+  String _statusMessage = "位置情報取得中...";
+  StreamSubscription<Position>? _positionStream; // ← 追加
+
+  // ❌ 削除: Timer? _weatherTimer;
+  // ❌ 削除: List<String> matchingCities = [];
+  // ❌ 削除: List<String> _previousMatchingCities = [];
 
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    _initializeLocationAndNotification(); // ← 名前変更
+    _startLocationMonitoring();
   }
 
-
-  ///ウィジェットが破棄されるときに呼び出される
-  ///タイマーをキャンセルして、リソースを解放する
   @override
   void dispose() {
-    _weatherTimer?.cancel();
+    _positionStream?.cancel();
     super.dispose();
   }
 
-  Future<void> _initializeApp() async {
-    await _getLocation();
+/// 位置変更の監視開始 - 統合版
+void _startLocationMonitoring() {
+  _positionStream = Geolocator.getPositionStream(
+    locationSettings: LocationSettings(
+      accuracy: WeatherConstants.locationAccuracy,
+      distanceFilter: WeatherConstants.locationUpdateDistanceFilter.toInt(),
+      timeLimit: const Duration(minutes: 10),
+    ),
+  ).listen(
+    (Position position) {
+      _onLocationChanged(position);
+    },
+    onError: (error) {
+      print("❌ 位置監視エラー: $error");
+      setState(() {
+        _statusMessage = "位置監視エラー。手動更新をご利用ください。";
+      });
+    },
+  );
+}
 
-    // ✅ 修正: 位置情報取得後、即座に天気チェックを実行
+  /// 位置変更時の処理
+  Future<void> _onLocationChanged(Position position) async {
+    final newLocation = LatLng(position.latitude, position.longitude);
+
+    // 前回位置との距離計算
     if (_currentLocation != null) {
+      final distance = Geolocator.distanceBetween(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+        newLocation.latitude,
+        newLocation.longitude,
+      );
+
+      // 設定した距離以上移動した場合のみ更新
+      if (distance >= WeatherConstants.locationUpdateDistanceFilter) {
+        await _updateLocationToServer(newLocation);
+      }
+    } else {
+      // 初回は必ず更新
+      await _updateLocationToServer(newLocation);
+    }
+  }
+
+  /// サーバーへの位置情報更新
+  Future<void> _updateLocationToServer(LatLng newLocation) async {
+    try {
       await PushNotificationService.saveUserLocation(
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
+        newLocation.latitude,
+        newLocation.longitude,
       );
 
-      await _checkWeatherInDirections();
-    }
+      setState(() {
+        _currentLocation = newLocation;
+        _statusMessage = "📍 位置更新: ${newLocation.latitude.toStringAsFixed(4)}, ${newLocation.longitude.toStringAsFixed(4)}\n（サーバーが新しい位置で監視中）";
+      });
 
-    _startWeatherUpdates();
+      print("✅ 位置情報更新: $newLocation");
+    } catch (e) {
+      print("❌ 位置情報更新エラー: $e");
+      setState(() {
+        _statusMessage = "位置情報の更新に失敗しました";
+      });
+    }
   }
 
 
 
-  //現在地を取得する関数
-  Future<void> _getLocation() async {
+  /// 初期化: 位置情報取得とFirestore保存のみ
+  Future<void> _initializeLocationAndNotification() async {
     try {
-      final location = await LocationService.getCurrentLocationAsLatLng();
+      setState(() => _isLoading = true);
 
-      //ウィジェットの生存確認
-      if (mounted) {
+      // 位置情報取得
+      _currentLocation = await LocationService.getCurrentLocationAsLatLng();
+
+      if (_currentLocation != null) {
+        // ユーザー情報をFirestoreに保存（サーバー監視対象に追加）
+        await PushNotificationService.saveUserLocation(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+        );
+
+        // 通知権限確認
+        await NotificationService.requestPermissions();
+
         setState(() {
-          _currentLocation = location;
+          _isLoading = false;
+          _statusMessage = "🌩️ 入道雲監視システム開始\n（5分間隔でサーバーが自動監視中）";
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = "位置情報の取得に失敗しました";
         });
       }
     } catch (e) {
-      print("位置情報取得エラー: $e");
+      setState(() {
+        _isLoading = false;
+        _statusMessage = "エラー: 位置情報の取得に失敗しました";
+      });
     }
   }
 
-
-
-  //天気情報を定期的に取得する関数
-  void _startWeatherUpdates() {
-    _weatherTimer = Timer.periodic(
-      const Duration(seconds: WeatherConstants.weatherCheckInterval),
-      (Timer timer) {
-        if (_currentLocation != null) {
-          _checkWeatherInDirections();
-        }
-      },
-    );
-  }
-
-
-
-  //各方向の入道雲を検出し、新しい積乱雲が発見された場合に通知を送信する関数
-  Future<void> _checkWeatherInDirections() async {
-    if (_currentLocation == null) return;
+  /// 手動での位置更新（オプション）
+  Future<void> _updateLocation() async {
+    setState(() => _isLoading = true);
 
     try {
-      //入道雲判定ロジック
-      final result = await fetchAdvancedWeatherInDirections(
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
-      );
+      _currentLocation = await LocationService.getCurrentLocationAsLatLng();
 
-      // 新しい入道雲が出現した入道雲だけを格納
-      final newClouds = result
-          .where((direction) => !_previousMatchingCities.contains(direction))
-          .toList();
+      if (_currentLocation != null) {
+        await PushNotificationService.saveUserLocation(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+        );
 
-      // 新しい入道雲が検出された場合に通知を送信
-      if (newClouds.isNotEmpty) {
-        print("新しい入道雲を検出: $newClouds");
-        await NotificationService.showThunderCloudNotification(newClouds);
-      }
-
-      //ウィジェットの生存確認
-      if (mounted) {
         setState(() {
-          matchingCities = result;
-          _previousMatchingCities = List.from(result);
-          isLoading = false;
+          _isLoading = false;
+          _statusMessage = "📍 位置情報を更新しました\n（サーバーが監視中）";
         });
       }
     } catch (e) {
-      print("Open-Meteo分析エラー: $e");
-      // フォールバック処理を削除、エラー時は空の結果を設定
-      if (mounted) {
-        setState(() {
-          matchingCities = [];
-          isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+        _statusMessage = "位置情報の更新に失敗しました";
+      });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +179,42 @@ class WeatherScreenState extends State<WeatherScreen> {
       body: Stack(
         children: [
           BackgroundMapWidget(currentLocation: _currentLocation),
-          CloudStatusOverlay(matchingCities: matchingCities),
+
+          // シンプルな状態表示
+          Center(
+            child: Card(
+              margin: const EdgeInsets.all(20),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isLoading)
+                      const CircularProgressIndicator()
+                    else
+                      const Icon(Icons.cloud, size: 50, color: Colors.blue),
+
+                    const SizedBox(height: 16),
+
+                    Text(
+                      _statusMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    if (!_isLoading)
+                      ElevatedButton.icon(
+                        onPressed: _updateLocation,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text("位置を更新"),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

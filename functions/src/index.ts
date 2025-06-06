@@ -23,13 +23,22 @@ export const checkThunderClouds = onSchedule("every 5 minutes", async (event) =>
     const usersSnapshot = await firestore
       .collection("users")
       .where("isActive", "==", true)
+      .orderBy("lastUpdated", "desc")
       .get();
 
     console.log(`👥 アクティブユーザー数: ${usersSnapshot.size}`);
 
     for (const userDoc of usersSnapshot.docs) {
       const user = userDoc.data();
-      await checkUserLocation(user);
+      const lastUpdated = user.lastUpdated?.toDate();
+      const now = new Date();
+
+      // 24時間以内に位置更新があったユーザーのみ監視
+      if (lastUpdated && (now.getTime() - lastUpdated.getTime()) < 24 * 60 * 60 * 1000) {
+        await checkUserLocation(user);
+      } else {
+        console.log(`⏰ ユーザー位置情報が古いためスキップ: ${user.fcmToken?.substring(0, 10)}...`);
+      }
     }
   } catch (error) {
     console.error("❌ エラー:", error);

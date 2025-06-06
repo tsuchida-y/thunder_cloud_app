@@ -1,45 +1,20 @@
+// lib/constants/weather_constants.dart - 位置監視設定
+import 'package:geolocator/geolocator.dart';
+
 class WeatherConstants {
-
-  static const Map<String, double> analysisWeights = {
-    'cape': 0.5,           // 50%
-    'lifted_index': 0.35,  // 35%
-    'cin': 0.05,          // 5%
-    'temperature': 0.1,    // 10%
-  };
-
-  // タイマー間隔設定
-  static const int weatherCheckInterval = 120;
-
-  // CAPE閾値
-  static const double capeHighThreshold = 2500.0;
-  static const double capeMediumThreshold = 1000.0;
-  static const double capeLowThreshold = 500.0;
-  
-  // リフティド指数閾値
-  static const double liHighRiskThreshold = -6.0;
-  static const double liMediumRiskThreshold = -3.0;
-  static const double liStableThreshold = 0.0;
-  
-  // 対流抑制閾値
-  static const double cinLowThreshold = 25.0;
-  static const double cinMediumThreshold = 50.0;
-  static const double cinHighThreshold = 100.0;
-  
-  // 温度閾値
-  static const double tempHighThreshold = 30.0;
-  static const double tempMediumThreshold = 25.0;
-  static const double tempLowThreshold = 20.0;
-  
-  // 総合判定閾値
-  static const double thunderCloudThreshold = 0.6;
-  
-  // 方向設定
   static const List<String> checkDirections = ["north", "south", "east", "west"];
-
-  // 距離設定(km)
   static const List<double> checkDistances = [50.0, 160.0, 250.0];
-  
-  // 座標計算用定数(緯度1度あたりのkm)
-  static const double latitudePerDegreeKm = 111.0;
 
+  // 表示用設定
+  static const String appTitle = "入道雲サーチ";
+  static const String monitoringMessage = "サーバーが5分間隔で監視中";
+
+  // 位置監視設定
+  static const double locationUpdateDistanceFilter = 1000.0; // 1km移動で更新
+  static const int locationUpdateTimeInterval = 5; // 最低5分間隔
+  static const LocationAccuracy locationAccuracy = LocationAccuracy.high;
+
+  // バッテリー節約モード
+  static const double batterySaveDistanceFilter = 5000.0; // 5km移動で更新
+  static const LocationAccuracy batterySaveAccuracy = LocationAccuracy.medium;
 }

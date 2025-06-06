@@ -1,0 +1,16 @@
+// firestore.rules - 位置履歴対応
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow write: if true;
+      allow read: if false;
+    }
+
+    // 位置履歴コレクション（オプション）
+    match /location_history/{historyId} {
+      allow write: if true;
+      allow read: if false;
+    }
+  }
+}
