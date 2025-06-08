@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import 'notification_service.dart';
 
@@ -87,55 +88,90 @@ class PushNotificationService {
 
   /// FCMトークンをリトライ付きで取得
   static Future<void> _getFCMTokenWithRetry({int maxRetries = 3}) async {
-    final isSimulator = await _isSimulator();
-
-    if (isSimulator) {
-      log("🎭 シミュレーターを検出: テスト用トークンを生成します");
-      _fcmToken = _generateTestToken();
-      log("✅ テスト用FCMトークン生成完了: ${_fcmToken!.substring(0, 20)}...");
+    // 既にトークンが取得済みの場合はスキップ
+    if (_fcmToken != null && _fcmToken!.isNotEmpty) {
+      log("✅ FCMトークンは既に取得済みです: ${_fcmToken!.substring(0, 20)}...");
       return;
     }
 
+    log("🔄 FCMトークン取得開始... (最大$maxRetries回試行)");
+
     for (int i = 0; i < maxRetries; i++) {
       try {
-        // iOS の場合、まず APNS トークンを取得
+        // iOS シミュレーターの場合は早期に諦める
         if (Platform.isIOS) {
-          log("iOS: APNSトークンを取得中...");
-          await _messaging!.requestPermission();
+          final isSimulator = await _isSimulator();
+          if (isSimulator && i == 0) {
+            log("🎭 iOSシミュレーター検出: APNSトークン取得をスキップ");
+            break; // ループを抜けてテスト用トークンを生成
+          }
 
-          // APNSトークンが利用可能になるまで少し待機
-          await Future.delayed(const Duration(seconds: 2));
+          if (!isSimulator) {
+            log("📱 iOS実機: APNSトークンを取得中... (試行 ${i + 1}/$maxRetries)");
 
-          // APNSトークンを明示的に要求
-          final apnsToken = await _messaging!.getAPNSToken();
-          if (apnsToken != null) {
-            log("✅ APNSトークン取得成功: ${apnsToken.substring(0, 10)}...");
-          } else {
-            log("⚠️ APNSトークンが取得できませんでした (試行 ${i + 1}/$maxRetries)");
-            if (i < maxRetries - 1) {
-              await Future.delayed(Duration(seconds: 2 + i));
-              continue;
+            // 権限を確認（1回目のみ）
+            if (i == 0) {
+              NotificationSettings settings = await _messaging!.requestPermission(
+                alert: true,
+                badge: true,
+                sound: true,
+              );
+
+              log("📋 通知権限状態: ${settings.authorizationStatus}");
+
+              if (settings.authorizationStatus == AuthorizationStatus.denied) {
+                log("❌ 通知権限が拒否されています");
+                return;
+              }
+            }
+
+            // APNSトークンを取得
+            final apnsToken = await _messaging!.getAPNSToken();
+            if (apnsToken != null) {
+              log("✅ APNSトークン取得成功: ${apnsToken.substring(0, 10)}...");
+            } else {
+              log("⚠️ APNSトークンが取得できませんでした (試行 ${i + 1}/$maxRetries)");
+              if (i < maxRetries - 1) {
+                await Future.delayed(const Duration(seconds: 2));
+                continue;
+              } else {
+                break; // ループを抜けてテスト用トークンを生成
+              }
             }
           }
         }
 
         // FCMトークンを取得
+        log("🔑 FCMトークンを取得中... (試行 ${i + 1}/$maxRetries)");
         _fcmToken = await _messaging!.getToken();
+
         if (_fcmToken != null && _fcmToken!.isNotEmpty) {
+          log("✅ FCMトークン取得成功: ${_fcmToken!.substring(0, 20)}...");
           return; // 成功
         }
-        log("FCMトークン取得試行 ${i + 1}/$maxRetries: null");
-        await Future.delayed(Duration(seconds: 1 + i)); // 待機時間を増加
+
+        log("⚠️ FCMトークンがnullまたは空です (試行 ${i + 1}/$maxRetries)");
+
+        if (i < maxRetries - 1) {
+          await Future.delayed(Duration(seconds: 1 + i));
+        }
       } catch (e) {
-        log("FCMトークン取得エラー (試行 ${i + 1}/$maxRetries): $e");
-        if (i == maxRetries - 1) {
-          // 最後の試行でも失敗した場合、テスト用トークンを生成
-          log("🎭 実機でのトークン取得に失敗: テスト用トークンを生成します");
-          _fcmToken = _generateTestToken();
-          log("✅ テスト用FCMトークン生成完了: ${_fcmToken!.substring(0, 20)}...");
-          return;
+        log("❌ FCMトークン取得エラー (試行 ${i + 1}/$maxRetries): $e");
+        if (i < maxRetries - 1) {
+          await Future.delayed(const Duration(seconds: 1));
         }
       }
+    }
+
+    // 全ての試行が失敗した場合
+    log("❌ 全ての試行でFCMトークン取得に失敗しました");
+
+    // 開発環境のみテスト用トークンを生成
+    if (kDebugMode) {
+      final isSimulator = await _isSimulator();
+      log("🎭 開発環境${isSimulator ? '（シミュレーター）' : ''}：テスト用トークンを生成します");
+      _fcmToken = _generateTestToken();
+      log("✅ テスト用FCMトークン生成完了: ${_fcmToken!.substring(0, 20)}...");
     }
   }
 

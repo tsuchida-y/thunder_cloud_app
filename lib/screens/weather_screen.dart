@@ -1,4 +1,4 @@
-// lib/screens/weather_screen.dart - クリーンアップ版
+// lib/screens/weather_screen.dart - 高速起動版
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -132,57 +132,99 @@ class WeatherScreenState extends State<WeatherScreen> {
     return distance >= WeatherConstants.locationUpdateDistanceFilter;
   }
 
-  /// 位置情報と通知の初期化
+  /// 位置情報と通知の初期化（非同期・並列処理）
   Future<void> _initializeLocationAndNotification() async {
     try {
-      _currentLocation = await LocationService.getCurrentLocationAsLatLng();
-      print("📍 位置情報取得結果: $_currentLocation");
+      // 並列で初期化処理を実行
+      final futures = [
+        _initializeLocation(),
+        _initializeNotification(),
+      ];
 
-      if (_currentLocation != null) {
-        print("Firestore への位置情報保存開始...");
+      await Future.wait(futures);
+      print("✅ 全ての初期化処理完了");
 
-        // FCMトークンが取得されるまで待機
-        await _waitForFCMToken();
-
-        final fcmToken = PushNotificationService.fcmToken;
-        print("現在のFCMトークン: ${fcmToken?.substring(0, 20) ?? 'null'}...");
-
-        if (fcmToken != null) {
-          await PushNotificationService.saveUserLocation(
-            _currentLocation!.latitude,
-            _currentLocation!.longitude,
-          );
-          print("PushNotificationService.saveUserLocation 呼び出し完了");
-        } else {
-          print("⚠️ FCMトークンが取得できないため、位置情報保存をスキップします");
-        }
-
-        print("通知権限確認中...");
-        await NotificationService.requestPermissions();
-        print("通知権限確認完了");
-
-        setState(() {});
-      } else {
-        setState(() {});
-      }
     } catch (e) {
       print("❌ 初期化エラー: $e");
       setState(() {});
     }
   }
 
-  /// FCMトークンが取得されるまで待機
-  Future<void> _waitForFCMToken({int maxWaitSeconds = 10}) async {
-    for (int i = 0; i < maxWaitSeconds; i++) {
-      if (PushNotificationService.fcmToken != null) {
-        print("✅ FCMトークン取得確認完了");
-        return;
+  /// 位置情報の初期化
+  Future<void> _initializeLocation() async {
+    try {
+      _currentLocation = await LocationService.getCurrentLocationAsLatLng();
+      print("📍 位置情報取得結果: $_currentLocation");
+
+      if (_currentLocation != null) {
+        setState(() {});
+
+        // 位置情報保存は非同期で実行（UI表示をブロックしない）
+        _saveLocationAsync();
       }
-      print("⏳ FCMトークン取得待機中... (${i + 1}秒)");
-      await Future.delayed(const Duration(seconds: 1));
+    } catch (e) {
+      print("❌ 位置情報初期化エラー: $e");
     }
-    print("⚠️ FCMトークン取得がタイムアウトしました");
   }
+
+  /// 通知の初期化
+  Future<void> _initializeNotification() async {
+    try {
+      print("🔔 通知権限確認中...");
+      await NotificationService.requestPermissions();
+      print("✅ 通知権限確認完了");
+    } catch (e) {
+      print("❌ 通知初期化エラー: $e");
+    }
+  }
+
+  /// 位置情報の非同期保存
+  void _saveLocationAsync() async {
+    if (_currentLocation == null) return;
+
+    try {
+      print("📍 位置情報保存を非同期で開始...");
+
+      // FCMトークンを短時間待機（UI表示をブロックしない）
+      final fcmToken = await _getFCMTokenQuickly();
+
+      if (fcmToken != null) {
+        await PushNotificationService.saveUserLocation(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+        );
+        print("✅ 位置情報保存完了");
+      } else {
+        print("⚠️ FCMトークン未取得のため、位置情報保存を後で再試行");
+        // 5秒後に再試行
+        Timer(const Duration(seconds: 5), () => _saveLocationAsync());
+      }
+    } catch (e) {
+      print("❌ 位置情報保存エラー: $e");
+    }
+  }
+
+  /// FCMトークンを短時間で取得
+  Future<String?> _getFCMTokenQuickly() async {
+    // 既に取得済みの場合は即座に返す
+    if (PushNotificationService.fcmToken != null) {
+      return PushNotificationService.fcmToken;
+    }
+
+    // 最大2秒だけ待機
+    for (int i = 0; i < 2; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+      if (PushNotificationService.fcmToken != null) {
+        print("✅ FCMトークン取得確認完了 (${i + 1}秒後)");
+        return PushNotificationService.fcmToken;
+      }
+    }
+
+    print("⏳ FCMトークン取得は継続中（位置情報保存を後で再試行）");
+    return null;
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
