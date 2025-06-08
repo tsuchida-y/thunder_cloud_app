@@ -47,6 +47,10 @@ app.*.map.json
 # Environment variables
 .env
 
+# Firebase configuration files (セキュリティのため除外)
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
 
 # Linux build files
 linux/flutter/generated_plugin_registrant.cc

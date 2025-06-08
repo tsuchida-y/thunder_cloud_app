@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:852675497714:android:51acfb8d2e9aac66334a6b",
+        "mobilesdk_app_id": "1:852675497714:android:cb7c8922121301a8334a6b",
         "android_client_info": {
-          "package_name": "io.github.tsuchida.thunder_cloud_app"
+          "package_name": "com.tsuchida.thundercloud"
         }
       },
       "oauth_client": [],

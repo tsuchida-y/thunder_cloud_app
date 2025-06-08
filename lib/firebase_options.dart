@@ -28,15 +28,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -51,7 +45,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAZP8nwDl8FDXVvtYpF_b_REQbwsVpnZ2E',
-    appId: '1:852675497714:android:51acfb8d2e9aac66334a6b',
+    appId: '1:852675497714:android:cb7c8922121301a8334a6b',
     messagingSenderId: '852675497714',
     projectId: 'thunder-cloud-app-292e6',
     storageBucket: 'thunder-cloud-app-292e6.firebasestorage.app',
@@ -59,10 +53,30 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyC8q8kr1HYOMNpDPZQ-Mp4UQ6zIzbmGjUw',
-    appId: '1:852675497714:ios:fe475f2dc339bcdb334a6b',
+    appId: '1:852675497714:ios:df6d20b3d0372f06334a6b',
+    messagingSenderId: '852675497714',
+    projectId: 'thunder-cloud-app-292e6',
+    storageBucket: 'thunder-cloud-app-292e6.firebasestorage.app',
+    iosBundleId: 'com.tsuchida.thundercloud',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyC8q8kr1HYOMNpDPZQ-Mp4UQ6zIzbmGjUw',
+    appId: '1:852675497714:ios:6f1cd34095293552334a6b',
     messagingSenderId: '852675497714',
     projectId: 'thunder-cloud-app-292e6',
     storageBucket: 'thunder-cloud-app-292e6.firebasestorage.app',
     iosBundleId: 'com.example.thunderCloudApp',
   );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyCXLoqfiz33_IU4ub83a9MEnS1MbN57TY4',
+    appId: '1:852675497714:web:e1a695f21b74f582334a6b',
+    messagingSenderId: '852675497714',
+    projectId: 'thunder-cloud-app-292e6',
+    authDomain: 'thunder-cloud-app-292e6.firebaseapp.com',
+    storageBucket: 'thunder-cloud-app-292e6.firebasestorage.app',
+    measurementId: 'G-CQFBJZ7T40',
+  );
+
 }
