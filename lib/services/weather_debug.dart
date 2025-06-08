@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
-import '../utils/coordinate_utils.dart';
-import 'weather/thunder_cloud_analyzer.dart';
+import '../utils/coordinate.dart';
+import 'weather/analyzer.dart';
 
 /// 気象データのデバッグ機能を提供するサービスクラス
 class WeatherDebugService {

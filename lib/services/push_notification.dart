@@ -4,8 +4,8 @@ import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
-import 'fcm_token_manager.dart';
-import 'notification_service.dart';
+import 'fcm_token.dart';
+import 'notification.dart';
 
 /// プッシュ通知サービス（FCMメッセージ処理に特化）
 class PushNotificationService {

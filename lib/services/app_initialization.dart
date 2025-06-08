@@ -5,8 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../firebase_options.dart';
-import 'notification_service.dart';
-import 'push_notification_service.dart';
+import 'notification.dart';
+import 'push_notification.dart';
 
 /// アプリケーション全体の初期化を管理するサービス
 class AppInitializationService {

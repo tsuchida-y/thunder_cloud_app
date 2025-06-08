@@ -5,7 +5,7 @@ import 'dart:developer' as dev;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../constants/weather_constants.dart';
+import '../constants/weather.dart';
 
 /// 位置情報の取得と管理を行う統合サービス
 class LocationService {

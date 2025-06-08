@@ -3,14 +3,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:thunder_cloud_app/services/notification_service.dart';
-import 'package:thunder_cloud_app/services/push_notification_service.dart';
-import 'package:thunder_cloud_app/services/weather_debug_service.dart';
+import 'package:thunder_cloud_app/services/notification.dart';
+import 'package:thunder_cloud_app/services/push_notification.dart';
+import 'package:thunder_cloud_app/services/weather_debug.dart';
 import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
 
-import '../services/location_service.dart';
-import '../widgets/common/weather_app_bar.dart';
-import '../widgets/map/background_map.dart';
+import '../services/location.dart';
+import '../widgets/common/app_bar.dart';
+import '../widgets/map/background.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
