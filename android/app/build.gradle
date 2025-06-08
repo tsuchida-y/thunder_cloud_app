@@ -1,5 +1,8 @@
 plugins {
     id "com.android.application"
+    // START: FlutterFire Configuration
+    id 'com.google.gms.google-services'
+    // END: FlutterFire Configuration
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
@@ -41,9 +44,9 @@ android {
     signingConfigs {
         release {
             storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword'] 
+            storePassword keystoreProperties['storePassword']
             keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword'] 
+            keyPassword keystoreProperties['keyPassword']
         }
     }
 
