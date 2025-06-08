@@ -1,18 +1,16 @@
-// lib/services/push_notification_service.dart - 完成版
-import 'dart:developer';
-import 'dart:io';
-import 'dart:math' as math;
+// lib/services/push_notification_service.dart - リファクタリング版
+import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 
+import 'fcm_token_manager.dart';
 import 'notification_service.dart';
 
+/// プッシュ通知サービス（FCMメッセージ処理に特化）
 class PushNotificationService {
   static FirebaseMessaging? _messaging;
   static FirebaseFirestore? _firestore;
-  static String? _fcmToken;
 
   // UI更新用のコールバック関数
   static Function(List<String>)? onThunderCloudDetected;
@@ -21,7 +19,7 @@ class PushNotificationService {
 
   /// プッシュ通知サービスの初期化
   static Future<void> initialize() async {
-    log("🔔 PushNotificationService初期化開始");
+    dev.log("🔔 PushNotificationService初期化開始");
 
     try {
       // Firebase Messaging インスタンスを取得
@@ -39,159 +37,66 @@ class PushNotificationService {
         provisional: false,
       );
 
-      log("通知権限状態: ${settings.authorizationStatus}");
+      dev.log("通知権限状態: ${settings.authorizationStatus}");
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // FCMトークンを取得（リトライ機能付き）
-        await _getFCMTokenWithRetry();
+        // FCMトークンを取得（専用マネージャーを使用）
+        final token = await FCMTokenManager.getToken();
 
-        if (_fcmToken != null) {
-          log("🔑 FCMトークン取得成功: ${_fcmToken!.substring(0, 20)}...");
+        if (token != null) {
+          dev.log("🔑 FCMトークン取得成功: ${token.substring(0, 20)}...");
 
-          // フォアグラウンドでのメッセージ受信を監視
-          FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+          // メッセージハンドラーを設定
+          _setupMessageHandlers();
 
-          // 通知タップでアプリが開かれた時の処理
-          FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-          // アプリ起動時に通知から開かれたかチェック
-          RemoteMessage? initialMessage = await _messaging!.getInitialMessage();
-          if (initialMessage != null) {
-            _handleNotificationTap(initialMessage);
-          }
-
-          log("✅ PushNotificationService初期化完了");
+          dev.log("✅ PushNotificationService初期化完了");
         } else {
-          log("❌ FCMトークン取得に失敗しました");
+          dev.log("❌ FCMトークン取得に失敗しました");
         }
       } else {
-        log("⚠️ 通知権限が拒否されました");
+        dev.log("⚠️ 通知権限が拒否されました");
       }
     } catch (e) {
-      log("❌ PushNotificationService初期化エラー: $e");
+      dev.log("❌ PushNotificationService初期化エラー: $e");
     }
   }
 
-  /// シミュレーターかどうかを判定
-  static Future<bool> _isSimulator() async {
-    if (!Platform.isIOS) return false;
+  /// メッセージハンドラーの設定
+  static void _setupMessageHandlers() {
+    // フォアグラウンドでのメッセージ受信を監視
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // シミュレーターの判定
+    // 通知タップでアプリが開かれた時の処理
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+    // アプリ起動時に通知から開かれたかチェック
+    _checkInitialMessage();
+  }
+
+  /// 初期メッセージのチェック
+  static void _checkInitialMessage() async {
     try {
-      // シミュレーターでは通常、特定のディレクトリ構造が存在する
-      return Platform.environment['SIMULATOR_DEVICE_NAME'] != null ||
-             Platform.environment['SIMULATOR_VERSION_INFO'] != null;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// FCMトークンをリトライ付きで取得
-  static Future<void> _getFCMTokenWithRetry({int maxRetries = 3}) async {
-    // 既にトークンが取得済みの場合はスキップ
-    if (_fcmToken != null && _fcmToken!.isNotEmpty) {
-      log("✅ FCMトークンは既に取得済みです: ${_fcmToken!.substring(0, 20)}...");
-      return;
-    }
-
-    log("🔄 FCMトークン取得開始... (最大$maxRetries回試行)");
-
-    for (int i = 0; i < maxRetries; i++) {
-      try {
-        // iOS シミュレーターの場合は早期に諦める
-        if (Platform.isIOS) {
-          final isSimulator = await _isSimulator();
-          if (isSimulator && i == 0) {
-            log("🎭 iOSシミュレーター検出: APNSトークン取得をスキップ");
-            break; // ループを抜けてテスト用トークンを生成
-          }
-
-          if (!isSimulator) {
-            log("📱 iOS実機: APNSトークンを取得中... (試行 ${i + 1}/$maxRetries)");
-
-            // 権限を確認（1回目のみ）
-            if (i == 0) {
-              NotificationSettings settings = await _messaging!.requestPermission(
-                alert: true,
-                badge: true,
-                sound: true,
-              );
-
-              log("📋 通知権限状態: ${settings.authorizationStatus}");
-
-              if (settings.authorizationStatus == AuthorizationStatus.denied) {
-                log("❌ 通知権限が拒否されています");
-                return;
-              }
-            }
-
-            // APNSトークンを取得
-            final apnsToken = await _messaging!.getAPNSToken();
-            if (apnsToken != null) {
-              log("✅ APNSトークン取得成功: ${apnsToken.substring(0, 10)}...");
-            } else {
-              log("⚠️ APNSトークンが取得できませんでした (試行 ${i + 1}/$maxRetries)");
-              if (i < maxRetries - 1) {
-                await Future.delayed(const Duration(seconds: 2));
-                continue;
-              } else {
-                break; // ループを抜けてテスト用トークンを生成
-              }
-            }
-          }
-        }
-
-        // FCMトークンを取得
-        log("🔑 FCMトークンを取得中... (試行 ${i + 1}/$maxRetries)");
-        _fcmToken = await _messaging!.getToken();
-
-        if (_fcmToken != null && _fcmToken!.isNotEmpty) {
-          log("✅ FCMトークン取得成功: ${_fcmToken!.substring(0, 20)}...");
-          return; // 成功
-        }
-
-        log("⚠️ FCMトークンがnullまたは空です (試行 ${i + 1}/$maxRetries)");
-
-        if (i < maxRetries - 1) {
-          await Future.delayed(Duration(seconds: 1 + i));
-        }
-      } catch (e) {
-        log("❌ FCMトークン取得エラー (試行 ${i + 1}/$maxRetries): $e");
-        if (i < maxRetries - 1) {
-          await Future.delayed(const Duration(seconds: 1));
-        }
+      RemoteMessage? initialMessage = await _messaging!.getInitialMessage();
+      if (initialMessage != null) {
+        _handleNotificationTap(initialMessage);
       }
+    } catch (e) {
+      dev.log("❌ 初期メッセージチェックエラー: $e");
     }
-
-    // 全ての試行が失敗した場合
-    log("❌ 全ての試行でFCMトークン取得に失敗しました");
-
-    // 開発環境のみテスト用トークンを生成
-    if (kDebugMode) {
-      final isSimulator = await _isSimulator();
-      log("🎭 開発環境${isSimulator ? '（シミュレーター）' : ''}：テスト用トークンを生成します");
-      _fcmToken = _generateTestToken();
-      log("✅ テスト用FCMトークン生成完了: ${_fcmToken!.substring(0, 20)}...");
-    }
-  }
-
-  /// テスト用のトークンを生成
-  static String _generateTestToken() {
-    final random = math.Random();
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return 'test_token_${List.generate(40, (index) => chars[random.nextInt(chars.length)]).join()}';
   }
 
   /// ユーザー位置情報をFirestoreに保存
   static Future<void> saveUserLocation(double latitude, double longitude) async {
-    if (_fcmToken == null) {
-      log("⚠️ FCMトークンが未取得のため位置情報保存をスキップ");
+    final fcmToken = FCMTokenManager.currentToken;
+
+    if (fcmToken == null) {
+      dev.log("⚠️ FCMトークンが未取得のため位置情報保存をスキップ");
       return;
     }
 
     try {
-      await _firestore!.collection('users').doc(_fcmToken).set({
-        'fcmToken': _fcmToken,
+      await _firestore!.collection('users').doc(fcmToken).set({
+        'fcmToken': fcmToken,
         'latitude': latitude,
         'longitude': longitude,
         'lastUpdated': FieldValue.serverTimestamp(),
@@ -200,22 +105,22 @@ class PushNotificationService {
         'platform': 'flutter',
       }, SetOptions(merge: true));
 
-      log("📍 ユーザー位置情報保存完了: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})");
+      dev.log("📍 ユーザー位置情報保存完了: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})");
     } catch (e) {
-      log("❌ ユーザー位置情報保存エラー: $e");
+      dev.log("❌ ユーザー位置情報保存エラー: $e");
     }
   }
 
   /// フォアグラウンドでメッセージを受信した時の処理
   static void _handleForegroundMessage(RemoteMessage message) {
-    log("📨 フォアグラウンドメッセージ受信: ${message.notification?.title}");
+    dev.log("📨 フォアグラウンドメッセージ受信: ${message.notification?.title}");
 
     // 入道雲通知の場合
     if (message.data['type'] == 'thunder_cloud') {
       final directionsData = message.data['directions'] ?? '';
       final directions = directionsData.isNotEmpty ? directionsData.split(',') : <String>[];
 
-      log("⛈️ 入道雲通知受信: $directions");
+      dev.log("⛈️ 入道雲通知受信: $directions");
 
       // ローカル通知として表示
       NotificationService.showThunderCloudNotification(directions);
@@ -229,29 +134,45 @@ class PushNotificationService {
 
   /// 通知タップ時の処理
   static void _handleNotificationTap(RemoteMessage message) {
-    log("👆 通知がタップされました: ${message.data}");
+    dev.log("👆 通知がタップされました: ${message.data}");
 
     if (message.data['type'] == 'thunder_cloud') {
-      log("⛈️ 入道雲通知タップ - 詳細画面へ遷移予定");
+      dev.log("⛈️ 入道雲通知タップ - 詳細画面へ遷移予定");
     }
   }
 
-  /// FCMトークンを取得
-  static String? get fcmToken => _fcmToken;
+  /// FCMトークンを取得（マネージャーを経由）
+  static String? get fcmToken => FCMTokenManager.currentToken;
 
   /// ユーザーのアクティブ状態を更新
   static Future<void> updateUserActiveStatus(bool isActive) async {
-    if (_fcmToken == null) return;
+    final fcmToken = FCMTokenManager.currentToken;
+    if (fcmToken == null) return;
 
     try {
-      await _firestore!.collection('users').doc(_fcmToken).update({
+      await _firestore!.collection('users').doc(fcmToken).update({
         'isActive': isActive,
         'lastUpdated': FieldValue.serverTimestamp(),
       });
 
-      log("📱 ユーザーアクティブ状態更新: $isActive");
+      dev.log("📱 ユーザーアクティブ状態更新: $isActive");
     } catch (e) {
-      log("❌ アクティブ状態更新エラー: $e");
+      dev.log("❌ アクティブ状態更新エラー: $e");
     }
+  }
+
+  /// サービス状態の詳細情報
+  static Map<String, dynamic> getServiceStatus() {
+    return {
+      'isInitialized': isInitialized,
+      'hasCallback': onThunderCloudDetected != null,
+      'fcmTokenStatus': FCMTokenManager.getTokenStatus(),
+    };
+  }
+
+  /// リソースのクリーンアップ
+  static void dispose() {
+    onThunderCloudDetected = null;
+    dev.log("🧹 PushNotificationService リソースクリーンアップ完了");
   }
 }

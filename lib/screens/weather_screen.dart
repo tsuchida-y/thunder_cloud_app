@@ -1,10 +1,8 @@
-// lib/screens/weather_screen.dart - 高速起動版
+// lib/screens/weather_screen.dart - リファクタリング版
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:thunder_cloud_app/constants/weather_constants.dart';
 import 'package:thunder_cloud_app/services/notification_service.dart';
 import 'package:thunder_cloud_app/services/push_notification_service.dart';
 import 'package:thunder_cloud_app/services/weather_debug_service.dart';
@@ -21,132 +19,59 @@ class WeatherScreen extends StatefulWidget {
   WeatherScreenState createState() => WeatherScreenState();
 }
 
-class WeatherScreenState extends State<WeatherScreen> {
+class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserver {
   LatLng? _currentLocation;
-  StreamSubscription<Position>? _positionStream;
-
-  // UI表示用の入道雲検出結果
-  List<String> matchingCities = [];
+  final List<String> _matchingCities = [];
 
   @override
   void initState() {
     super.initState();
-    _initializeLocationAndNotification();
-    _startLocationMonitoring();
-
-    // 入道雲検出のコールバックを登録
-    PushNotificationService.onThunderCloudDetected = _onThunderCloudDetected;
+    WidgetsBinding.instance.addObserver(this);
+    _initializeScreen();
   }
 
   @override
   void dispose() {
-    _positionStream?.cancel();
-    // コールバックを解除
-    PushNotificationService.onThunderCloudDetected = null;
+    WidgetsBinding.instance.removeObserver(this);
+    _cleanupResources();
     super.dispose();
   }
 
-  /// 入道雲検出時のコールバック処理
-  void _onThunderCloudDetected(List<String> directions) {
-    print("🌩️ 入道雲検出コールバック受信: $directions");
-
-    for (String direction in directions) {
-      _handleThunderCloudDetection(direction);
+  /// アプリのライフサイクル変更時の処理
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _handleAppResumed();
+        break;
+      case AppLifecycleState.paused:
+        _handleAppPaused();
+        break;
+      default:
+        break;
     }
   }
 
-  /// 入道雲検出処理
-  void _handleThunderCloudDetection(String direction) {
-    print("🌩️ 入道雲検出処理開始: $direction");
-    _updateMatchingCities(direction);
-    NotificationService.showThunderCloudNotification([direction]);
-    print("🌩️ 現在のmatchingCities: $matchingCities");
-  }
-
-  /// matchingCitiesリストを更新
-  void _updateMatchingCities(String direction) {
-    setState(() {
-      if (!matchingCities.contains(direction)) {
-        matchingCities.add(direction);
-      }
-    });
-  }
-
-  /// デバッグ用: 気象データ分析を実行
-  Future<void> _debugWeatherData() async {
-    if (_currentLocation == null) {
-      print("❌ 位置情報が取得できていません");
-      return;
-    }
-
-    await WeatherDebugService.debugWeatherData(_currentLocation!);
-  }
-
-  /// 位置変更の監視開始
-  void _startLocationMonitoring() {
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
-        accuracy: WeatherConstants.locationAccuracy,
-        distanceFilter: WeatherConstants.locationUpdateDistanceFilter.toInt(),
-        timeLimit: const Duration(minutes: 10),
-      ),
-    ).listen(
-      (Position position) {
-        _onLocationChanged(position);
-      },
-      onError: (error) {
-        print("❌ 位置監視エラー: $error");
-        setState(() {});
-      },
-    );
-  }
-
-  /// 位置変更時の処理
-  void _onLocationChanged(Position position) async {
-    final newLocation = LatLng(position.latitude, position.longitude);
-
-    print("✅ 位置情報更新: $newLocation");
-
-    if (_currentLocation == null ||
-        _shouldUpdateLocation(_currentLocation!, newLocation)) {
-      setState(() {
-        _currentLocation = newLocation;
-      });
-
-      // Firestoreの位置情報を更新
-      await PushNotificationService.saveUserLocation(
-        position.latitude,
-        position.longitude,
-      );
-    }
-  }
-
-  /// 位置更新が必要かチェック
-  bool _shouldUpdateLocation(LatLng current, LatLng newLocation) {
-    final distance = Geolocator.distanceBetween(
-      current.latitude,
-      current.longitude,
-      newLocation.latitude,
-      newLocation.longitude,
-    );
-    return distance >= WeatherConstants.locationUpdateDistanceFilter;
-  }
-
-  /// 位置情報と通知の初期化（非同期・並列処理）
-  Future<void> _initializeLocationAndNotification() async {
+  /// スクリーンの初期化
+  Future<void> _initializeScreen() async {
     try {
+      print("🚀 WeatherScreen初期化開始");
+
       // 並列で初期化処理を実行
       final futures = [
         _initializeLocation(),
-        _initializeNotification(),
+        _initializeNotifications(),
       ];
 
       await Future.wait(futures);
-      print("✅ 全ての初期化処理完了");
+
+      // コールバック設定
+      _setupCallbacks();
+
+      print("✅ WeatherScreen初期化完了");
 
     } catch (e) {
-      print("❌ 初期化エラー: $e");
-      setState(() {});
+      print("❌ WeatherScreen初期化エラー: $e");
     }
   }
 
@@ -154,13 +79,17 @@ class WeatherScreenState extends State<WeatherScreen> {
   Future<void> _initializeLocation() async {
     try {
       _currentLocation = await LocationService.getCurrentLocationAsLatLng();
-      print("📍 位置情報取得結果: $_currentLocation");
 
       if (_currentLocation != null) {
-        setState(() {});
+        print("📍 初期位置情報取得成功: $_currentLocation");
 
-        // 位置情報保存は非同期で実行（UI表示をブロックしない）
+        // 位置情報監視開始
+        LocationService.startLocationMonitoring();
+
+        // 位置情報保存（非同期）
         _saveLocationAsync();
+
+        setState(() {});
       }
     } catch (e) {
       print("❌ 位置情報初期化エラー: $e");
@@ -168,9 +97,8 @@ class WeatherScreenState extends State<WeatherScreen> {
   }
 
   /// 通知の初期化
-  Future<void> _initializeNotification() async {
+  Future<void> _initializeNotifications() async {
     try {
-      print("🔔 通知権限確認中...");
       await NotificationService.requestPermissions();
       print("✅ 通知権限確認完了");
     } catch (e) {
@@ -178,53 +106,96 @@ class WeatherScreenState extends State<WeatherScreen> {
     }
   }
 
+  /// コールバックの設定
+  void _setupCallbacks() {
+    // 入道雲検出コールバック
+    PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
+
+    // 位置情報更新コールバック
+    LocationService.onLocationChanged = _handleLocationUpdate;
+  }
+
   /// 位置情報の非同期保存
   void _saveLocationAsync() async {
     if (_currentLocation == null) return;
 
     try {
-      print("📍 位置情報保存を非同期で開始...");
-
-      // FCMトークンを短時間待機（UI表示をブロックしない）
-      final fcmToken = await _getFCMTokenQuickly();
-
-      if (fcmToken != null) {
-        await PushNotificationService.saveUserLocation(
-          _currentLocation!.latitude,
-          _currentLocation!.longitude,
-        );
-        print("✅ 位置情報保存完了");
-      } else {
-        print("⚠️ FCMトークン未取得のため、位置情報保存を後で再試行");
-        // 5秒後に再試行
-        Timer(const Duration(seconds: 5), () => _saveLocationAsync());
-      }
+      await PushNotificationService.saveUserLocation(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+      );
+      print("✅ 位置情報保存完了");
     } catch (e) {
       print("❌ 位置情報保存エラー: $e");
     }
   }
 
-  /// FCMトークンを短時間で取得
-  Future<String?> _getFCMTokenQuickly() async {
-    // 既に取得済みの場合は即座に返す
-    if (PushNotificationService.fcmToken != null) {
-      return PushNotificationService.fcmToken;
-    }
+  /// 入道雲検出時の処理
+  void _handleThunderCloudDetection(List<String> directions) {
+    print("🌩️ 入道雲検出: $directions");
 
-    // 最大2秒だけ待機
-    for (int i = 0; i < 2; i++) {
-      await Future.delayed(const Duration(seconds: 1));
-      if (PushNotificationService.fcmToken != null) {
-        print("✅ FCMトークン取得確認完了 (${i + 1}秒後)");
-        return PushNotificationService.fcmToken;
+    setState(() {
+      for (String direction in directions) {
+        if (!_matchingCities.contains(direction)) {
+          _matchingCities.add(direction);
+        }
       }
-    }
+    });
 
-    print("⏳ FCMトークン取得は継続中（位置情報保存を後で再試行）");
-    return null;
+    // ローカル通知を表示
+    NotificationService.showThunderCloudNotification(directions);
   }
 
+  /// 位置情報更新時の処理
+  void _handleLocationUpdate(LatLng newLocation) {
+    print("📍 位置情報更新: $newLocation");
 
+    setState(() {
+      _currentLocation = newLocation;
+    });
+
+    // 位置情報保存（非同期）
+    _saveLocationAsync();
+  }
+
+  /// アプリが前面に戻った時の処理
+  void _handleAppResumed() {
+    print("📱 アプリがアクティブになりました");
+    PushNotificationService.updateUserActiveStatus(true);
+  }
+
+  /// アプリがバックグラウンドに移った時の処理
+  void _handleAppPaused() {
+    print("📱 アプリがバックグラウンドに移りました");
+    PushNotificationService.updateUserActiveStatus(false);
+  }
+
+  /// 気象データのデバッグ実行
+  Future<void> _debugWeatherData() async {
+    if (_currentLocation == null) {
+      print("❌ 位置情報が取得できていません");
+      return;
+    }
+
+    try {
+      await WeatherDebugService.debugWeatherData(_currentLocation!);
+    } catch (e) {
+      print("❌ 気象データデバッグエラー: $e");
+    }
+  }
+
+  /// リソースのクリーンアップ
+  void _cleanupResources() {
+    // コールバック解除
+    PushNotificationService.onThunderCloudDetected = null;
+    LocationService.onLocationChanged = null;
+
+    // サービスのクリーンアップ
+    LocationService.dispose();
+    PushNotificationService.dispose();
+
+    print("🧹 WeatherScreen リソースクリーンアップ完了");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -232,22 +203,61 @@ class WeatherScreenState extends State<WeatherScreen> {
       appBar: const WeatherAppBar(),
       body: Stack(
         children: [
+          // 背景地図
           BackgroundMapWidget(currentLocation: _currentLocation),
 
           // 入道雲方向表示オーバーレイ
-          CloudStatusOverlay(matchingCities: matchingCities),
+          CloudStatusOverlay(matchingCities: _matchingCities),
 
           // デバッグ用気象データ表示ボタン
           Positioned(
             bottom: 100,
-            right: 20,
-            child: FloatingActionButton(
+            right: 16,
+            child: FloatingActionButton.extended(
               onPressed: _debugWeatherData,
-              backgroundColor: Colors.orange,
-              child: const Icon(Icons.cloud_circle, color: Colors.white),
+              icon: const Icon(Icons.analytics),
+              label: const Text("気象データ"),
+              backgroundColor: Colors.blue.withOpacity(0.9),
             ),
           ),
+
+          // サービス状態表示（デバッグ用）
+          if (const bool.fromEnvironment('SHOW_DEBUG_INFO', defaultValue: false))
+            _buildDebugInfoOverlay(),
         ],
+      ),
+    );
+  }
+
+  /// デバッグ情報オーバーレイ
+  Widget _buildDebugInfoOverlay() {
+    return Positioned(
+      top: 120,
+      left: 16,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Debug Info",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Location: ${_currentLocation?.toString() ?? 'Unknown'}",
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            Text(
+              "Cities: ${_matchingCities.join(', ')}",
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }
