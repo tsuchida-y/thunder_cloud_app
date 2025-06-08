@@ -31,8 +31,13 @@ void main() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // 通知サービスの初期化（権限リクエストも含む）
+    print("🔔 NotificationService初期化開始...");
     await NotificationService.initialize();//ローカル通知
+    print("✅ NotificationService初期化完了");
+
+    print("🔔 PushNotificationService初期化開始...");
     await PushNotificationService.initialize();//FCM通知
+    print("✅ PushNotificationService初期化完了");
 
     // FCMトークンの取得と確認
     final fcmToken = PushNotificationService.fcmToken;
