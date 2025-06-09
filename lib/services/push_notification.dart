@@ -3,6 +3,7 @@ import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import 'fcm_token.dart';
 import 'notification.dart';
@@ -26,7 +27,10 @@ class PushNotificationService {
       _messaging = FirebaseMessaging.instance;
       _firestore = FirebaseFirestore.instance;
 
-      // 通知権限をリクエスト
+      // ローカル通知は NotificationService.initialize() で既に処理済み
+      dev.log("📱 ローカル通知権限は初期化時に処理済み");
+
+      // FCM 通知権限をリクエスト
       NotificationSettings settings = await _messaging!.requestPermission(
         alert: true,
         badge: true,
@@ -37,9 +41,12 @@ class PushNotificationService {
         provisional: false,
       );
 
-      dev.log("通知権限状態: ${settings.authorizationStatus}");
+      dev.log("🔥 FCM通知権限状態: ${settings.authorizationStatus}");
 
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      // 権限が許可された場合、または暫定的に許可された場合
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+
         // FCMトークンを取得（専用マネージャーを使用）
         final token = await FCMTokenManager.getToken();
 
@@ -54,7 +61,14 @@ class PushNotificationService {
           dev.log("❌ FCMトークン取得に失敗しました");
         }
       } else {
-        dev.log("⚠️ 通知権限が拒否されました");
+        dev.log("⚠️ 通知権限が拒否されました: ${settings.authorizationStatus}");
+
+        // 権限が拒否されていても基本機能は初期化
+        final token = await FCMTokenManager.getToken();
+        if (token != null) {
+          _setupMessageHandlers();
+          dev.log("📝 権限なしでも基本機能を初期化しました");
+        }
       }
     } catch (e) {
       dev.log("❌ PushNotificationService初期化エラー: $e");
@@ -85,12 +99,24 @@ class PushNotificationService {
     }
   }
 
-  /// ユーザー位置情報をFirestoreに保存
+  /// ユーザー位置情報をFirestoreに保存（本番環境のみ）
   static Future<void> saveUserLocation(double latitude, double longitude) async {
+    // 開発環境では位置情報保存をスキップ
+    if (kDebugMode) {
+      dev.log("🚧 開発環境のため位置情報保存をスキップ: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})");
+      return;
+    }
+
     final fcmToken = FCMTokenManager.currentToken;
 
     if (fcmToken == null) {
       dev.log("⚠️ FCMトークンが未取得のため位置情報保存をスキップ");
+      return;
+    }
+
+    // 開発用トークンの場合はスキップ
+    if (fcmToken.startsWith('dev_token_')) {
+      dev.log("🎭 開発用トークンのため位置情報保存をスキップ");
       return;
     }
 
@@ -144,10 +170,22 @@ class PushNotificationService {
   /// FCMトークンを取得（マネージャーを経由）
   static String? get fcmToken => FCMTokenManager.currentToken;
 
-  /// ユーザーのアクティブ状態を更新
+  /// ユーザーのアクティブ状態を更新（本番環境のみ）
   static Future<void> updateUserActiveStatus(bool isActive) async {
+    // 開発環境ではアクティブ状態更新をスキップ
+    if (kDebugMode) {
+      dev.log("🚧 開発環境のためアクティブ状態更新をスキップ: $isActive");
+      return;
+    }
+
     final fcmToken = FCMTokenManager.currentToken;
     if (fcmToken == null) return;
+
+    // 開発用トークンの場合はスキップ
+    if (fcmToken.startsWith('dev_token_')) {
+      dev.log("🎭 開発用トークンのためアクティブ状態更新をスキップ");
+      return;
+    }
 
     try {
       await _firestore!.collection('users').doc(fcmToken).update({

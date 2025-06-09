@@ -3,6 +3,7 @@ import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import '../firebase_options.dart';
 import 'notification.dart';
@@ -25,13 +26,14 @@ class AppInitializationService {
     try {
       dev.log("🚀 アプリケーション初期化開始");
 
-      // 並列で初期化を実行（高速化）
-      final futures = [
-        _initializeFirebase(),
-        _initializeNotificationServices(),
-      ];
+      // まずFirebaseを初期化
+      await _initializeFirebase();
 
-      await Future.wait(futures);
+      // CPU負荷軽減のため少し待機
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Firebase初期化完了後に通知サービスを初期化
+      await _initializeNotificationServices();
 
       // Firebase接続テスト
       await _testFirestoreConnection();
@@ -84,8 +86,14 @@ class AppInitializationService {
     }
   }
 
-  /// Firestore接続テスト
+  /// Firestore接続テスト（開発環境のみ）
   static Future<void> _testFirestoreConnection() async {
+    // 本番環境では接続テストをスキップ
+    if (!kDebugMode) {
+      dev.log("🚀 本番環境のためFirestore接続テストをスキップ");
+      return;
+    }
+
     try {
       dev.log("🔍 Firestore接続テスト開始");
 

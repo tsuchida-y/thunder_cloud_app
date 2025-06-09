@@ -10,9 +10,9 @@ class WeatherConstants {
   static const String monitoringMessage = "サーバーが5分間隔で監視中";
 
   // 位置監視設定
-  static const double locationUpdateDistanceFilter = 1000.0; // 1km移動で更新
+  static const double locationUpdateDistanceFilter = 5000.0; // 5km移動で更新（CPU負荷軽減）
   static const int locationUpdateTimeInterval = 5; // 最低5分間隔
-  static const LocationAccuracy locationAccuracy = LocationAccuracy.high;
+  static const LocationAccuracy locationAccuracy = LocationAccuracy.medium; // CPU負荷軽減
 
   // バッテリー節約モード
   static const double batterySaveDistanceFilter = 5000.0; // 5km移動で更新
