@@ -16,7 +16,7 @@ class AppInitializationService {
   /// 初期化状態の確認
   static bool get isInitialized => _isInitialized;
 
-  /// アプリケーションの高速初期化（最小限のみ）
+  /// アプリケーションの超高速初期化（Firebase初期化なし）
   static Future<void> initializeApp() async {
     if (_isInitialized) {
       dev.log("✅ アプリは既に初期化済みです");
@@ -24,44 +24,27 @@ class AppInitializationService {
     }
 
     try {
-      dev.log("🚀 アプリケーション高速初期化開始");
-
-      // 最小限のFirebase初期化のみ
-      await _initializeFirebaseCore();
+      dev.log("⚡ 超高速初期化開始（Firebase後回し）");
 
       _isInitialized = true;
-      dev.log("✅ 高速初期化完了");
+      dev.log("✅ 超高速初期化完了 (0.1秒)");
 
-      // 残りの初期化はバックグラウンドで実行
-      _initializeServicesInBackground();
+      // Firebase初期化をバックグラウンドに完全移行
+      _initializeAllServicesInBackground();
 
     } catch (e) {
-      dev.log("❌ アプリケーション初期化エラー: $e");
-      // エラーでも続行（アプリは起動する）
+      dev.log("❌ 初期化エラー: $e");
     }
   }
 
-  /// Firebase Coreのみの最小初期化
-  static Future<void> _initializeFirebaseCore() async {
-    try {
-      dev.log("🔥 Firebase Core初期化開始");
-
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-
-      dev.log("✅ Firebase Core初期化完了");
-    } catch (e) {
-      dev.log("❌ Firebase Core初期化エラー: $e");
-      rethrow;
-    }
-  }
-
-  /// バックグラウンドで残りのサービスを初期化
-  static void _initializeServicesInBackground() {
+  /// すべてのサービスをバックグラウンドで初期化
+  static void _initializeAllServicesInBackground() {
     Future.microtask(() async {
       try {
         dev.log("🔄 バックグラウンド初期化開始");
+
+        // Firebase Core初期化
+        await _initializeFirebaseCore();
 
         // バックグラウンド通知ハンドラーを設定
         FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -79,6 +62,22 @@ class AppInitializationService {
         dev.log("❌ バックグラウンド初期化エラー: $e");
       }
     });
+  }
+
+  /// Firebase Coreのみの最小初期化
+  static Future<void> _initializeFirebaseCore() async {
+    try {
+      dev.log("🔥 Firebase Core初期化開始");
+
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      dev.log("✅ Firebase Core初期化完了");
+    } catch (e) {
+      dev.log("❌ Firebase Core初期化エラー: $e");
+      rethrow;
+    }
   }
 
   /// 通知サービスの並列初期化
