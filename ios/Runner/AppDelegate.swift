@@ -14,7 +14,7 @@ import UserNotifications
     // Firebase初期化
     FirebaseApp.configure()
 
-    GMSServices.provideAPIKey("AIzaSyCGQqdKzyFzLfRDHJOpeYDSmRnElVZFfFw")
+    GMSServices.provideAPIKey("AIzaSyC8q8kr1HYOMNpDPZQ-Mp4UQ6zIzbmGjUw")
 
     GeneratedPluginRegistrant.register(with: self)
 

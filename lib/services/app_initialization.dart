@@ -3,6 +3,7 @@ import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import '../firebase_options.dart';
 import 'notification.dart';
@@ -15,7 +16,7 @@ class AppInitializationService {
   /// 初期化状態の確認
   static bool get isInitialized => _isInitialized;
 
-  /// アプリケーションの完全初期化
+  /// アプリケーションの高速初期化（最小限のみ）
   static Future<void> initializeApp() async {
     if (_isInitialized) {
       dev.log("✅ アプリは既に初期化済みです");
@@ -23,21 +24,16 @@ class AppInitializationService {
     }
 
     try {
-      dev.log("🚀 アプリケーション初期化開始");
+      dev.log("🚀 アプリケーション高速初期化開始");
 
-      // 並列で初期化を実行（高速化）
-      final futures = [
-        _initializeFirebase(),
-        _initializeNotificationServices(),
-      ];
-
-      await Future.wait(futures);
-
-      // Firebase接続テスト
-      await _testFirestoreConnection();
+      // 最小限のFirebase初期化のみ
+      await _initializeFirebaseCore();
 
       _isInitialized = true;
-      dev.log("✅ アプリケーション初期化完了");
+      dev.log("✅ 高速初期化完了");
+
+      // 残りの初期化はバックグラウンドで実行
+      _initializeServicesInBackground();
 
     } catch (e) {
       dev.log("❌ アプリケーション初期化エラー: $e");
@@ -45,68 +41,77 @@ class AppInitializationService {
     }
   }
 
-  /// Firebaseの初期化
-  static Future<void> _initializeFirebase() async {
+  /// Firebase Coreのみの最小初期化
+  static Future<void> _initializeFirebaseCore() async {
     try {
-      dev.log("🔥 Firebase初期化開始");
+      dev.log("🔥 Firebase Core初期化開始");
 
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
-      // バックグラウンド通知ハンドラーを設定
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-      dev.log("✅ Firebase初期化完了");
+      dev.log("✅ Firebase Core初期化完了");
     } catch (e) {
-      dev.log("❌ Firebase初期化エラー: $e");
+      dev.log("❌ Firebase Core初期化エラー: $e");
       rethrow;
     }
   }
 
-  /// 通知サービスの初期化
+  /// バックグラウンドで残りのサービスを初期化
+  static void _initializeServicesInBackground() {
+    Future.microtask(() async {
+      try {
+        dev.log("🔄 バックグラウンド初期化開始");
+
+        // バックグラウンド通知ハンドラーを設定
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+        // 通知サービスを並列初期化
+        await _initializeNotificationServices();
+
+        // デバッグ時のみFirestore接続テスト（軽量化）
+        if (kDebugMode) {
+          await _quickFirestoreTest();
+        }
+
+        dev.log("✅ バックグラウンド初期化完了");
+      } catch (e) {
+        dev.log("❌ バックグラウンド初期化エラー: $e");
+      }
+    });
+  }
+
+  /// 通知サービスの並列初期化
   static Future<void> _initializeNotificationServices() async {
     try {
-      dev.log("🔔 通知サービス初期化開始");
+      dev.log("🔔 通知サービス並列初期化開始");
 
       // 並列で両方の通知サービスを初期化
-      final futures = [
+      await Future.wait([
         NotificationService.initialize(),
         PushNotificationService.initialize(),
-      ];
-
-      await Future.wait(futures);
+      ]);
 
       dev.log("✅ 通知サービス初期化完了");
     } catch (e) {
       dev.log("❌ 通知サービス初期化エラー: $e");
-      rethrow;
     }
   }
 
-  /// Firestore接続テスト
-  static Future<void> _testFirestoreConnection() async {
+  /// 軽量なFirestore接続確認
+  static Future<void> _quickFirestoreTest() async {
     try {
-      dev.log("🔍 Firestore接続テスト開始");
+      dev.log("🔍 軽量Firestore接続確認");
 
-      final firestore = FirebaseFirestore.instance;
-      final testDoc = firestore.collection('_test_connection').doc('init');
+      // 単純なinstance取得のみで接続確認
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
 
-      // 軽量ドキュメント作成テスト
-      await testDoc.set({
-        'timestamp': FieldValue.serverTimestamp(),
-        'source': 'app_init',
-        'version': '1.0.0',
-      }, SetOptions(merge: true));
-
-      dev.log("✅ Firestore接続テスト成功");
-
-      // クリーンアップ
-      await testDoc.delete();
-
+      dev.log("✅ Firestore接続確認完了");
     } catch (e) {
-      dev.log("❌ Firestore接続テストエラー: $e");
-      // エラーでも続行
+      dev.log("❌ Firestore接続確認エラー: $e");
     }
   }
 

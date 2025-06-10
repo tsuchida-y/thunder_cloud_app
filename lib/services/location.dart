@@ -56,7 +56,6 @@ class LocationService {
       locationSettings: LocationSettings(
         accuracy: WeatherConstants.locationAccuracy,
         distanceFilter: WeatherConstants.locationUpdateDistanceFilter.toInt(),
-        timeLimit: const Duration(minutes: 10),
       ),
     ).listen(
       _handleLocationUpdate,

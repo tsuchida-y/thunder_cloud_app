@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.thunderCloudApp</string>
+	<string>com.tsuchida.thundercloud</string>
 	<key>PROJECT_ID</key>
 	<string>thunder-cloud-app-292e6</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:852675497714:ios:fe475f2dc339bcdb334a6b</string>
+	<string>1:852675497714:ios:df6d20b3d0372f06334a6b</string>
 </dict>
 </plist>

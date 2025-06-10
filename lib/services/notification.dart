@@ -1,8 +1,7 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
-import 'dart:developer';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -64,41 +63,74 @@ class NotificationService {
 
   /// 権限のリクエスト
   static Future<bool> requestPermissions() async {
-    log("通知権限をリクエスト中...");
+    log("🔔 通知権限をリクエスト中...");
 
-    if (Platform.isAndroid) {
-      // Android 13+ の通知権限リクエスト
-      final androidPlugin = _notifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      
-      bool? androidResult;
-      if (androidPlugin != null) {
-        androidResult = await androidPlugin.requestNotificationsPermission();
-      }
-      
-      log("Android通知権限リクエスト結果: $androidResult");
-      return androidResult ?? false;
-      
-    } else if (Platform.isIOS) {
-      // iOS の通知権限リクエスト
-      final iosPlugin = _notifications
-          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-      
-      if (iosPlugin != null) {
+    try {
+      if (Platform.isAndroid) {
+        // まず現在の権限状態をチェック
+        final androidPlugin = _notifications
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+        if (androidPlugin == null) {
+          log("❌ Android通知プラグインが利用できません");
+          return false;
+        }
+
+        // Android 13+ (API 33+) の場合
+        bool? areNotificationsEnabled = await androidPlugin.areNotificationsEnabled();
+        log("📱 現在の通知権限状態: $areNotificationsEnabled");
+
+        if (areNotificationsEnabled == true) {
+          log("✅ 通知権限は既に許可されています");
+          return true;
+        }
+
+        // 権限をリクエスト
+        log("🔄 通知権限をリクエスト...");
+        bool? result = await androidPlugin.requestNotificationsPermission();
+
+        log("📋 Android通知権限リクエスト結果: $result");
+
+        // 結果を再確認
+        if (result == true) {
+          areNotificationsEnabled = await androidPlugin.areNotificationsEnabled();
+          log("🔍 権限リクエスト後の状態: $areNotificationsEnabled");
+          return areNotificationsEnabled ?? false;
+        }
+
+        return result ?? false;
+
+      } else if (Platform.isIOS) {
+        // iOS の通知権限リクエスト
+        final iosPlugin = _notifications
+            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+
+        if (iosPlugin == null) {
+          log("❌ iOS通知プラグインが利用できません");
+          return false;
+        }
+
         final result = await iosPlugin.requestPermissions(
           alert: true,
           badge: true,
           sound: true,
         );
-        log("iOS通知権限リクエスト結果: $result");
+
+        log("🍎 iOS通知権限リクエスト結果: $result");
         return result ?? false;
       }
+
+      log("⚠️ サポートされていないプラットフォームです");
+      return false;
+
+    } catch (e) {
+      log("❌ 通知権限リクエストエラー: $e");
+      return false;
     }
-    return false;
   }
 
 
-  /// 入道雲出現通知
+    /// 入道雲出現通知
   static Future<void> showThunderCloudNotification(
       List<String> directions) async {
     if (directions.isEmpty) return;
@@ -107,7 +139,7 @@ class NotificationService {
     final timestamp = DateTime.now();
 
     try {
-      
+
       const androidDetails = AndroidNotificationDetails(
         'thunder_cloud_channel',
         '入道雲通知',//ユーザに表示
@@ -144,10 +176,53 @@ class NotificationService {
         payload: 'thunder_cloud:$directionsText',
       );
 
-      log("通知送信完了: $directionsText");
+      log("✅ 通知送信完了: $directionsText");
     } catch (e) {
-      log("通知送信エラー: $e");
+      log("❌ 通知送信エラー: $e");
     }
   }
-  
+
+  /// デバッグ用テスト通知
+  static Future<void> showTestNotification() async {
+    try {
+      log("🧪 テスト通知を送信中...");
+
+      const androidDetails = AndroidNotificationDetails(
+        'thunder_cloud_channel',
+        '入道雲通知',
+        channelDescription: 'テスト通知',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+        playSound: true,
+        autoCancel: true,
+      );
+
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      final timestamp = DateTime.now();
+      await _notifications.show(
+        999, // テスト用固定ID
+        '🧪 テスト通知',
+        '通知機能が正常に動作しています - ${timestamp.toString().substring(11, 19)}',
+        details,
+        payload: 'test_notification',
+      );
+
+      log("✅ テスト通知送信完了");
+    } catch (e) {
+      log("❌ テスト通知エラー: $e");
+    }
+  }
+
 }
