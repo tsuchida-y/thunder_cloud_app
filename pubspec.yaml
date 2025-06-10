@@ -1,5 +1,5 @@
 name: thunder_cloud_app
-description: "A new Flutter project."
+description: "積乱雲検出・通知アプリ - リアルタイムで積乱雲を監視し、危険を事前に察知"
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
