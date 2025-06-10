@@ -1,3 +1,56 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    // ✅ Flutter SDK設定
+    "dart.flutterSdkPath": "/Users/tsuchida/dev/flutter",
+    "dart.flutterSdkPaths": [
+        "/Users/tsuchida/dev/flutter"
+    ],
+    "dart.flutterRunLogFile": "/tmp/flutter_run.log",
+    // ✅ Dart & Flutter開発設定
+    "dart.checkForSdkUpdates": false,
+    "dart.flutterHotReloadOnSave": "all",
+    "dart.previewFlutterUiGuides": true,
+    "dart.previewFlutterUiGuidesCustomTracking": true,
+    "dart.flutterOutline": true,
+    "dart.closingLabels": true,
+    // ✅ コード整形設定
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+    },
+    // ✅ Firebase & Android開発設定
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-17",
+            "path": "/opt/homebrew/opt/openjdk@17"
+        }
+    ],
+    // ✅ Git設定
+    "git.autofetch": true,
+    "git.enableCommitSigning": false,
+    // ✅ エディタ設定
+    "editor.rulers": [
+        80,
+        120
+    ],
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": true,
+    // ✅ Flutter固有の設定
+    "dart.flutterCreateAndroidLanguage": "kotlin",
+    "dart.flutterCreateIOSLanguage": "swift",
+    "dart.flutterCreatePlatforms": [
+        "android",
+        "ios"
+    ],
+    // ✅ デバッグ設定
+    "dart.debugExternalPackageLibraries": false,
+    "dart.debugSdkLibraries": false,
+    "dart.evaluateGettersInDebugViews": true,
+    // ✅ ファイル関連付け
+    "files.associations": {
+        "*.dart": "dart",
+        "pubspec.yaml": "yaml",
+        "analysis_options.yaml": "yaml"
+    }
 }

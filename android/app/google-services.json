@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "852675497714",
+    "project_id": "thunder-cloud-app-292e6",
+    "storage_bucket": "thunder-cloud-app-292e6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:852675497714:android:cb7c8922121301a8334a6b",
+        "android_client_info": {
+          "package_name": "com.tsuchida.thundercloud"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZP8nwDl8FDXVvtYpF_b_REQbwsVpnZ2E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
