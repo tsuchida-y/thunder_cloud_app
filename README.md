@@ -1,5 +1,31 @@
 # 入道雲サーチアプリ
 
+美しい入道雲の発生を検出・通知する観賞・撮影支援アプリです。
+
+## プライバシーポリシー
+
+本アプリのプライバシーポリシーは以下で確認できます：
+
+**プライバシーポリシーURL**: [https://github.com/tsuchida-y/thunder_cloud_app/blob/main/privacy_policy.md](https://github.com/tsuchida-y/thunder_cloud_app/blob/main/privacy_policy.md)
+
+## アプリについて
+
+- **目的**: 美しい入道雲の観測・撮影支援
+- **機能**: 位置情報ベースの雲発生検出
+- **通知**: 入道雲発生時のリアルタイム通知
+
+## 技術スタック
+
+- Flutter
+- Firebase
+- Google Maps
+- OpenMeteo API
+
+## お問い合わせ
+
+- GitHub Issues: https://github.com/tsuchida-y/thunder_cloud_app/issues
+- 開発者: Tsuchida Yuto
+
 ## 背景・目的
 
 - **入道雲を見逃さないために**
@@ -318,6 +344,7 @@ xcrun simctl list devices
 # シミュレータ起動
 xcrun simctl boot <UDID>
 xcrun simctl boot CD928AEE-F546-4212-A73D-E491C33E041F
+xcrun simctl boot 60748703-0EE0-4B9E-A44C-0EBA7C730054 //13proMax
 
 # Simulatorアプリを開く
 open -a Simulator

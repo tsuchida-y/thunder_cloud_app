@@ -182,8 +182,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-
-
   /// リソースのクリーンアップ
   void _cleanupResources() {
     // コールバック解除
@@ -218,6 +216,27 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
               icon: const Icon(Icons.analytics),
               label: const Text("気象データ"),
               backgroundColor: Colors.blue.withOpacity(0.9),
+            ),
+          ),
+
+          // OpenMeteoクレジット表示
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                "Weather data by Open-Meteo.com",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
             ),
           ),
 
