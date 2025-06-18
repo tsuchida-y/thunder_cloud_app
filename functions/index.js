@@ -1,11 +1,10 @@
-// functions/src/index.ts
-import axios from "axios";
-import { initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
-import { onSchedule } from "firebase-functions/v2/scheduler";
-import { calculateDirectionCoordinates } from "./coordinate_utils";
-import { ThunderCloudAnalyzer } from "./thunder_cloud_analyzer";
+const axios = require("axios");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { calculateDirectionCoordinates } = require("./coordinate_utils");
+const { ThunderCloudAnalyzer } = require("./thunder_cloud_analyzer");
 
 // Firebase Admin 初期化
 initializeApp();
@@ -16,7 +15,7 @@ const CHECK_DIRECTIONS = ["north", "south", "east", "west"];
 const CHECK_DISTANCES = [50.0, 160.0, 250.0];
 
 // 5分間隔で入道雲チェック (Firebase Functions v5)
-export const checkThunderClouds = onSchedule("every 5 minutes", async (event) => {
+exports.checkThunderClouds = onSchedule("every 5 minutes", async (event) => {
   console.log("🌩️ 入道雲チェック開始");
 
   try {
@@ -45,8 +44,8 @@ export const checkThunderClouds = onSchedule("every 5 minutes", async (event) =>
   }
 });
 
-async function checkUserLocation(user: any): Promise<void> {
-  const thunderCloudDirections: string[] = [];
+async function checkUserLocation(user) {
+  const thunderCloudDirections = [];
 
   for (const direction of CHECK_DIRECTIONS) {
     let thunderCloudExists = false;
@@ -76,7 +75,7 @@ async function checkUserLocation(user: any): Promise<void> {
   }
 }
 
-async function checkThunderCloudCondition(lat: number, lon: number): Promise<boolean> {
+async function checkThunderCloudCondition(lat, lon) {
   try {
     const response = await axios.get(
       `https://api.open-meteo.com/v1/forecast?` +
@@ -100,7 +99,7 @@ async function checkThunderCloudCondition(lat: number, lon: number): Promise<boo
   }
 }
 
-async function sendNotification(fcmToken: string, directions: string[]): Promise<void> {
+async function sendNotification(fcmToken, directions) {
   const message = {
     token: fcmToken,
     notification: {

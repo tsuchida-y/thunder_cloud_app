@@ -1,8 +1,8 @@
-// functions/src/thunder_cloud_analyzer.ts - Dartロジックの直接移植
-export class ThunderCloudAnalyzer {
+// functions/thunder_cloud_analyzer.js - Dartロジックの直接移植
+class ThunderCloudAnalyzer {
   // ✅ Dartから直接コピー&調整
-  static analyzeWithMeteoDataOnly(meteoData: any) {
-    const scores: {[key: string]: number} = {};
+  static analyzeWithMeteoDataOnly(meteoData) {
+    const scores = {};
 
     // ✅ 既存Dartロジックをそのまま移植
     // 1. CAPE評価（重み50%）
@@ -77,3 +77,5 @@ export class ThunderCloudAnalyzer {
     };
   }
 }
+
+module.exports = { ThunderCloudAnalyzer };

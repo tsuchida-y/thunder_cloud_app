@@ -1,10 +1,10 @@
-// functions/src/coordinate_utils.ts - 既存のDartロジックを移植
-export function calculateDirectionCoordinates(
-  direction: string,
-  currentLatitude: number,
-  currentLongitude: number,
-  distanceKm: number
-): {latitude: number, longitude: number} {
+// functions/coordinate_utils.js - 既存のDartロジックを移植
+function calculateDirectionCoordinates(
+  direction,
+  currentLatitude,
+  currentLongitude,
+  distanceKm
+) {
 
   // ✅ Dartの LatLngUtil.calculateDirectionCoordinates と同じロジック
   const latitudePerDegreeKm = 111.0;
@@ -31,3 +31,5 @@ export function calculateDirectionCoordinates(
     longitude: currentLongitude + longitudeOffset,
   };
 }
+
+module.exports = { calculateDirectionCoordinates };

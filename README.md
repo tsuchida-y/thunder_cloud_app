@@ -17,7 +17,7 @@
 ## 技術スタック
 
 - Flutter
-- Firebase
+- Firebase (JavaScript Cloud Functions)
 - Google Maps
 - OpenMeteo API
 
@@ -144,17 +144,23 @@ thunder_cloud_app/
 │       └── map/
 │           └── background.dart                  // GoogleMap背景ウィジェット
 │
-├── functions/                                   // Firebase Cloud Functions
-│   ├── src/
-│   │   └── index.ts                             // 定期実行される積乱雲チェック機能
+├── functions/                                   // Firebase Cloud Functions (JavaScript)
+│   ├── index.js                                 // 定期実行される積乱雲チェック機能
+│   ├── coordinate_utils.js                      // 座標計算ユーティリティ
+│   ├── thunder_cloud_analyzer.js                // 積乱雲分析ロジック
 │   ├── package.json                             // Node.js依存関係
-│   └── tsconfig.json                            // TypeScript設定
+│   └── eslint.config.js                         // ESLint設定
 ├── firestore.rules                              // Firestore セキュリティルール
 ├── firestore.indexes.json                      // Firestore インデックス設定
 └── firebase.json                                // Firebase プロジェクト設定
 ```
 
-## Firebase Cloud Functions
+## Firebase Cloud Functions (JavaScript)
+
+### **Cloud Functions 構成**
+- **`index.js`**: メイン関数とFirebase初期化
+- **`coordinate_utils.js`**: 座標計算・距離計算ユーティリティ
+- **`thunder_cloud_analyzer.js`**: 高度気象分析・積乱雲判定ロジック
 
 ### **`checkThunderClouds` 関数**
 - **実行間隔**: 5分間隔（Pub/Sub トリガー）
@@ -164,8 +170,16 @@ thunder_cloud_app/
   3. 積乱雲検出時、該当ユーザーにプッシュ通知を送信
   4. エラーハンドリングとログ出力
 
+### **JavaScript移行の利点**
+- **シンプルな開発環境**: TypeScriptのビルドプロセスが不要
+- **直接実行**: Node.jsで直接実行可能
+- **軽量な依存関係**: 型定義ファイルが不要
+- **同等の機能**: TypeScript版と完全に同じ機能を提供
+
 ### **デプロイコマンド**
 ```bash
+cd functions
+npm install
 firebase deploy --only functions
 ```
 
@@ -242,7 +256,7 @@ flutter pub get
    - iOS: `ios/Runner/GoogleService-Info.plist`
    - Android: `android/app/google-services.json`
 
-#### **Cloud Functions のデプロイ**
+#### **Cloud Functions のデプロイ（JavaScript）**
 ```bash
 cd functions
 npm install
@@ -282,7 +296,7 @@ flutter run
 ```
 
 ### **セキュリティルール**
-現在は開発用の緩いルール設定ですが、本番環境では適切な認証・認可ルールの設定が必要です。
+現在は開発用の緩いルール設定ですが、本番環境では適切な認証・認可ルールの設定が必要
 
 ### **開発環境と本番環境の分離**
 - **開発環境（kDebugMode=true）**: Firestore への位置情報保存を無効化
@@ -324,10 +338,10 @@ flutter run
 - **データ分析**: 積乱雲出現パターンの分析・可視化
 
 ### **技術改善**
-- **オフライン対応**: データキャッシュによるオフライン機能
 - **Push通知最適化**: 高度な通知スケジューリング
 - **UI/UX改善**: アニメーション、アクセシビリティ対応
 - **テスト自動化**: ユニットテスト、統合テストの拡充
+- **Cloud Functions**: 必要に応じてTypeScriptへの再移行も可能
 
 ### **スケーラビリティ**
 - **マルチリージョン対応**: 世界各地での利用を想定した拡張
@@ -354,6 +368,9 @@ open -a Simulator
 ```bash
 # Functions ログ確認
 firebase functions:log
+
+# Functions エミュレータ実行（JavaScript）
+firebase emulators:start --only functions
 
 # Firestore データ確認
 firebase firestore:delete --all-collections
