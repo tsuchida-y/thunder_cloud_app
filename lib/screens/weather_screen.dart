@@ -207,18 +207,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           // 入道雲方向表示オーバーレイ
           CloudStatusOverlay(matchingCities: _matchingCities),
 
-          // デバッグ用気象データ表示ボタン
-          Positioned(
-            bottom: 100,
-            right: 16,
-            child: FloatingActionButton.extended(
-              onPressed: _debugWeatherData,
-              icon: const Icon(Icons.analytics),
-              label: const Text("気象データ"),
-              backgroundColor: Colors.blue.withOpacity(0.9),
-            ),
-          ),
-
           // OpenMeteoクレジット表示
           Positioned(
             bottom: 16,
