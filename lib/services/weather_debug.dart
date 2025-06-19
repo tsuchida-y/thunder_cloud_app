@@ -54,7 +54,7 @@ class WeatherDebugService {
     final uri = Uri.parse(
       'https://api.open-meteo.com/v1/forecast?'
       'latitude=${lat.toStringAsFixed(6)}&longitude=${lon.toStringAsFixed(6)}&'
-      'hourly=cape,lifted_index,convective_inhibition&'
+      'hourly=cape,lifted_index,convective_inhibition,cloud_cover,cloud_cover_mid,cloud_cover_high&'
       'current=temperature_2m&timezone=auto&forecast_days=1'
     );
 
@@ -70,6 +70,9 @@ class WeatherDebugService {
         'lifted_index': data['hourly']['lifted_index'][0] ?? 0.0,
         'convective_inhibition': data['hourly']['convective_inhibition'][0] ?? 0.0,
         'temperature': data['current']['temperature_2m'] ?? 20.0,
+        'cloud_cover': data['hourly']['cloud_cover'][0] ?? 0.0,
+        'cloud_cover_mid': data['hourly']['cloud_cover_mid'][0] ?? 0.0,
+        'cloud_cover_high': data['hourly']['cloud_cover_high'][0] ?? 0.0,
       };
     } else {
       print("❌ API エラー: ${response.statusCode}");
@@ -84,6 +87,9 @@ class WeatherDebugService {
     print("📈 Lifted Index: ${weatherData['lifted_index'].toStringAsFixed(1)}");
     print("🚧 CIN: ${weatherData['convective_inhibition'].toStringAsFixed(1)} J/kg");
     print("🌡️ 温度: ${weatherData['temperature'].toStringAsFixed(1)}°C");
+    print("☁️ 全雲量: ${weatherData['cloud_cover'].toStringAsFixed(1)}%");
+    print("🌫️ 中層雲: ${weatherData['cloud_cover_mid'].toStringAsFixed(1)}%");
+    print("⛅ 高層雲: ${weatherData['cloud_cover_high'].toStringAsFixed(1)}%");
   }
 
   /// 分析結果をログ出力

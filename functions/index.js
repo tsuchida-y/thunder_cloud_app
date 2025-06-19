@@ -80,7 +80,7 @@ async function checkThunderCloudCondition(lat, lon) {
     const response = await axios.get(
       `https://api.open-meteo.com/v1/forecast?` +
       `latitude=${lat.toFixed(6)}&longitude=${lon.toFixed(6)}&` +
-      `hourly=cape,lifted_index,convective_inhibition&` +
+      `hourly=cape,lifted_index,convective_inhibition,cloud_cover,cloud_cover_mid,cloud_cover_high&` +
       `current=temperature_2m&timezone=auto&forecast_days=1`
     );
 
@@ -88,7 +88,10 @@ async function checkThunderCloudCondition(lat, lon) {
       cape: response.data.hourly.cape[0] || 0,
       lifted_index: response.data.hourly.lifted_index[0] || 0,
       convective_inhibition: response.data.hourly.convective_inhibition[0] || 0,
-      temperature: response.data.current.temperature_2m || 20
+      temperature: response.data.current.temperature_2m || 20,
+      cloud_cover: response.data.hourly.cloud_cover[0] || 0,
+      cloud_cover_mid: response.data.hourly.cloud_cover_mid[0] || 0,
+      cloud_cover_high: response.data.hourly.cloud_cover_high[0] || 0
     };
 
     const result = ThunderCloudAnalyzer.analyzeWithMeteoDataOnly(weatherData);
