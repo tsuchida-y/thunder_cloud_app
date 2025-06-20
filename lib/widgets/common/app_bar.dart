@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../screens/settings_screen.dart';
 
 ///AppBar用のウィジェット
 ///今後おしゃれにしていきたいから、別ファイルに分離
 class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const WeatherAppBar({super.key});
+  final LatLng? currentLocation;
+
+  const WeatherAppBar({super.key, this.currentLocation});
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +24,18 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
           bottomRight: Radius.circular(30),
         ),
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => SettingsScreen(currentLocation: currentLocation),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

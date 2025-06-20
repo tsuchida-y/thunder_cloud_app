@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/services/notification.dart';
 import 'package:thunder_cloud_app/services/push_notification.dart';
+import 'package:thunder_cloud_app/services/weather_data_service.dart';
 import 'package:thunder_cloud_app/services/weather_debug.dart';
 import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
 
@@ -22,6 +23,9 @@ class WeatherScreen extends StatefulWidget {
 class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserver {
   LatLng? _currentLocation;
   final List<String> _matchingCities = [];
+  bool _isLoading = false;
+  String _lastUpdateTime = '';
+  bool _showInfoPanel = false;
 
   @override
   void initState() {
@@ -57,6 +61,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     try {
       print("🚀 WeatherScreen初期化開始");
 
+      setState(() {
+        _isLoading = true;
+      });
+
       // コールバック設定を先に実行
       _setupCallbacks();
 
@@ -66,10 +74,16 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       // 位置情報初期化（重い処理）
       await _initializeLocation();
 
+      _updateLastUpdateTime();
+
       print("✅ WeatherScreen初期化完了");
 
     } catch (e) {
       print("❌ WeatherScreen初期化エラー: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -86,6 +100,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
         // 位置情報保存（非同期）
         _saveLocationAsync();
+
+        // 気象データ取得・保存（非同期）
+        _fetchWeatherDataAsync();
 
         setState(() {});
       }
@@ -128,6 +145,18 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// 気象データの非同期取得・保存
+  void _fetchWeatherDataAsync() async {
+    if (_currentLocation == null) return;
+
+    try {
+      await WeatherDataService.instance.fetchAndStoreWeatherData(_currentLocation!);
+      print("✅ 気象データ取得・保存完了");
+    } catch (e) {
+      print("❌ 気象データ取得エラー: $e");
+    }
+  }
+
   /// 入道雲検出時の処理
   void _handleThunderCloudDetection(List<String> directions) {
     print("🌩️ 入道雲検出: $directions");
@@ -154,6 +183,11 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
     // 位置情報保存（非同期）
     _saveLocationAsync();
+
+    // 気象データ取得・保存（非同期）
+    _fetchWeatherDataAsync();
+
+    _updateLastUpdateTime();
   }
 
   /// アプリが前面に戻った時の処理
@@ -167,6 +201,16 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     print("📱 アプリがバックグラウンドに移りました");
     PushNotificationService.updateUserActiveStatus(false);
   }
+
+  /// 最終更新時刻を更新
+  void _updateLastUpdateTime() {
+    final now = DateTime.now();
+    setState(() {
+      _lastUpdateTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    });
+  }
+
+
 
   /// 気象データのデバッグ実行
   Future<void> _debugWeatherData() async {
@@ -198,7 +242,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const WeatherAppBar(),
+      appBar: WeatherAppBar(currentLocation: _currentLocation),
       body: Stack(
         children: [
           // 背景地図
@@ -207,63 +251,153 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           // 入道雲方向表示オーバーレイ
           CloudStatusOverlay(matchingCities: _matchingCities),
 
-          // OpenMeteoクレジット表示
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                "Weather data by Open-Meteo.com",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ),
+          // 情報パネル
+          _buildInfoPanel(context),
 
-          // サービス状態表示（デバッグ用）
-          if (const bool.fromEnvironment('SHOW_DEBUG_INFO', defaultValue: false))
-            _buildDebugInfoOverlay(),
+          // OpenMeteoクレジット表示（レスポンシブ対応）
+          _buildOpenMeteoCredit(context),
+
+          // ローディングインジケーター
+          if (_isLoading) _buildLoadingOverlay(),
         ],
       ),
     );
   }
 
-  /// デバッグ情報オーバーレイ
-  Widget _buildDebugInfoOverlay() {
+  /// 情報パネル
+  Widget _buildInfoPanel(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
+
     return Positioned(
-      top: 120,
-      left: 16,
+      top: isTablet ? 24 : 16,
+      right: isTablet ? 24 : 16,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _showInfoPanel = !_showInfoPanel;
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.all(isTablet ? 12 : 8),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _showInfoPanel ? Icons.keyboard_arrow_up : Icons.info_outline,
+                color: Colors.white,
+                size: isTablet ? 24 : 20,
+              ),
+              if (_showInfoPanel) ...[
+                const SizedBox(height: 8),
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: screenSize.width * 0.7,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '入道雲サーチアプリ',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isTablet ? 16 : 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '現在地: ${_currentLocation != null ? '取得済み' : '取得中...'}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isTablet ? 13 : 11,
+                        ),
+                      ),
+                      if (_lastUpdateTime.isNotEmpty)
+                        Text(
+                          '最終更新: $_lastUpdateTime',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isTablet ? 13 : 11,
+                          ),
+                        ),
+                      Text(
+                        '検出された方向: ${_matchingCities.isEmpty ? 'なし' : _matchingCities.join(', ')}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isTablet ? 13 : 11,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'タップして設定ボタンで詳細確認',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: isTablet ? 12 : 10,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+  /// ローディングオーバーレイ
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.3),
+      child: const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+        ),
+      ),
+    );
+  }
+
+  /// OpenMeteoクレジット表示（レスポンシブ対応）
+  Widget _buildOpenMeteoCredit(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
+
+    return Positioned(
+      bottom: isTablet ? 24 : 16,
+      left: isTablet ? 24 : 16,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 12 : 8,
+          vertical: isTablet ? 6 : 4,
+        ),
         decoration: BoxDecoration(
           color: Colors.black54,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(4),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Debug Info",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Location: ${_currentLocation?.toString() ?? 'Unknown'}",
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-            Text(
-              "Cities: ${_matchingCities.join(', ')}",
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ],
+        child: Text(
+          "Weather data by Open-Meteo.com",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isTablet ? 13 : 11,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ),
     );
