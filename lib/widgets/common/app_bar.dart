@@ -13,24 +13,29 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: const Text(
-        "入道雲サーチ画面",
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
+      title: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_outlined,
+            color: Colors.white,
+            size: 24,
+          ),
+          SizedBox(width: 8),
+          Text(
+            "入道雲サーチ画面",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
       centerTitle: true,
       backgroundColor: const Color.fromARGB(255, 135, 206, 250), // 空色（Sky Blue）
       foregroundColor: Colors.white, // アイコンと戻るボタンも白色に
       elevation: 3,
       shadowColor: Colors.black54,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.settings),
