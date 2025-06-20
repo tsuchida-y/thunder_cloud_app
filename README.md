@@ -6,7 +6,7 @@
 
 本アプリのプライバシーポリシーは以下で確認できます：
 
-**プライバシーポリシーURL**: [https://github.com/tsuchida-y/thunder_cloud_app/blob/main/privacy_policy.md](https://github.com/tsuchida-y/thunder_cloud_app/blob/main/privacy_policy.md)
+**プライバシーポリシーURL**: [プライバシーポリシー](https://tsuchida-y.github.io/thunder_cloud_app/privacy_policy.html)
 
 ## アプリについて
 
