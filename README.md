@@ -358,7 +358,15 @@ xcrun simctl list devices
 # シミュレータ起動
 xcrun simctl boot <UDID>
 xcrun simctl boot CD928AEE-F546-4212-A73D-E491C33E041F
-xcrun simctl boot 60748703-0EE0-4B9E-A44C-0EBA7C730054 //13proMax
+
+//13proMax
+xcrun simctl boot 60748703-0EE0-4B9E-A44C-0EBA7C730054
+
+//iPad Pro 13-inch (M4)
+xcrun simctl boot "79D1CEF9-A34A-4F9A-A9C8-DFCDC855595E"
+
+//iPhone 16
+xcrun simctl boot 36E813A4-893B-4712-8A34-431C6A3BB54C
 
 # Simulatorアプリを開く
 open -a Simulator

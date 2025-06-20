@@ -207,31 +207,42 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           // 入道雲方向表示オーバーレイ
           CloudStatusOverlay(matchingCities: _matchingCities),
 
-          // OpenMeteoクレジット表示
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                "Weather data by Open-Meteo.com",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ),
+          // OpenMeteoクレジット表示（レスポンシブ対応）
+          _buildOpenMeteoCredit(context),
 
           // サービス状態表示（デバッグ用）
           if (const bool.fromEnvironment('SHOW_DEBUG_INFO', defaultValue: false))
             _buildDebugInfoOverlay(),
         ],
+      ),
+    );
+  }
+
+  /// OpenMeteoクレジット表示（レスポンシブ対応）
+  Widget _buildOpenMeteoCredit(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
+
+    return Positioned(
+      bottom: isTablet ? 24 : 16,
+      left: isTablet ? 24 : 16,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 12 : 8,
+          vertical: isTablet ? 6 : 4,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          "Weather data by Open-Meteo.com",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isTablet ? 13 : 11,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
       ),
     );
   }
