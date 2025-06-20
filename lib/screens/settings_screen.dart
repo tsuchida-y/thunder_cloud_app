@@ -118,8 +118,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('気象データ'),
-        backgroundColor: const Color.fromARGB(255, 196, 248, 199),
+        title: const Text(
+          '気象データ',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color.fromARGB(255, 135, 206, 250), // 空色（Sky Blue）
+        foregroundColor: Colors.white, // アイコンと戻るボタンも白色に
         elevation: 3,
       ),
       body: _buildBody(),
@@ -137,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
-          color: Colors.blue.shade50,
+          color: const Color.fromARGB(255, 240, 248, 255), // より薄い空色
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

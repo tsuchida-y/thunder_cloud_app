@@ -13,9 +13,16 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: const Text("入道雲サーチ画面"),
+      title: const Text(
+        "入道雲サーチ画面",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       centerTitle: true,
-      backgroundColor: const Color.fromARGB(255, 196, 248, 199),
+      backgroundColor: const Color.fromARGB(255, 135, 206, 250), // 空色（Sky Blue）
+      foregroundColor: Colors.white, // アイコンと戻るボタンも白色に
       elevation: 3,
       shadowColor: Colors.black54,
       shape: const RoundedRectangleBorder(
