@@ -497,11 +497,15 @@ class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     try {
       // 簡易的なユーザーID（実際のアプリでは認証システムを使用）
       const userId = 'user_001';
+      print('📤 写真共有開始 - ユーザーID: $userId');
 
       // 最新のユーザー情報を取得
+      print('👤 ユーザー情報取得中...');
       final userInfo = await UserService.getUserInfo(userId);
       final userName = userInfo['userName'] ?? 'ユーザー';
+      print('✅ ユーザー情報取得完了: $userName');
 
+      print('📸 写真アップロード開始...');
       final success = await PhotoService.uploadPhoto(
         imageFile: widget.imageFile,
         userId: userId,
@@ -509,12 +513,18 @@ class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         caption: _captionController.text.trim(),
       );
 
+      print('📤 アップロード結果: ${success ? '成功' : '失敗'}');
+
       if (success) {
+        print('✅ 写真共有成功');
         _showSuccessDialog();
       } else {
+        print('❌ 写真共有失敗');
         _showErrorDialog('写真のアップロードに失敗しました');
       }
     } catch (e) {
+      print('❌ 写真共有エラー: $e');
+      print('❌ エラータイプ: ${e.runtimeType}');
       AppLogger.error('写真共有エラー: $e', tag: 'PhotoPreviewScreen');
       _showErrorDialog('共有エラー: $e');
     } finally {
@@ -536,7 +546,7 @@ class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
             onPressed: () {
               Navigator.pop(context); // ダイアログを閉じる
               Navigator.pop(context); // プレビュー画面を閉じる
-              Navigator.pop(context); // カメラ画面を閉じる
+              Navigator.pop(context, true); // カメラ画面を閉じて成功を返す
             },
             child: const Text('OK'),
           ),
