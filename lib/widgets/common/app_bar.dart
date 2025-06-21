@@ -10,9 +10,12 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   const WeatherAppBar({super.key, this.currentLocation});
 
+
+
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      automaticallyImplyLeading: false, // 左側のアイコンを削除
       title: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
