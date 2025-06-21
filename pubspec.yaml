@@ -41,6 +41,9 @@ dependencies:
   photo_view: ^0.15.0
   share_plus: ^11.0.0
 
+  # ローカルキャッシュ機能
+  shared_preferences: ^2.5.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
