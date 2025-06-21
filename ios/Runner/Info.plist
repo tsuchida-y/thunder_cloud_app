@@ -32,6 +32,10 @@
 	<string>このアプリは、あなたの現在地周辺の入道雲の発生状況を分析・表示するために位置情報を使用します。</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>このアプリは、あなたの周辺の入道雲の発生状況を監視し、入道雲が発見された際にプッシュ通知でお知らせするために位置情報を使用します。バックグラウンドでも位置情報にアクセスすることで、アプリを使用していない時でも入道雲の発生を見逃すことなく通知を受け取ることができます。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>このアプリは入道雲の写真を撮影するためにカメラを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>このアプリは撮影した入道雲の写真を保存するためにフォトライブラリにアクセスします。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
