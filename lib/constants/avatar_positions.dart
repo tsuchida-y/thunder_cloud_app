@@ -19,25 +19,25 @@ class ResponsiveAvatarPositions {
       // 北：上端から一定距離、水平中央
       "north": Offset(
         startX + availableWidth / 2 - avatarRadius,
-        startY + avatarRadius * 4,
+        startY + avatarRadius * 3,
       ),
 
       // 南：下端から一定距離、水平中央
       "south": Offset(
         startX + availableWidth / 2 - avatarRadius,
-        startY + availableHeight - avatarRadius - (avatarRadius * 7),
+        startY + availableHeight - avatarRadius - (avatarRadius * 9),
       ),
 
       // 東：右端から一定距離、垂直中央
       "east": Offset(
         startX + availableWidth - avatarRadius - (avatarRadius * 2),
-        startY + availableHeight / 2 - avatarRadius * 2,
+        startY + availableHeight / 2 - avatarRadius * 3.5,
       ),
 
       // 西：左端から一定距離、垂直中央
       "west": Offset(
         startX + avatarRadius,
-        startY + availableHeight / 2 - avatarRadius * 2,
+        startY + availableHeight / 2 - avatarRadius * 3.5,
       ),
     };
   }

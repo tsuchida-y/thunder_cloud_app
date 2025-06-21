@@ -21,16 +21,42 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.currentLocation == null) {
-      //位置情報取得中の表示
+      // 位置情報取得中の表示（ローディングインジケーターなし）
       return Container(
         color: Colors.grey[300],
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('位置情報を取得中...'),
+              const Icon(
+                Icons.location_searching,
+                size: 48,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '位置情報を取得中...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '初回起動時は時間がかかる場合があります',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: 200,
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.grey[400],
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+              ),
             ],
           ),
         ),
