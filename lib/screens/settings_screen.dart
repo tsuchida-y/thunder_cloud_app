@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../services/weather_data_service.dart';
+import '../services/weather/weather_data_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final LatLng? currentLocation;

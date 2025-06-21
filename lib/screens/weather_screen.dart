@@ -3,13 +3,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:thunder_cloud_app/services/notification.dart';
-import 'package:thunder_cloud_app/services/push_notification.dart';
-import 'package:thunder_cloud_app/services/weather_data_service.dart';
-import 'package:thunder_cloud_app/services/weather_debug.dart';
+import 'package:thunder_cloud_app/services/notification/notification_service.dart';
+import 'package:thunder_cloud_app/services/notification/push_notification_service.dart';
+import 'package:thunder_cloud_app/services/weather/weather_debug_service.dart';
 import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
 
-import '../services/location.dart';
+import '../services/location/location_service.dart';
 import '../widgets/common/app_bar.dart';
 import '../widgets/map/background.dart';
 
@@ -93,7 +92,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       _currentLocation = await LocationService.getCurrentLocationAsLatLng();
 
       if (_currentLocation != null) {
-        print("📍 初期位置情報取得成功: $_currentLocation");
+        print("📍 位置情報取得成功: $_currentLocation");
 
         // 位置情報監視開始
         LocationService.startLocationMonitoring();
@@ -101,8 +100,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         // 位置情報保存（非同期）
         _saveLocationAsync();
 
-        // 気象データ取得・保存（非同期）
-        _fetchWeatherDataAsync();
+        // 気象データは Firebase で自動管理されているため、
+        // ユーザー操作による手動取得は行わない
+        print("🔄 気象データはFirebaseで自動管理中");
 
         setState(() {});
       }
@@ -145,18 +145,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  /// 気象データの非同期取得・保存
-  void _fetchWeatherDataAsync() async {
-    if (_currentLocation == null) return;
-
-    try {
-      await WeatherDataService.instance.fetchAndStoreWeatherData(_currentLocation!);
-      print("✅ 気象データ取得・保存完了");
-    } catch (e) {
-      print("❌ 気象データ取得エラー: $e");
-    }
-  }
-
   /// 入道雲検出時の処理
   void _handleThunderCloudDetection(List<String> directions) {
     print("🌩️ 入道雲検出: $directions");
@@ -184,8 +172,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     // 位置情報保存（非同期）
     _saveLocationAsync();
 
-    // 気象データ取得・保存（非同期）
-    _fetchWeatherDataAsync();
+    // 気象データは Firebase で自動管理されているため、
+    // ユーザー操作による手動取得は行わない
+    print("🔄 位置更新 - 気象データはFirebaseで自動管理中");
 
     _updateLastUpdateTime();
   }
@@ -209,8 +198,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       _lastUpdateTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     });
   }
-
-
 
   /// 気象データのデバッグ実行
   Future<void> _debugWeatherData() async {
@@ -242,7 +229,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: WeatherAppBar(currentLocation: _currentLocation),
+      appBar: const WeatherAppBar(),
       body: Stack(
         children: [
           // 背景地図
@@ -261,6 +248,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           if (_isLoading) _buildLoadingOverlay(),
         ],
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
@@ -360,8 +348,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     );
   }
 
-
-
   /// ローディングオーバーレイ
   Widget _buildLoadingOverlay() {
     return Container(
@@ -402,4 +388,93 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       ),
     );
   }
+
+  /// ボトムナビゲーションバー
+  Widget _buildBottomNavigationBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color.fromRGBO(135, 206, 250, 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavButton(
+                icon: Icons.map,
+                label: '地図',
+                isActive: true,
+                onTap: () {
+                  // 現在の画面なので何もしない
+                },
+              ),
+              _buildNavButton(
+                icon: Icons.photo_library,
+                label: 'ギャラリー',
+                isActive: false,
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/gallery');
+                },
+              ),
+              _buildNavButton(
+                icon: Icons.people,
+                label: 'コミュニティ',
+                isActive: false,
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/community');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ナビゲーションボタン
+  Widget _buildNavButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? Colors.white : Colors.white70,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.white70,
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

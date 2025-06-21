@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
-import '../utils/coordinate.dart';
-import 'weather/analyzer.dart';
+import '../../utils/coordinate.dart';
+import 'analyzer.dart';
 
 /// 気象データのデバッグ機能を提供するサービスクラス
 class WeatherDebugService {

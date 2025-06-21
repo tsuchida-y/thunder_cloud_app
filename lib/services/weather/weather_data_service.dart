@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
-import '../utils/coordinate.dart';
-import 'weather/analyzer.dart';
+import '../../utils/coordinate.dart';
+import 'analyzer.dart';
 
 /// 気象データの管理と共有を行うサービスクラス
 class WeatherDataService extends ChangeNotifier {

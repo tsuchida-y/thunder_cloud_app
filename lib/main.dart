@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'screens/camera_screen.dart';
+import 'screens/community_screen.dart';
+import 'screens/gallery_screen.dart';
 import 'screens/weather_screen.dart';
-import 'services/app_initialization.dart';
+import 'services/core/app_initialization.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,7 +15,6 @@ void main() async {
   runApp(const MyApp());
 }
 
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -22,15 +24,19 @@ class MyApp extends StatelessWidget {
       title: 'Thunder Cloud App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.green,
+        primarySwatch: Colors.blue,
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromRGBO(135, 206, 250, 1.0),
+        ),
       ),
       home: const WeatherScreen(),
-      // 将来的なルーティング用
-      // routes: {
-      //   '/weather': (context) => const WeatherScreen(),
-      //   '/settings': (context) => const SettingsScreen(),
-      // },
+      routes: {
+        '/weather': (context) => const WeatherScreen(),
+        '/camera': (context) => const CameraScreen(),
+        '/gallery': (context) => const GalleryScreen(),
+        '/community': (context) => const CommunityScreen(),
+      },
     );
   }
 }

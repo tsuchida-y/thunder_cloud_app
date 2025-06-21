@@ -5,9 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
-import '../firebase_options.dart';
-import 'notification.dart';
-import 'push_notification.dart';
+// import '../firebase_options.dart'; // ファイルが見つからないためコメントアウト
+import '../notification/notification_service.dart';
+import '../notification/push_notification_service.dart';
 
 /// アプリケーション全体の初期化を管理するサービス
 class AppInitializationService {
@@ -70,7 +70,7 @@ class AppInitializationService {
       dev.log("🔥 Firebase Core初期化開始");
 
       await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
+        // options: DefaultFirebaseOptions.currentPlatform, // 一時的にコメントアウト
       );
 
       dev.log("✅ Firebase Core初期化完了");
@@ -127,6 +127,6 @@ class AppInitializationService {
 /// バックグラウンドメッセージハンドラー
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(/* options: DefaultFirebaseOptions.currentPlatform */); // 一時的にコメントアウト
   dev.log("📨 バックグラウンドメッセージ受信: ${message.messageId}");
 }
