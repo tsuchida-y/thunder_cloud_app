@@ -1,22 +1,48 @@
-import 'dart:convert';
-
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
 
 import '../../utils/coordinate.dart';
-import 'analyzer.dart';
 
 /// 気象データのデバッグ機能を提供するサービスクラス
 class WeatherDebugService {
+  // Firebase Functions インスタンス
+  static final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   /// 現在地の各方向の気象データを取得・分析してログ出力
   static Future<void> debugWeatherData(LatLng currentLocation) async {
     print("🌦️ === 気象データデバッグ開始 ===");
     print("📍 現在地: 緯度 ${currentLocation.latitude}, 経度 ${currentLocation.longitude}");
 
-    // 各方向の気象データを取得
-    for (String direction in ['north', 'south', 'east', 'west']) {
-      await _analyzeDirection(direction, currentLocation.latitude, currentLocation.longitude);
+    try {
+      // Firebase Functionsから複数方向の気象データを一括取得
+      final result = await _functions.httpsCallable('getDirectionalWeatherData').call({
+        'latitude': currentLocation.latitude,
+        'longitude': currentLocation.longitude,
+        'directions': 'north,south,east,west',
+      });
+
+      if (result.data != null) {
+        final data = result.data as Map<String, dynamic>;
+
+        // 各方向のデータを処理
+        for (String direction in ['north', 'south', 'east', 'west']) {
+          if (data.containsKey(direction)) {
+            final directionData = Map<String, dynamic>.from(data[direction]);
+            _logWeatherData(directionData, direction);
+
+            if (directionData.containsKey('analysis')) {
+              _logAnalysisResults(directionData['analysis'], direction);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print("❌ 気象データ取得エラー: $e");
+
+      // エラー時は個別取得にフォールバック
+      for (String direction in ['north', 'south', 'east', 'west']) {
+        await _analyzeDirection(direction, currentLocation.latitude, currentLocation.longitude);
+      }
     }
 
     print("🌦️ === 気象データデバッグ終了 ===");
@@ -34,74 +60,71 @@ class WeatherDebugService {
     print("🎯 分析地点: 緯度 ${targetLat.toStringAsFixed(6)}, 経度 ${targetLon.toStringAsFixed(6)}");
 
     try {
-      // Open-Meteo APIからデータ取得
-      final weatherData = await _fetchWeatherData(targetLat, targetLon);
+      // Firebase Functionsから気象データを取得
+      final result = await _functions.httpsCallable('getWeatherData').call({
+        'latitude': targetLat,
+        'longitude': targetLon,
+      });
 
-      if (weatherData != null) {
-        _logWeatherData(weatherData);
+      if (result.data != null) {
+        final weatherData = Map<String, dynamic>.from(result.data);
+        _logWeatherData(weatherData, direction);
 
-        // 入道雲分析を実行
-        final analysis = ThunderCloudAnalyzer.analyzeWeatherData(weatherData);
-        _logAnalysisResults(analysis);
+        if (weatherData.containsKey('analysis')) {
+          _logAnalysisResults(weatherData['analysis'], direction);
+        }
       }
     } catch (e) {
       print("❌ 気象データ取得エラー: $e");
     }
   }
 
-  /// Open-Meteo APIから気象データを取得
-  static Future<Map<String, dynamic>?> _fetchWeatherData(double lat, double lon) async {
-    final uri = Uri.parse(
-      'https://api.open-meteo.com/v1/forecast?'
-      'latitude=${lat.toStringAsFixed(6)}&longitude=${lon.toStringAsFixed(6)}&'
-      'hourly=cape,lifted_index,convective_inhibition,cloud_cover,cloud_cover_mid,cloud_cover_high&'
-      'current=temperature_2m&timezone=auto&forecast_days=1'
-    );
-
-    print("🌐 API URL: $uri");
-
-    final response = await http.get(uri);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      return {
-        'cape': data['hourly']['cape'][0] ?? 0.0,
-        'lifted_index': data['hourly']['lifted_index'][0] ?? 0.0,
-        'convective_inhibition': data['hourly']['convective_inhibition'][0] ?? 0.0,
-        'temperature': data['current']['temperature_2m'] ?? 20.0,
-        'cloud_cover': data['hourly']['cloud_cover'][0] ?? 0.0,
-        'cloud_cover_mid': data['hourly']['cloud_cover_mid'][0] ?? 0.0,
-        'cloud_cover_high': data['hourly']['cloud_cover_high'][0] ?? 0.0,
-      };
-    } else {
-      print("❌ API エラー: ${response.statusCode}");
-      return null;
-    }
-  }
-
   /// 気象データをログ出力
-  static void _logWeatherData(Map<String, dynamic> weatherData) {
-    print("📊 === 取得した気象データ ===");
-    print("🔥 CAPE: ${weatherData['cape'].toStringAsFixed(1)} J/kg");
-    print("📈 Lifted Index: ${weatherData['lifted_index'].toStringAsFixed(1)}");
-    print("🚧 CIN: ${weatherData['convective_inhibition'].toStringAsFixed(1)} J/kg");
-    print("🌡️ 温度: ${weatherData['temperature'].toStringAsFixed(1)}°C");
-    print("☁️ 全雲量: ${weatherData['cloud_cover'].toStringAsFixed(1)}%");
-    print("🌫️ 中層雲: ${weatherData['cloud_cover_mid'].toStringAsFixed(1)}%");
-    print("⛅ 高層雲: ${weatherData['cloud_cover_high'].toStringAsFixed(1)}%");
+  static void _logWeatherData(Map<String, dynamic> weatherData, String direction) {
+    print("📊 === [$direction] 取得した気象データ ===");
+    print("🔥 CAPE: ${weatherData['cape']?.toStringAsFixed(1) ?? 'N/A'} J/kg");
+    print("📈 Lifted Index: ${weatherData['lifted_index']?.toStringAsFixed(1) ?? 'N/A'}");
+    print("🚧 CIN: ${weatherData['convective_inhibition']?.toStringAsFixed(1) ?? 'N/A'} J/kg");
+    print("🌡️ 温度: ${weatherData['temperature']?.toStringAsFixed(1) ?? 'N/A'}°C");
+    print("☁️ 全雲量: ${weatherData['cloud_cover']?.toStringAsFixed(1) ?? 'N/A'}%");
+    print("🌫️ 中層雲: ${weatherData['cloud_cover_mid']?.toStringAsFixed(1) ?? 'N/A'}%");
+    print("⛅ 高層雲: ${weatherData['cloud_cover_high']?.toStringAsFixed(1) ?? 'N/A'}%");
   }
 
   /// 分析結果をログ出力
-  static void _logAnalysisResults(Map<String, dynamic> analysis) {
-    print("⚡ === 入道雲分析結果 ===");
-    print("🎯 判定: ${analysis['isLikely'] ? '入道雲の可能性あり' : '入道雲なし'}");
-    print("📊 総合スコア: ${(analysis['totalScore'] * 100).toStringAsFixed(1)}%");
-    print("🏷️ リスクレベル: ${analysis['riskLevel']}");
+  static void _logAnalysisResults(Map<String, dynamic> analysis, String direction) {
+    print("⚡ === [$direction] 入道雲分析結果 ===");
+    print("🎯 判定: ${analysis['isLikely'] == true ? '入道雲の可能性あり' : '入道雲なし'}");
+    print("📊 総合スコア: ${((analysis['totalScore'] ?? 0) * 100).toStringAsFixed(1)}%");
+    print("🏷️ リスクレベル: ${analysis['riskLevel'] ?? 'N/A'}");
     print("📋 詳細スコア:");
-    print("   - CAPE: ${(analysis['capeScore'] * 100).toStringAsFixed(1)}%");
-    print("   - Lifted Index: ${(analysis['liScore'] * 100).toStringAsFixed(1)}%");
-    print("   - CIN: ${(analysis['cinScore'] * 100).toStringAsFixed(1)}%");
-    print("   - 温度: ${(analysis['tempScore'] * 100).toStringAsFixed(1)}%");
+    print("   - CAPE: ${((analysis['capeScore'] ?? 0) * 100).toStringAsFixed(1)}%");
+    print("   - Lifted Index: ${((analysis['liScore'] ?? 0) * 100).toStringAsFixed(1)}%");
+    print("   - CIN: ${((analysis['cinScore'] ?? 0) * 100).toStringAsFixed(1)}%");
+    print("   - 温度: ${((analysis['tempScore'] ?? 0) * 100).toStringAsFixed(1)}%");
+  }
+
+  /// 指定座標の気象データを分析してログ出力
+  static Future<void> debugWeatherDataAtLocation(double lat, double lon) async {
+    print("🎯 座標 (${lat.toStringAsFixed(6)}, ${lon.toStringAsFixed(6)}) の気象データ分析");
+
+    try {
+      // Firebase Functionsから気象データを取得
+      final result = await _functions.httpsCallable('getWeatherData').call({
+        'latitude': lat,
+        'longitude': lon,
+      });
+
+      if (result.data != null) {
+        final weatherData = Map<String, dynamic>.from(result.data);
+        _logWeatherData(weatherData, "指定地点");
+
+        if (weatherData.containsKey('analysis')) {
+          _logAnalysisResults(weatherData['analysis'], "指定地点");
+        }
+      }
+    } catch (e) {
+      print("❌ 気象データ取得エラー: $e");
+    }
   }
 }
