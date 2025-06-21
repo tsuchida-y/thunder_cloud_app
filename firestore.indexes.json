@@ -1,20 +1,30 @@
 {
   "indexes": [
     {
-      "collectionGroup": "users",
+      "collectionGroup": "photos",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isActive",
+          "fieldPath": "isPublic",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "lastUpdated",
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "photos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
         },
         {
-          "fieldPath": "__name__",
-          "order": "ASCENDING"
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
         }
       ]
     }

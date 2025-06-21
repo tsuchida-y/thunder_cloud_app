@@ -1,0 +1,10 @@
+// Firebase Storage Rules
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 一時的に全てのアクセスを許可（テスト用）
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

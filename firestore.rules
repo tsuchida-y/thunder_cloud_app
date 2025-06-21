@@ -13,6 +13,30 @@ service cloud.firestore {
       allow read: if true;  // ← 一時的に読み取りも許可
     }
 
+    // photos コレクション（写真データ）
+    match /photos/{photoId} {
+      allow read: if true;   // 誰でも読み取り可能
+      allow write: if true;  // 誰でも書き込み可能（開発用）
+    }
+
+    // likes コレクション（いいね）
+    match /likes/{likeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // comments コレクション（コメント）
+    match /comments/{commentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // downloads コレクション（ダウンロード済み写真）
+    match /downloads/{downloadId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // debug コレクション（テスト用）
     match /debug/{document} {
       allow read, write: if true;
