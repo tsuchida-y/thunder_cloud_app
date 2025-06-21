@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 // import '../firebase_options.dart'; // ファイルが見つからないためコメントアウト
+import '../location/location_service.dart';
 import '../notification/notification_service.dart';
 import '../notification/push_notification_service.dart';
 
@@ -49,8 +50,8 @@ class AppInitializationService {
         // バックグラウンド通知ハンドラーを設定
         FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-        // 通知サービスを並列初期化
-        await _initializeNotificationServices();
+        // 通知サービスと位置情報サービスを並列初期化
+        await _initializeServicesInParallel();
 
         // デバッグ時のみFirestore接続テスト（軽量化）
         if (kDebugMode) {
@@ -80,21 +81,76 @@ class AppInitializationService {
     }
   }
 
-  /// 通知サービスの並列初期化
-  static Future<void> _initializeNotificationServices() async {
+  /// 通知サービスと位置情報サービスの並列初期化
+  static Future<void> _initializeServicesInParallel() async {
     try {
-      dev.log("🔔 通知サービス並列初期化開始");
+      dev.log("🔔 サービス並列初期化開始");
 
-      // 並列で両方の通知サービスを初期化
+      // 並列で通知サービスと位置情報サービスを初期化
       await Future.wait([
         NotificationService.initialize(),
         PushNotificationService.initialize(),
+        _initializeLocationService(),
       ]);
 
-      dev.log("✅ 通知サービス初期化完了");
+      dev.log("✅ サービス初期化完了");
     } catch (e) {
-      dev.log("❌ 通知サービス初期化エラー: $e");
+      dev.log("❌ サービス初期化エラー: $e");
     }
+  }
+
+  /// 位置情報サービスの初期化（一度だけ実行）
+  static Future<void> _initializeLocationService() async {
+    try {
+      dev.log("📍 位置情報サービス初期化開始");
+
+      // 位置情報監視を先に開始（軽量）
+      LocationService.startLocationMonitoring();
+      dev.log("✅ 位置情報監視開始");
+
+      // 位置情報取得は非同期で実行（UIをブロックしない）
+      _getLocationInBackground();
+
+      dev.log("✅ 位置情報サービス初期化完了");
+
+    } catch (e) {
+      dev.log("❌ 位置情報サービス初期化エラー: $e");
+
+      // エラーが発生しても監視は開始（後で再取得できるように）
+      try {
+        LocationService.startLocationMonitoring();
+        dev.log("⚠️ 位置情報監視のみ開始");
+      } catch (monitoringError) {
+        dev.log("❌ 位置情報監視開始エラー: $monitoringError");
+      }
+    }
+  }
+
+  /// バックグラウンドで位置情報を取得
+  static void _getLocationInBackground() {
+    Future.microtask(() async {
+      try {
+        dev.log("🔄 バックグラウンド位置情報取得開始");
+
+        final location = await LocationService.getCurrentLocationAsLatLng()
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                dev.log("⏰ バックグラウンド位置情報取得タイムアウト");
+                return null;
+              },
+            );
+
+        if (location != null) {
+          dev.log("✅ バックグラウンド位置情報取得成功: $location");
+        } else {
+          dev.log("⚠️ バックグラウンド位置情報取得失敗");
+        }
+
+      } catch (e) {
+        dev.log("❌ バックグラウンド位置情報取得エラー: $e");
+      }
+    });
   }
 
   /// 軽量なFirestore接続確認

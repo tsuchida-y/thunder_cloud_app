@@ -248,6 +248,13 @@ class PhotoService {
   /// 写真にいいねを追加
   static Future<bool> likePhoto(String photoId, String userId) async {
     try {
+      // 既にいいねしているかチェック
+      final isAlreadyLiked = await isPhotoLikedByUser(photoId, userId);
+      if (isAlreadyLiked) {
+        AppLogger.warning('既にいいね済み: $photoId', tag: 'PhotoService');
+        return false;
+      }
+
       final likeId = '${photoId}_$userId';
       final like = PhotoLike(
         id: likeId,
@@ -274,6 +281,13 @@ class PhotoService {
   /// 写真のいいねを削除
   static Future<bool> unlikePhoto(String photoId, String userId) async {
     try {
+      // いいねしているかチェック
+      final isLiked = await isPhotoLikedByUser(photoId, userId);
+      if (!isLiked) {
+        AppLogger.warning('いいねしていません: $photoId', tag: 'PhotoService');
+        return false;
+      }
+
       final likeId = '${photoId}_$userId';
       await _firestore.collection('likes').doc(likeId).delete();
 
@@ -287,6 +301,60 @@ class PhotoService {
     } catch (e) {
       AppLogger.error('いいね削除エラー: $e', tag: 'PhotoService');
       return false;
+    }
+  }
+
+  /// ユーザーが写真にいいねしているかチェック
+  static Future<bool> isPhotoLikedByUser(String photoId, String userId) async {
+    try {
+      final likeId = '${photoId}_$userId';
+      final doc = await _firestore.collection('likes').doc(likeId).get();
+      return doc.exists;
+    } catch (e) {
+      AppLogger.error('いいね状態確認エラー: $e', tag: 'PhotoService');
+      return false;
+    }
+  }
+
+  /// 写真のいいね状態を一括取得
+  static Future<Map<String, bool>> getPhotosLikeStatus(List<String> photoIds, String userId) async {
+    try {
+      final likeStatus = <String, bool>{};
+
+      if (photoIds.isEmpty) {
+        return likeStatus;
+      }
+
+      // 全ての写真を未いいね状態で初期化
+      for (String photoId in photoIds) {
+        likeStatus[photoId] = false;
+      }
+
+      // ユーザーのいいね一覧を取得
+      final likesSnapshot = await _firestore
+          .collection('likes')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // いいねしている写真をtrueに設定
+      for (var doc in likesSnapshot.docs) {
+        final data = doc.data();
+        final photoId = data['photoId'] as String;
+        if (photoIds.contains(photoId)) {
+          likeStatus[photoId] = true;
+        }
+      }
+
+      AppLogger.info('いいね状態一括取得完了: ${likeStatus.length}件', tag: 'PhotoService');
+      return likeStatus;
+    } catch (e) {
+      AppLogger.error('いいね状態一括取得エラー: $e', tag: 'PhotoService');
+      // エラー時は全て未いいね状態で返す
+      final likeStatus = <String, bool>{};
+      for (String photoId in photoIds) {
+        likeStatus[photoId] = false;
+      }
+      return likeStatus;
     }
   }
 
