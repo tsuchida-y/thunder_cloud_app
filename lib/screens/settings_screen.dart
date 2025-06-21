@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../services/weather/weather_data_service.dart';
+import '../services/location/location_service.dart';
+import '../services/weather/weather_cache_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final LatLng? currentLocation;
@@ -15,68 +16,109 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final WeatherDataService _weatherService = WeatherDataService.instance;
   Timer? _updateTimer;
   bool _isLoading = false;
+  Map<String, Map<String, dynamic>> _weatherData = {};
+  DateTime? _lastUpdateTime;
+  LatLng? _currentLocation;
+  Map<String, dynamic> _cacheStatus = {};
 
   @override
   void initState() {
     super.initState();
+    _initializeLocation();
     _startAutoUpdate();
-    // WeatherDataServiceの変更を監視
-    _weatherService.addListener(_onWeatherDataChanged);
+    _updateCacheStatus();
   }
 
   @override
   void dispose() {
     _updateTimer?.cancel();
-    _weatherService.removeListener(_onWeatherDataChanged);
     super.dispose();
   }
 
-  /// WeatherDataServiceの変更を監視するリスナー
-  void _onWeatherDataChanged() {
-    if (mounted) {
-      setState(() {
-        // UIを更新
-      });
+  /// 位置情報を初期化
+  Future<void> _initializeLocation() async {
+    try {
+      if (widget.currentLocation != null) {
+        _currentLocation = widget.currentLocation;
+      } else {
+        final location = await LocationService.getCurrentLocationAsLatLng();
+        if (location != null) {
+          _currentLocation = location;
+        }
+      }
+
+      if (_currentLocation != null) {
+        await _fetchWeatherData();
+      }
+    } catch (e) {
+      print("❌ 位置情報初期化エラー: $e");
     }
   }
 
   /// 自動更新を開始
   void _startAutoUpdate() {
-    // 30秒ごとに気象データを更新
-    _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted && widget.currentLocation != null) {
-        _autoRefreshWeatherData();
-      }
-    });
+    // 自動更新は行わず、画面を開いた時とキャッシュ期限切れ時のみ更新
+    // タイマーは使用しない
   }
 
-  /// 自動で気象データを更新（ユーザー操作不可）
-  Future<void> _autoRefreshWeatherData() async {
-    if (widget.currentLocation == null || _isLoading) return;
+  /// 端末キャッシュから気象データを取得
+  Future<void> _fetchWeatherData() async {
+    if (_currentLocation == null || _isLoading) return;
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      await _weatherService.fetchAndStoreWeatherData(widget.currentLocation!);
-      if (mounted) {
+      print("🌐 端末キャッシュから気象データ取得開始");
+
+      final weatherData = await WeatherCacheService.getWeatherDataWithCache(_currentLocation!);
+
+      if (weatherData != null && mounted) {
         setState(() {
+          _weatherData = weatherData;
+          _lastUpdateTime = DateTime.now();
           _isLoading = false;
         });
+
+        // キャッシュ状態を更新
+        await _updateCacheStatus();
+
+        print("✅ 気象データ取得成功");
+      } else {
+        throw Exception('気象データの取得に失敗しました');
       }
     } catch (e) {
-      print("❌ 気象データ自動更新エラー: $e");
+      print("❌ 気象データ取得エラー: $e");
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+
+        // エラーメッセージを表示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('気象データの取得に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
+
+  /// キャッシュ状態を更新
+  Future<void> _updateCacheStatus() async {
+    final status = await WeatherCacheService.getCacheStatus();
+    if (mounted) {
+      setState(() {
+        _cacheStatus = status;
+      });
+    }
+  }
+
+
 
   /// 方向名を日本語に変換
   String _getDirectionName(String direction) {
@@ -97,14 +139,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// リスクレベルに応じた色を取得
   Color _getRiskColor(String riskLevel) {
     switch (riskLevel) {
-      case 'HIGH':
+      case '高い':
         return Colors.red;
-      case 'MEDIUM':
+      case '中程度':
         return Colors.orange;
-      case 'LOW':
-        return Colors.yellow;
+      case '低い':
+        return Colors.green.shade400;
+      case '極めて低い':
+        return Colors.grey;
       default:
         return Colors.grey;
+    }
+  }
+
+  /// リスクレベルに応じた文字色を取得
+  Color _getRiskTextColor(String riskLevel) {
+    switch (riskLevel) {
+      case '高い':
+        return Colors.white;
+      case '中程度':
+        return Colors.white;
+      case '低い':
+        return Colors.white;
+      case '極めて低い':
+        return Colors.white;
+      default:
+        return Colors.white;
     }
   }
 
@@ -145,9 +205,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildBody() {
-    final weatherData = _weatherService.lastWeatherData;
-    final lastUpdate = _weatherService.lastUpdateTime;
-    final lastLocation = _weatherService.lastLocation;
+    final weatherData = _weatherData;
+    final lastUpdate = _lastUpdateTime;
+    final lastLocation = _currentLocation;
 
     return Column(
       children: [
@@ -218,12 +278,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      'データは30秒ごとに自動更新されます（手動更新不可）',
+                      'データは画面を開いた時とキャッシュ期限切れ時に更新されます',
                       style: TextStyle(fontSize: 11, color: Colors.orange),
                     ),
                   ),
                 ],
               ),
+              // キャッシュ情報
+              if (_cacheStatus.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.storage,
+                      size: 14,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'キャッシュ: ${_cacheStatus['validCaches']}/${_cacheStatus['totalCaches']} (${_cacheStatus['cacheValidDuration']}分間有効)',
+                        style: const TextStyle(fontSize: 11, color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -294,8 +374,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   child: Text(
                     analysis['riskLevel'],
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: _getRiskTextColor(analysis['riskLevel']),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
