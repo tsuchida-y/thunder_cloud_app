@@ -13,6 +13,12 @@ service cloud.firestore {
       allow read: if true;  // ← 一時的に読み取りも許可
     }
 
+    // weather_cache コレクション（気象データキャッシュ）
+    match /weather_cache/{cacheId} {
+      allow read: if true;   // 誰でも読み取り可能
+      allow write: if false; // Firebase Functionsのみ書き込み可能
+    }
+
     // photos コレクション（写真データ）
     match /photos/{photoId} {
       allow read: if true;   // 誰でも読み取り可能
