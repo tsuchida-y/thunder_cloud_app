@@ -108,6 +108,20 @@ class AppConstants {
 
   // ===== アバター・画像関連 =====
   static const double defaultAvatarRadius = 50.0;
+  static const double avatarBorderWidth = 2.0;
+
+  // パディング・マージンの追加定数
+  static const double smallPadding = 8.0;
+  static const double extraSmallPadding = 4.0;
+
+  // オーバーレイ透明度
+  static const double overlayOpacity = 0.7;
+
+  // ボーダー半径の追加定数
+  static const double smallBorderRadius = 4.0;
+
+  // フォントサイズの追加定数
+  static const double smallFontSize = 12.0;
 
   // 方向画像サイズ
   static const double directionImageSize = 70.0;
@@ -130,6 +144,16 @@ class AppConstants {
   static const int navigationIndexGallery = 1;
   static const int navigationIndexCommunity = 2;
 
+  // ===== コミュニティ関連 =====
+  static const int defaultPhotoLimit = 20;
+  static const double nearbyPhotosRadiusKm = 50.0;
+  static const String currentUserId = 'user_001';
+  static const double scrollThreshold = 200.0;
+  static const int snackBarDurationSeconds = 3;
+  static const double photoAspectRatio = 16.0 / 9.0;
+  static const double avatarRadiusSmall = 20.0;
+  static const Color backgroundColorLight = Color(0xFFF5F5F5);
+
   // ===== 気象データ分析関連 =====
   static const double defaultTemperature = 20.0;
   static const double defaultWeatherValue = 0.0;
@@ -137,6 +161,36 @@ class AppConstants {
   // 監視メッセージ
   static const String monitoringMessage = "サーバーが5分間隔で監視中";
   static const String firebaseFunctionsMessage = "Firebase Functions: 5分間隔で監視中";
+
+  // ===== ログレベル定数 =====
+  static const String logLevelDebug = 'DEBUG';
+  static const String logLevelInfo = 'INFO';
+  static const String logLevelWarning = 'WARNING';
+  static const String logLevelError = 'ERROR';
+  static const String logLevelSuccess = 'SUCCESS';
+
+  // ===== 型安全性向上のための定数 =====
+  /// 空文字列定数
+  static const String emptyString = '';
+
+  /// ゼロ値定数
+  static const int zeroInt = 0;
+  static const double zeroDouble = 0.0;
+
+  /// 無効なインデックス
+  static const int invalidIndex = -1;
+
+  // ===== エラーメッセージ定数 =====
+  static const String errorLocationNotFound = '位置情報を取得できませんでした';
+  static const String errorNetworkConnection = 'ネットワークに接続できません';
+  static const String errorDataNotFound = 'データが見つかりません';
+  static const String errorPermissionDenied = '権限が拒否されました';
+  static const String errorUnknown = '不明なエラーが発生しました';
+
+  // ===== 成功メッセージ定数 =====
+  static const String successDataLoaded = 'データの読み込みが完了しました';
+  static const String successLocationUpdated = '位置情報が更新されました';
+  static const String successPhotoSaved = '写真が保存されました';
 
   // ===== ヘルパーメソッド =====
 
@@ -165,5 +219,68 @@ class AppConstants {
     final roundedLat = roundCoordinate(latitude);
     final roundedLng = roundCoordinate(longitude);
     return 'weather_${formatCoordinate(roundedLat)}_${formatCoordinate(roundedLng)}';
+  }
+
+  // ===== ヘルパーメソッド（型安全性向上） =====
+
+  /// 安全な文字列変換
+  static String safeString(dynamic value) {
+    if (value == null) return emptyString;
+    return value.toString();
+  }
+
+  /// 安全な整数変換
+  static int safeInt(dynamic value) {
+    if (value == null) return zeroInt;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? zeroInt;
+    return zeroInt;
+  }
+
+  /// 安全な浮動小数点変換
+  static double safeDouble(dynamic value) {
+    if (value == null) return zeroDouble;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? zeroDouble;
+    return zeroDouble;
+  }
+
+  /// リストが空でないかチェック
+  static bool isNotEmptyList<T>(List<T>? list) {
+    return list != null && list.isNotEmpty;
+  }
+
+  /// 文字列が空でないかチェック
+  static bool isNotEmptyString(String? str) {
+    return str != null && str.isNotEmpty;
+  }
+
+  /// マップが空でないかチェック
+  static bool isNotEmptyMap<K, V>(Map<K, V>? map) {
+    return map != null && map.isNotEmpty;
+  }
+
+  /// 日時を読みやすい形式でフォーマット
+  static String formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}/${dateTime.month.toString().padLeft(2, '0')}/'
+           '${dateTime.day.toString().padLeft(2, '0')} '
+           '${dateTime.hour.toString().padLeft(2, '0')}:'
+           '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 時刻のみを読みやすい形式でフォーマット
+  static String formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:'
+           '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// バイトサイズを読みやすい形式でフォーマット
+  static String formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 }
