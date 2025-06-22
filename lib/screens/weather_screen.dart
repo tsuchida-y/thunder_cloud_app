@@ -6,15 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/services/notification/notification_service.dart';
 import 'package:thunder_cloud_app/services/notification/push_notification_service.dart';
-import 'package:thunder_cloud_app/services/weather/weather_data_service.dart';
 import 'package:thunder_cloud_app/services/weather/weather_debug_service.dart';
 import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
+import 'package:thunder_cloud_app/widgets/common/app_bar.dart';
 
 import '../constants/app_constants.dart';
 import '../services/location/location_service.dart';
-import '../widgets/common/app_bar.dart';
+import '../utils/logger.dart';
 import '../widgets/map/background.dart';
 
+/// 天気画面 - 入道雲の監視と表示を行うメイン画面
 class WeatherScreen extends StatefulWidget {
   final VoidCallback? onProfileUpdated;
 
@@ -25,11 +26,15 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserver {
+  // ===== 状態管理 =====
   LatLng? _currentLocation;
   final List<String> _matchingCities = [];
   bool _isLoading = false;
   String _lastUpdateTime = '';
   bool _showInfoPanel = false;
+
+  // ===== タイマー管理 =====
+  Timer? _locationWaitTimer;
 
   @override
   void initState() {
@@ -45,7 +50,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     super.dispose();
   }
 
-  /// アプリのライフサイクル変更時の処理
+  // ===== ライフサイクル管理 =====
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
@@ -60,1244 +66,586 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  /// スクリーンの初期化
+  void _handleAppResumed() {
+    AppLogger.info('アプリが再開されました', tag: 'WeatherScreen');
+    // 必要に応じて位置情報を更新
+  }
+
+  void _handleAppPaused() {
+    AppLogger.info('アプリが一時停止されました', tag: 'WeatherScreen');
+  }
+
+  // ===== 初期化メソッド =====
+
   Future<void> _initializeScreen() async {
     try {
-      print("🚀 WeatherScreen初期化開始");
+      AppLogger.info('WeatherScreen初期化開始', tag: 'WeatherScreen');
 
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
-      // コールバック設定を先に実行
-      _setupCallbacks();
-
-      // 通知初期化（軽量）
-      await _initializeNotifications();
-
-      // 既にキャッシュされた位置情報を取得（新規取得は行わない）
-      _loadCachedLocation();
-
+      await _initializeServices();
+      _loadLocationData();
       _updateLastUpdateTime();
 
-      print("✅ WeatherScreen初期化完了");
-
+      AppLogger.success('WeatherScreen初期化完了', tag: 'WeatherScreen');
     } catch (e) {
-      print("❌ WeatherScreen初期化エラー: $e");
+      AppLogger.error('WeatherScreen初期化エラー', error: e, tag: 'WeatherScreen');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// キャッシュされた位置情報を読み込み
-  void _loadCachedLocation() {
-    _currentLocation = LocationService.cachedLocation;
+  Future<void> _initializeServices() async {
+    try {
+      _setupCallbacks();
+      await _initializeNotifications();
+    } catch (e) {
+      AppLogger.error('サービス初期化エラー', error: e, tag: 'WeatherScreen');
+    }
+  }
 
-      if (_currentLocation != null) {
-      print("📍 キャッシュされた位置情報を使用: $_currentLocation");
+  Future<void> _initializeNotifications() async {
+    try {
+      await NotificationService.initialize();
+      await PushNotificationService.initialize();
+    } catch (e) {
+      AppLogger.error('通知初期化エラー', error: e, tag: 'WeatherScreen');
+    }
+  }
 
-        // 位置情報保存（非同期）
-        _saveLocationAsync();
+  void _setupCallbacks() {
+    LocationService.onLocationChanged = _handleLocationUpdate;
+    PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
+  }
 
-        setState(() {});
+  // ===== 位置情報管理 =====
+
+  void _loadLocationData() {
+    final cachedLocation = LocationService.cachedLocation;
+
+    if (cachedLocation != null) {
+      _useCachedLocation(cachedLocation);
     } else {
-      print("⚠️ キャッシュされた位置情報がありません - Firestoreから取得を試行");
-      print("🔍 LocationServiceの状態: ${LocationService.getLocationStatus()}");
-
-      // Firestoreから位置情報を取得
       _loadLocationFromFirestore();
     }
   }
 
-  /// Firestoreから位置情報を取得
-  void _loadLocationFromFirestore() async {
+  void _useCachedLocation(LatLng location) {
+    AppLogger.info('キャッシュされた位置情報を使用: $location', tag: 'WeatherScreen');
+
+    if (mounted) {
+      setState(() => _currentLocation = location);
+    }
+
+    _saveLocationAsync();
+  }
+
+  Future<void> _loadLocationFromFirestore() async {
     try {
-      print("🔍 Firestoreからユーザー位置情報を取得中...");
+      AppLogger.info('Firestoreからユーザー位置情報を取得中', tag: 'WeatherScreen');
 
-      // 固定ユーザーIDから位置情報を取得
-      const userId = AppConstants.defaultUserId;
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(AppConstants.defaultUserId)
+          .get()
+          .timeout(AppConstants.weatherDataTimeout);
 
-      if (userDoc.exists) {
-        final userData = userDoc.data();
-        if (userData != null &&
-            userData.containsKey('latitude') &&
-            userData.containsKey('longitude')) {
-
-          final latitude = userData['latitude']?.toDouble();
-          final longitude = userData['longitude']?.toDouble();
-
-          if (latitude != null && longitude != null) {
-            final firestoreLocation = LatLng(latitude, longitude);
-
-            setState(() {
-              _currentLocation = firestoreLocation;
-            });
-
-            print("✅ Firestoreからユーザー位置取得成功: $firestoreLocation");
-            _saveLocationAsync();
-            return;
-          }
+      if (userDoc.exists && mounted) {
+        final location = _extractLocationFromDoc(userDoc);
+        if (location != null) {
+          setState(() => _currentLocation = location);
+          AppLogger.success('Firestoreからユーザー位置取得成功: $location', tag: 'WeatherScreen');
+          _saveLocationAsync();
+          return;
         }
       }
 
-      print("⚠️ Firestoreにユーザー位置情報が見つかりません - バックグラウンドで位置取得を開始");
       _waitForLocationInBackground();
-
     } catch (e) {
-      print("❌ Firestoreからの位置取得エラー: $e - バックグラウンドで位置取得を開始");
+      AppLogger.error('Firestoreからの位置取得エラー', error: e, tag: 'WeatherScreen');
       _waitForLocationInBackground();
     }
   }
 
-  /// バックグラウンドで位置情報取得を待機
-  void _waitForLocationInBackground() {
-    int attempts = 0;
-    const maxAttempts = AppConstants.maxLocationAttempts;
+  LatLng? _extractLocationFromDoc(DocumentSnapshot userDoc) {
+    final userData = userDoc.data() as Map<String, dynamic>?;
 
-    Timer.periodic(AppConstants.realtimeUpdateInterval, (timer) {
+    if (userData == null ||
+        !userData.containsKey('latitude') ||
+        !userData.containsKey('longitude')) {
+      return null;
+    }
+
+    final latitude = userData['latitude']?.toDouble();
+    final longitude = userData['longitude']?.toDouble();
+
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    return LatLng(latitude, longitude);
+  }
+
+  void _waitForLocationInBackground() {
+    AppLogger.info('バックグラウンドで位置情報取得を待機', tag: 'WeatherScreen');
+
+    int attempts = 0;
+    _locationWaitTimer = Timer.periodic(AppConstants.realtimeUpdateInterval, (timer) {
       attempts++;
 
       final location = LocationService.cachedLocation;
-      if (location != null) {
-        setState(() {
-          _currentLocation = location;
-        });
-        print("📍 バックグラウンドで位置情報取得完了: $location");
+      if (location != null && mounted) {
+        setState(() => _currentLocation = location);
+        AppLogger.info('バックグラウンドで位置情報取得完了: $location', tag: 'WeatherScreen');
         _saveLocationAsync();
         timer.cancel();
         return;
       }
 
-      // タイムアウト処理
-      if (attempts >= maxAttempts) {
-        print("⏰ 位置情報取得タイムアウト - 手動取得を試行");
+      if (attempts >= AppConstants.maxLocationAttempts) {
+        AppLogger.warning('位置情報取得タイムアウト', tag: 'WeatherScreen');
         timer.cancel();
         _fallbackLocationRetrieval();
       }
     });
   }
 
-  /// フォールバック位置情報取得
-  void _fallbackLocationRetrieval() async {
+  Future<void> _fallbackLocationRetrieval() async {
     try {
-      print("🔄 フォールバック位置情報取得開始");
-      setState(() {
-        _isLoading = true;
-      });
+      AppLogger.info('フォールバック位置情報取得開始', tag: 'WeatherScreen');
 
-      // 強制的に新しい位置情報を取得
+      if (mounted) setState(() => _isLoading = true);
+
       final location = await LocationService.getCurrentLocationAsLatLng(forceRefresh: true)
           .timeout(AppConstants.locationTimeout);
 
-      if (location != null) {
-        setState(() {
-          _currentLocation = location;
-        });
-        print("✅ フォールバック位置情報取得成功: $location");
+      if (location != null && mounted) {
+        setState(() => _currentLocation = location);
+        AppLogger.success('フォールバック位置情報取得成功: $location', tag: 'WeatherScreen');
         _saveLocationAsync();
-      } else {
-        print("❌ フォールバック位置情報取得失敗");
       }
     } catch (e) {
-      print("❌ フォールバック位置情報取得エラー: $e");
+      AppLogger.error('フォールバック位置情報取得エラー', error: e, tag: 'WeatherScreen');
     } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveLocationAsync() async {
+    if (_currentLocation == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(AppConstants.defaultUserId)
+          .set({
+        'latitude': _currentLocation!.latitude,
+        'longitude': _currentLocation!.longitude,
+        'lastLocationUpdate': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      AppLogger.info('位置情報をFirestoreに保存完了', tag: 'WeatherScreen');
+    } catch (e) {
+      AppLogger.error('位置情報保存エラー', error: e, tag: 'WeatherScreen');
+    }
+  }
+
+  // ===== イベントハンドラー =====
+
+  void _handleThunderCloudDetection(List<String> directions) {
+    AppLogger.info('入道雲検出: $directions', tag: 'WeatherScreen');
+
+    if (mounted) {
       setState(() {
-        _isLoading = false;
+        _matchingCities.clear();
+        _matchingCities.addAll(directions);
       });
     }
   }
 
-  /// 通知の初期化
-  Future<void> _initializeNotifications() async {
-    try {
-      print("✅ 通知権限確認完了（初期化済み）");
-    } catch (e) {
-      print("❌ 通知初期化エラー: $e");
-    }
-  }
-
-  /// コールバックの設定
-  void _setupCallbacks() {
-    // 入道雲検出コールバック
-    PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
-
-    // 位置情報更新コールバック
-    LocationService.onLocationChanged = _handleLocationUpdate;
-  }
-
-  /// 位置情報の非同期保存
-  void _saveLocationAsync() async {
-    if (_currentLocation == null) return;
-
-    try {
-      await PushNotificationService.saveUserLocation(
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
-      );
-      print("✅ 位置情報保存完了");
-
-      // 気象データのリアルタイム監視を開始
-      print("📡 気象データのリアルタイム監視を開始");
-      WeatherDataService.instance.startRealtimeWeatherDataListener(_currentLocation!);
-
-    } catch (e) {
-      print("❌ 位置情報保存エラー: $e");
-    }
-  }
-
-  /// 入道雲検出時の処理
-  void _handleThunderCloudDetection(List<String> directions) {
-    print("🌩️ 入道雲検出: $directions");
-
-    setState(() {
-      for (String direction in directions) {
-        if (!_matchingCities.contains(direction)) {
-          _matchingCities.add(direction);
-        }
-      }
-    });
-
-    // ローカル通知を表示
-    NotificationService.showThunderCloudNotification(directions);
-  }
-
-  /// 位置情報更新時の処理
   void _handleLocationUpdate(LatLng newLocation) {
-    print("📍 位置情報更新: $newLocation");
+    AppLogger.info('位置情報更新: $newLocation', tag: 'WeatherScreen');
 
-    setState(() {
-      _currentLocation = newLocation;
-    });
-
-    // 位置情報保存（非同期）
-    _saveLocationAsync();
-
-    print("🔄 位置更新 - 気象データはFirebaseで自動管理中");
-    _updateLastUpdateTime();
+    if (mounted) {
+      setState(() => _currentLocation = newLocation);
+      _saveLocationAsync();
+    }
   }
 
-  /// アプリが前面に戻った時の処理
-  void _handleAppResumed() {
-    print("📱 アプリがアクティブになりました");
-    PushNotificationService.updateUserActiveStatus(true);
-  }
+  // ===== ユーティリティメソッド =====
 
-  /// アプリがバックグラウンドに移った時の処理
-  void _handleAppPaused() {
-    print("📱 アプリがバックグラウンドに移りました");
-    PushNotificationService.updateUserActiveStatus(false);
-  }
-
-  /// 最終更新時刻を更新
   void _updateLastUpdateTime() {
     final now = DateTime.now();
-    setState(() {
-      _lastUpdateTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    });
+    _lastUpdateTime = '${now.hour.toString().padLeft(2, '0')}:'
+                     '${now.minute.toString().padLeft(2, '0')}';
   }
 
-  /// 気象データのデバッグ実行
   Future<void> _debugWeatherData() async {
     if (_currentLocation == null) {
-      print("❌ 位置情報が取得できていません");
+      _showMessage('位置情報が取得できていません', isError: true);
       return;
     }
 
     try {
-      print("🔍 気象データテスト開始");
-      print("📍 現在位置: ${_currentLocation!.latitude}, ${_currentLocation!.longitude}");
+      AppLogger.info('デバッグ気象データ取得開始', tag: 'WeatherScreen');
 
-      // 複数方向をテスト
-      const directions = AppConstants.checkDirections;
-      const distances = AppConstants.checkDistances;
+      if (mounted) setState(() => _isLoading = true);
 
-      for (String direction in directions) {
-        print("\n🧭 $direction方向をテスト中...");
+      final weatherDebugService = WeatherDebugService();
+      final result = await weatherDebugService.debugWeatherData(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+      ).timeout(AppConstants.weatherDataTimeout);
 
-        for (double distance in distances) {
-          print("📏 距離: ${distance}km");
-
-          // 座標計算をテスト
-          final testLat = _currentLocation!.latitude + (direction == 'north' ? distance / AppConstants.latitudePerDegreeKm :
-                                                       direction == 'south' ? -distance / AppConstants.latitudePerDegreeKm : 0);
-          final testLon = _currentLocation!.longitude + (direction == 'east' ? distance / AppConstants.latitudePerDegreeKm :
-                                                        direction == 'west' ? -distance / AppConstants.latitudePerDegreeKm : 0);
-
-          print("🎯 テスト座標: ($testLat, $testLon)");
-
-          // 実際の気象データ取得をテスト
-          await WeatherDebugService().debugWeatherData(testLat, testLon);
-
-          // 少し待機
-          await Future.delayed(AppConstants.debugTestDelay);
-        }
+      if (mounted) {
+        final message = result != null
+            ? 'デバッグ完了: 気象データを取得しました'
+            : 'デバッグ完了: データが見つかりませんでした';
+        _showMessage(message);
       }
-
-      print("\n✅ 気象データテスト完了");
-
-      // 手動で入道雲検出をトリガー
-      print("\n🧪 手動入道雲検出テスト");
-      _handleThunderCloudDetection(['north', 'east']); // テスト用
-
     } catch (e) {
-      print("❌ 気象データテストエラー: $e");
+      AppLogger.error('デバッグ気象データ取得エラー', error: e, tag: 'WeatherScreen');
+      _showMessage('デバッグエラー: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// リソースのクリーンアップ
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: Duration(seconds: isError ? 4 : 2),
+      ),
+    );
+  }
+
   void _cleanupResources() {
-    // コールバック解除
-    PushNotificationService.onThunderCloudDetected = null;
+    _locationWaitTimer?.cancel();
     LocationService.onLocationChanged = null;
-
-    // サービスのクリーンアップ
-    LocationService.dispose();
-    PushNotificationService.dispose();
-
-    print("🧹 WeatherScreen リソースクリーンアップ完了");
+    PushNotificationService.onThunderCloudDetected = null;
+    AppLogger.info('WeatherScreen リソースクリーンアップ完了', tag: 'WeatherScreen');
   }
 
-  /// 外部から呼び出し可能なデータ再読み込みメソッド
-  void refreshData() {
-    print('🔄 天気データ再読み込み開始');
-    // 天気画面では特に再読み込み処理は不要（リアルタイムデータのため）
-  }
+  // ===== UI 構築メソッド =====
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const WeatherAppBar(),
-      body: Stack(
-        children: [
-          // 背景地図
-          BackgroundMapWidget(currentLocation: _currentLocation),
-
-          // 入道雲方向表示オーバーレイ
-          CloudStatusOverlay(matchingCities: _matchingCities),
-
-          // 情報パネル
-          _buildInfoPanel(context),
-
-          // OpenMeteoクレジット表示（レスポンシブ対応）
-          _buildOpenMeteoCredit(context),
-
-          // ローディングインジケーター
-          if (_isLoading) _buildLoadingOverlay(),
-        ],
+      appBar: WeatherAppBar(
+        currentLocation: _currentLocation,
+        onProfileUpdated: widget.onProfileUpdated,
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
+      body: _buildBody(),
     );
   }
 
-  /// 情報パネル
-  Widget _buildInfoPanel(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
-
-    return Positioned(
-      top: isTablet ? 24 : 16,
-      right: isTablet ? 24 : 16,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _showInfoPanel = !_showInfoPanel;
-          });
-        },
-        child: Container(
-          padding: EdgeInsets.all(isTablet ? 12 : 8),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _showInfoPanel ? Icons.keyboard_arrow_up : Icons.info_outline,
-                color: Colors.white,
-                size: isTablet ? 24 : 20,
-              ),
-              if (_showInfoPanel) ...[
-                const SizedBox(height: 8),
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: screenSize.width * 0.7,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '入道雲サーチアプリ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '現在地: ${_currentLocation != null ? '取得済み' : '取得中...'}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 13 : 11,
-                        ),
-                      ),
-                      // 位置情報の詳細状態を表示
-                      Text(
-                        '位置情報状態: ${_getLocationStatusText()}',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: isTablet ? 12 : 10,
-                        ),
-                      ),
-                      if (_lastUpdateTime.isNotEmpty)
-                        Text(
-                          '最終更新: $_lastUpdateTime',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isTablet ? 13 : 11,
-                          ),
-                        ),
-                      Text(
-                        '検出された方向: ${_matchingCities.isEmpty ? 'なし' : _matchingCities.join(', ')}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 13 : 11,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // デバッグ情報セクション
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'デバッグ情報',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isTablet ? 12 : 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Firebase Functions: 5分間隔で監視中',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: isTablet ? 11 : 9,
-                              ),
-                            ),
-                            Text(
-                              'Open-Meteo API: 気象データ取得中',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: isTablet ? 11 : 9,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // テストボタン
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _debugWeatherData,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(0.2),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                ),
-                                child: Text(
-                                  '気象データテスト',
-                                  style: TextStyle(
-                                    fontSize: isTablet ? 12 : 10,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'タップして設定ボタンで詳細確認',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: isTablet ? 12 : 10,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// ローディングオーバーレイ
-  Widget _buildLoadingOverlay() {
-    return Container(
-      color: Colors.black.withOpacity(0.3),
-      child: const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-        ),
-      ),
-    );
-  }
-
-  /// OpenMeteoクレジット表示（レスポンシブ対応）
-  Widget _buildOpenMeteoCredit(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
-
-    return Positioned(
-      bottom: isTablet ? 24 : 16,
-      left: isTablet ? 24 : 16,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 12 : 8,
-          vertical: isTablet ? 6 : 4,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          "Weather data by Open-Meteo.com",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: isTablet ? 13 : 11,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 位置情報の状態テキストを取得
-  String _getLocationStatusText() {
-    if (_currentLocation != null) {
-      return '取得済み';
-    } else {
-      return '取得中...';
-    }
-  }
-
-  /// ボトムナビゲーションバー
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(135, 206, 250, 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavButton(
-                icon: Icons.map,
-                label: '地図',
-                isActive: true,
-                onTap: () {
-                  // 現在の画面なので何もしない
-                },
-              ),
-              _buildNavButton(
-                icon: Icons.photo_library,
-                label: 'ギャラリー',
-                isActive: false,
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/gallery');
-                },
-              ),
-              _buildNavButton(
-                icon: Icons.people,
-                label: 'コミュニティ',
-                isActive: false,
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/community');
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// ナビゲーションボタン
-  Widget _buildNavButton({
-    required IconData icon,
-    required String label,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? Colors.white : Colors.white70,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.white70,
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// WeatherScreenのコンテンツ部分のみ（Scaffold不要版）
-class WeatherScreenContent extends StatefulWidget {
-  const WeatherScreenContent({super.key});
-
-  @override
-  WeatherScreenContentState createState() => WeatherScreenContentState();
-}
-
-class WeatherScreenContentState extends State<WeatherScreenContent> with WidgetsBindingObserver {
-  LatLng? _currentLocation;
-  final List<String> _matchingCities = [];
-  bool _isLoading = false;
-  String _lastUpdateTime = '';
-  bool _showInfoPanel = false;
-  bool _isInitialized = false; // 初期化状態を追跡
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initializeScreen();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cleanupResources();
-    super.dispose();
-  }
-
-  /// アプリのライフサイクル変更時の処理
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.resumed:
-        _handleAppResumed();
-        break;
-      case AppLifecycleState.paused:
-        _handleAppPaused();
-        break;
-      default:
-        break;
-    }
-  }
-
-  /// スクリーンの初期化（一度だけ実行）
-  Future<void> _initializeScreen() async {
-    if (_isInitialized) {
-      print("✅ WeatherScreenContent既に初期化済み - 軽量更新のみ実行");
-      lightweightUpdate();
-      return;
-    }
-
-    try {
-      print("🚀 WeatherScreenContent初期化開始");
-
-      setState(() {
-        _isLoading = true;
-      });
-
-      // コールバック設定を先に実行
-      _setupCallbacks();
-
-      // 通知初期化（軽量）
-      await _initializeNotifications();
-
-      // 既にキャッシュされた位置情報を取得（新規取得は行わない）
-      _loadCachedLocation();
-
-      _updateLastUpdateTime();
-      _isInitialized = true;
-
-      print("✅ WeatherScreenContent初期化完了");
-
-    } catch (e) {
-      print("❌ WeatherScreenContent初期化エラー: $e");
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  /// 軽量な更新処理（再表示時）
-  void lightweightUpdate() {
-    print("🔄 WeatherScreenContent軽量更新開始");
-
-    // キャッシュされた位置情報を再確認
-    final cachedLocation = LocationService.cachedLocation;
-    if (cachedLocation != null && _currentLocation != cachedLocation) {
-      setState(() {
-        _currentLocation = cachedLocation;
-      });
-      print("📍 位置情報を更新: $cachedLocation");
-    }
-
-    // 最終更新時刻を更新
-    _updateLastUpdateTime();
-
-    print("✅ WeatherScreenContent軽量更新完了");
-  }
-
-  /// キャッシュされた位置情報を読み込み
-  void _loadCachedLocation() {
-    _currentLocation = LocationService.cachedLocation;
-
-    if (_currentLocation != null) {
-      print("📍 キャッシュされた位置情報を使用: $_currentLocation");
-
-      // 位置情報保存（非同期）
-      _saveLocationAsync();
-
-      setState(() {});
-    } else {
-      print("⚠️ キャッシュされた位置情報がありません - Firestoreから取得を試行");
-      print("🔍 LocationServiceの状態: ${LocationService.getLocationStatus()}");
-
-      // Firestoreから位置情報を取得
-      _loadLocationFromFirestore();
-    }
-  }
-
-  /// Firestoreから位置情報を取得
-  void _loadLocationFromFirestore() async {
-    try {
-      print("🔍 Firestoreからユーザー位置情報を取得中...");
-
-      // 固定ユーザーIDから位置情報を取得
-      const userId = AppConstants.defaultUserId;
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
-      if (userDoc.exists) {
-        final userData = userDoc.data();
-        if (userData != null &&
-            userData.containsKey('latitude') &&
-            userData.containsKey('longitude')) {
-
-          final latitude = userData['latitude']?.toDouble();
-          final longitude = userData['longitude']?.toDouble();
-
-          if (latitude != null && longitude != null) {
-            final firestoreLocation = LatLng(latitude, longitude);
-
-            setState(() {
-              _currentLocation = firestoreLocation;
-            });
-
-            print("✅ Firestoreからユーザー位置取得成功: $firestoreLocation");
-            _saveLocationAsync();
-            return;
-          }
-        }
-      }
-
-      print("⚠️ Firestoreにユーザー位置情報が見つかりません - バックグラウンドで位置取得を開始");
-      _waitForLocationInBackground();
-
-    } catch (e) {
-      print("❌ Firestoreからの位置取得エラー: $e - バックグラウンドで位置取得を開始");
-      _waitForLocationInBackground();
-    }
-  }
-
-  /// バックグラウンドで位置情報取得を待機
-  void _waitForLocationInBackground() {
-    int attempts = 0;
-    const maxAttempts = AppConstants.maxLocationAttempts;
-
-    Timer.periodic(AppConstants.realtimeUpdateInterval, (timer) {
-      attempts++;
-
-      final location = LocationService.cachedLocation;
-      if (location != null) {
-        setState(() {
-          _currentLocation = location;
-        });
-        print("📍 バックグラウンドで位置情報取得完了: $location");
-        _saveLocationAsync();
-        timer.cancel();
-        return;
-      }
-
-      // タイムアウト処理
-      if (attempts >= maxAttempts) {
-        print("⏰ 位置情報取得タイムアウト - 手動取得を試行");
-        timer.cancel();
-        _fallbackLocationRetrieval();
-      }
-    });
-  }
-
-  /// フォールバック位置情報取得
-  void _fallbackLocationRetrieval() async {
-    try {
-      print("🔄 フォールバック位置情報取得開始");
-      setState(() {
-        _isLoading = true;
-      });
-
-      // 強制的に新しい位置情報を取得
-      final location = await LocationService.getCurrentLocationAsLatLng(forceRefresh: true)
-          .timeout(AppConstants.locationTimeout);
-
-      if (location != null) {
-        setState(() {
-          _currentLocation = location;
-        });
-        print("✅ フォールバック位置情報取得成功: $location");
-        _saveLocationAsync();
-      } else {
-        print("❌ フォールバック位置情報取得失敗");
-      }
-    } catch (e) {
-      print("❌ フォールバック位置情報取得エラー: $e");
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  /// 通知の初期化
-  Future<void> _initializeNotifications() async {
-    try {
-      print("✅ 通知権限確認完了（初期化済み）");
-    } catch (e) {
-      print("❌ 通知初期化エラー: $e");
-    }
-  }
-
-  /// コールバックの設定
-  void _setupCallbacks() {
-    // 入道雲検出コールバック
-    PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
-
-    // 位置情報更新コールバック
-    LocationService.onLocationChanged = _handleLocationUpdate;
-  }
-
-  /// 位置情報の非同期保存
-  void _saveLocationAsync() async {
-    if (_currentLocation == null) return;
-
-    try {
-      await PushNotificationService.saveUserLocation(
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
-      );
-      print("✅ 位置情報保存完了");
-
-      // 気象データのリアルタイム監視を開始
-      print("📡 気象データのリアルタイム監視を開始");
-      WeatherDataService.instance.startRealtimeWeatherDataListener(_currentLocation!);
-
-    } catch (e) {
-      print("❌ 位置情報保存エラー: $e");
-    }
-  }
-
-  /// 入道雲検出時の処理
-  void _handleThunderCloudDetection(List<String> directions) {
-    print("🌩️ 入道雲検出: $directions");
-
-    setState(() {
-      for (String direction in directions) {
-        if (!_matchingCities.contains(direction)) {
-          _matchingCities.add(direction);
-        }
-      }
-    });
-
-    // ローカル通知を表示
-    NotificationService.showThunderCloudNotification(directions);
-  }
-
-  /// 位置情報更新時の処理
-  void _handleLocationUpdate(LatLng newLocation) {
-    print("📍 位置情報更新: $newLocation");
-
-    setState(() {
-      _currentLocation = newLocation;
-    });
-
-    // 位置情報保存（非同期）
-    _saveLocationAsync();
-
-    print("🔄 位置更新 - 気象データはFirebaseで自動管理中");
-    _updateLastUpdateTime();
-  }
-
-  /// アプリが前面に戻った時の処理
-  void _handleAppResumed() {
-    print("📱 アプリがアクティブになりました");
-    PushNotificationService.updateUserActiveStatus(true);
-  }
-
-  /// アプリがバックグラウンドに移った時の処理
-  void _handleAppPaused() {
-    print("📱 アプリがバックグラウンドに移りました");
-    PushNotificationService.updateUserActiveStatus(false);
-  }
-
-  /// 最終更新時刻を更新
-  void _updateLastUpdateTime() {
-    final now = DateTime.now();
-    setState(() {
-      _lastUpdateTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    });
-  }
-
-  /// 気象データのデバッグ実行
-  Future<void> _debugWeatherData() async {
-    if (_currentLocation == null) {
-      print("❌ 位置情報が取得できていません");
-      return;
-    }
-
-    try {
-      print("🔍 気象データテスト開始");
-      print("📍 現在位置: ${_currentLocation!.latitude}, ${_currentLocation!.longitude}");
-
-      // 複数方向をテスト
-      final directions = ['north', 'south', 'east', 'west'];
-      final distances = [50.0, 160.0, 250.0];
-
-      for (String direction in directions) {
-        print("\n🧭 $direction方向をテスト中...");
-
-        for (double distance in distances) {
-          print("📏 距離: ${distance}km");
-
-          // 座標計算をテスト
-          final testLat = _currentLocation!.latitude + (direction == 'north' ? distance / 111.0 :
-                                                       direction == 'south' ? -distance / 111.0 : 0);
-          final testLon = _currentLocation!.longitude + (direction == 'east' ? distance / 111.0 :
-                                                        direction == 'west' ? -distance / 111.0 : 0);
-
-          print("🎯 テスト座標: ($testLat, $testLon)");
-
-          // 実際の気象データ取得をテスト
-          await WeatherDebugService().debugWeatherData(testLat, testLon);
-
-          // 少し待機
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-      }
-
-      print("\n✅ 気象データテスト完了");
-
-      // 手動で入道雲検出をトリガー
-      print("\n🧪 手動入道雲検出テスト");
-      _handleThunderCloudDetection(['north', 'east']); // テスト用
-
-    } catch (e) {
-      print("❌ 気象データテストエラー: $e");
-    }
-  }
-
-  /// リソースのクリーンアップ
-  void _cleanupResources() {
-    // コールバック解除
-    PushNotificationService.onThunderCloudDetected = null;
-    LocationService.onLocationChanged = null;
-
-    // サービスのクリーンアップ
-    LocationService.dispose();
-    PushNotificationService.dispose();
-
-    print("🧹 WeatherScreenContent リソースクリーンアップ完了");
-  }
-
-  /// 外部から呼び出し可能なデータ再読み込みメソッド
-  void refreshData() {
-    print('🔄 天気データ再読み込み開始');
-    // 天気画面では特に再読み込み処理は不要（リアルタイムデータのため）
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody() {
     return Stack(
       children: [
         // 背景地図
         BackgroundMapWidget(currentLocation: _currentLocation),
 
-        // 入道雲方向表示オーバーレイ
-        CloudStatusOverlay(matchingCities: _matchingCities),
+        // 雲状態オーバーレイ
+        if (_currentLocation != null)
+          CloudStatusOverlay(matchingCities: _matchingCities),
 
         // 情報パネル
-        _buildInfoPanel(context),
+        if (_showInfoPanel)
+          _buildInfoPanel(),
 
-        // OpenMeteoクレジット表示（レスポンシブ対応）
-        _buildOpenMeteoCredit(context),
+        // ローディングオーバーレイ
+        if (_isLoading)
+          _buildLoadingOverlay(),
 
-        // ローディングインジケーター
-        if (_isLoading) _buildLoadingOverlay(),
+        // OpenMeteoクレジット
+        _buildOpenMeteoCredit(),
+
+        // 情報パネルトグルボタン
+        _buildInfoToggleButton(),
+
+        // デバッグボタン（開発時のみ）
+        _buildDebugButton(),
       ],
     );
   }
 
-  /// 情報パネル
-  Widget _buildInfoPanel(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
-
+  Widget _buildDebugButton() {
     return Positioned(
-      top: isTablet ? 24 : 16,
-      right: isTablet ? 24 : 16,
+      top: AppConstants.isTablet(MediaQuery.of(context).size)
+          ? AppConstants.paddingXXLarge
+          : AppConstants.paddingLarge,
+      left: AppConstants.isTablet(MediaQuery.of(context).size)
+          ? AppConstants.paddingXXLarge
+          : AppConstants.paddingLarge,
+      child: FloatingActionButton(
+        mini: true,
+        onPressed: _debugWeatherData,
+        backgroundColor: Colors.orange,
+        child: const Icon(Icons.bug_report, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildInfoToggleButton() {
+    return Positioned(
+      top: AppConstants.isTablet(MediaQuery.of(context).size)
+          ? AppConstants.paddingXXLarge
+          : AppConstants.paddingLarge,
+      right: AppConstants.isTablet(MediaQuery.of(context).size)
+          ? AppConstants.paddingXXLarge
+          : AppConstants.paddingLarge,
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _showInfoPanel = !_showInfoPanel;
-          });
-        },
+        onTap: () => setState(() => _showInfoPanel = !_showInfoPanel),
         child: Container(
-          padding: EdgeInsets.all(isTablet ? 12 : 8),
+          padding: EdgeInsets.all(
+            AppConstants.isTablet(MediaQuery.of(context).size)
+                ? AppConstants.paddingMedium
+                : AppConstants.paddingSmall
+          ),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(8),
+            color: Colors.blue.withOpacity(AppConstants.opacityHigh),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                color: Colors.black.withOpacity(AppConstants.opacityLow),
+                blurRadius: AppConstants.elevationHigh,
+                offset: AppConstants.shadowOffsetSmall,
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _showInfoPanel ? Icons.keyboard_arrow_up : Icons.info_outline,
-                color: Colors.white,
-                size: isTablet ? 24 : 20,
-              ),
-              if (_showInfoPanel) ...[
-                const SizedBox(height: 8),
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: screenSize.width * 0.7,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '入道雲サーチアプリ',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 16 : 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '現在地: ${_currentLocation != null ? '取得済み' : '取得中...'}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 13 : 11,
-                        ),
-                      ),
-                      // 位置情報の詳細状態を表示
-                      Text(
-                        '位置情報状態: ${_getLocationStatusText()}',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: isTablet ? 12 : 10,
-                        ),
-                      ),
-                      if (_lastUpdateTime.isNotEmpty)
-                        Text(
-                          '最終更新: $_lastUpdateTime',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isTablet ? 13 : 11,
-                          ),
-                        ),
-                      Text(
-                        '検出された方向: ${_matchingCities.isEmpty ? 'なし' : _matchingCities.join(', ')}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isTablet ? 13 : 11,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // デバッグ情報セクション
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'デバッグ情報',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isTablet ? 12 : 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Firebase Functions: 5分間隔で監視中',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: isTablet ? 11 : 9,
-                              ),
-                            ),
-                            Text(
-                              'Open-Meteo API: 気象データ取得中',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: isTablet ? 11 : 9,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // テストボタン
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _debugWeatherData,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(0.2),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                ),
-                                child: Text(
-                                  '気象データテスト',
-                                  style: TextStyle(
-                                    fontSize: isTablet ? 12 : 10,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'タップして設定ボタンで詳細確認',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: isTablet ? 12 : 10,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+          child: Icon(
+            _showInfoPanel ? Icons.close : Icons.info,
+            color: Colors.white,
+            size: AppConstants.iconSizeMedium,
           ),
         ),
       ),
     );
   }
 
-  /// ローディングオーバーレイ
+  Widget _buildInfoPanel() {
+    return Positioned(
+      top: AppConstants.isTablet(MediaQuery.of(context).size)
+          ? 80
+          : 60,
+      right: AppConstants.paddingLarge,
+      child: Container(
+        width: AppConstants.isTablet(MediaQuery.of(context).size) ? 350 : 280,
+        padding: const EdgeInsets.all(AppConstants.paddingMedium),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(AppConstants.opacityHigh),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(AppConstants.opacityLow),
+              blurRadius: AppConstants.elevationHigh,
+              offset: AppConstants.shadowOffsetSmall,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInfoHeader(),
+            const SizedBox(height: AppConstants.paddingMedium),
+            _buildLocationInfo(),
+            const SizedBox(height: AppConstants.paddingMedium),
+            _buildMonitoringInfo(),
+            const SizedBox(height: AppConstants.paddingMedium),
+            _buildStatusInfo(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoHeader() {
+    return const Row(
+      children: [
+        Icon(
+          Icons.cloud,
+          color: Colors.blue,
+          size: AppConstants.iconSizeLarge,
+        ),
+        SizedBox(width: AppConstants.paddingSmall),
+        Expanded(
+          child: Text(
+            '入道雲監視システム',
+            style: TextStyle(
+              fontSize: AppConstants.fontSizeLarge,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '現在位置',
+          style: TextStyle(
+            fontSize: AppConstants.fontSizeMedium,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: AppConstants.paddingXSmall),
+        if (_currentLocation != null) ...[
+          Text(
+            '緯度: ${AppConstants.formatCoordinate(_currentLocation!.latitude)}',
+            style: const TextStyle(fontSize: AppConstants.fontSizeSmall),
+          ),
+          Text(
+            '経度: ${AppConstants.formatCoordinate(_currentLocation!.longitude)}',
+            style: const TextStyle(fontSize: AppConstants.fontSizeSmall),
+          ),
+        ] else ...[
+          const Text(
+            '位置情報を取得中...',
+            style: TextStyle(
+              fontSize: AppConstants.fontSizeSmall,
+              color: Colors.orange,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildMonitoringInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '監視設定',
+          style: TextStyle(
+            fontSize: AppConstants.fontSizeMedium,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: AppConstants.paddingXSmall),
+        Text(
+          '監視方向: ${AppConstants.checkDirections.join(', ')}',
+          style: const TextStyle(fontSize: AppConstants.fontSizeSmall),
+        ),
+        Text(
+          '監視距離: ${AppConstants.checkDistances.join(', ')}km',
+          style: const TextStyle(fontSize: AppConstants.fontSizeSmall),
+        ),
+        const Text(
+          AppConstants.monitoringMessage,
+          style: TextStyle(fontSize: AppConstants.fontSizeSmall),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '検出状況',
+          style: TextStyle(
+            fontSize: AppConstants.fontSizeMedium,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: AppConstants.paddingXSmall),
+        if (_matchingCities.isNotEmpty) ...[
+          Text(
+            '入道雲検出: ${_matchingCities.join(', ')}',
+            style: const TextStyle(
+              fontSize: AppConstants.fontSizeSmall,
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ] else ...[
+          const Text(
+            '入道雲は検出されていません',
+            style: TextStyle(
+              fontSize: AppConstants.fontSizeSmall,
+              color: Colors.green,
+            ),
+          ),
+        ],
+        if (_lastUpdateTime.isNotEmpty) ...[
+          const SizedBox(height: AppConstants.paddingXSmall),
+          Text(
+            '最終更新: $_lastUpdateTime',
+            style: TextStyle(
+              fontSize: AppConstants.fontSizeXSmall,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildLoadingOverlay() {
     return Container(
-      color: Colors.black.withOpacity(0.3),
-      child: const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-        ),
-      ),
-    );
-  }
-
-  /// OpenMeteoクレジット表示（レスポンシブ対応）
-  Widget _buildOpenMeteoCredit(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
-
-    return Positioned(
-      bottom: isTablet ? 24 : 16,
-      left: isTablet ? 24 : 16,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 12 : 8,
-          vertical: isTablet ? 6 : 4,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          "Weather data by Open-Meteo.com",
-          style: TextStyle(
+      color: Colors.black.withOpacity(AppConstants.opacityLow),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(AppConstants.paddingLarge),
+          decoration: BoxDecoration(
             color: Colors.white,
-            fontSize: isTablet ? 13 : 11,
-            fontWeight: FontWeight.w400,
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: AppConstants.paddingMedium),
+              Text(
+                '処理中...',
+                style: TextStyle(fontSize: AppConstants.fontSizeMedium),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /// 位置情報の状態テキストを取得
-  String _getLocationStatusText() {
-    if (_currentLocation != null) {
-      return '取得済み';
-    } else {
-      return '取得中...';
-    }
+  Widget _buildOpenMeteoCredit() {
+    return Positioned(
+      bottom: AppConstants.paddingSmall,
+      left: AppConstants.paddingSmall,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppConstants.paddingSmall,
+          vertical: AppConstants.paddingXSmall,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(AppConstants.opacityMedium),
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+        ),
+        child: const Text(
+          'Weather data by Open-Meteo.com',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: AppConstants.fontSizeXXSmall,
+          ),
+        ),
+      ),
+    );
   }
 }
+
+
 
