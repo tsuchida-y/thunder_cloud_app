@@ -1,19 +1,24 @@
 // lib/screens/weather_screen.dart - リファクタリング版
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/services/notification/notification_service.dart';
 import 'package:thunder_cloud_app/services/notification/push_notification_service.dart';
+import 'package:thunder_cloud_app/services/weather/weather_data_service.dart';
 import 'package:thunder_cloud_app/services/weather/weather_debug_service.dart';
 import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
 
+import '../constants/app_constants.dart';
 import '../services/location/location_service.dart';
 import '../widgets/common/app_bar.dart';
 import '../widgets/map/background.dart';
 
 class WeatherScreen extends StatefulWidget {
-  const WeatherScreen({super.key});
+  final VoidCallback? onProfileUpdated;
+
+  const WeatherScreen({super.key, this.onProfileUpdated});
 
   @override
   WeatherScreenState createState() => WeatherScreenState();
@@ -98,10 +103,51 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
         setState(() {});
     } else {
-      print("⚠️ キャッシュされた位置情報がありません - バックグラウンドで取得中");
+      print("⚠️ キャッシュされた位置情報がありません - Firestoreから取得を試行");
       print("🔍 LocationServiceの状態: ${LocationService.getLocationStatus()}");
 
-      // バックグラウンドで位置情報が取得されるまで待機
+      // Firestoreから位置情報を取得
+      _loadLocationFromFirestore();
+    }
+  }
+
+  /// Firestoreから位置情報を取得
+  void _loadLocationFromFirestore() async {
+    try {
+      print("🔍 Firestoreからユーザー位置情報を取得中...");
+
+      // 固定ユーザーIDから位置情報を取得
+      const userId = AppConstants.defaultUserId;
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        if (userData != null &&
+            userData.containsKey('latitude') &&
+            userData.containsKey('longitude')) {
+
+          final latitude = userData['latitude']?.toDouble();
+          final longitude = userData['longitude']?.toDouble();
+
+          if (latitude != null && longitude != null) {
+            final firestoreLocation = LatLng(latitude, longitude);
+
+            setState(() {
+              _currentLocation = firestoreLocation;
+            });
+
+            print("✅ Firestoreからユーザー位置取得成功: $firestoreLocation");
+            _saveLocationAsync();
+            return;
+          }
+        }
+      }
+
+      print("⚠️ Firestoreにユーザー位置情報が見つかりません - バックグラウンドで位置取得を開始");
+      _waitForLocationInBackground();
+
+    } catch (e) {
+      print("❌ Firestoreからの位置取得エラー: $e - バックグラウンドで位置取得を開始");
       _waitForLocationInBackground();
     }
   }
@@ -109,9 +155,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   /// バックグラウンドで位置情報取得を待機
   void _waitForLocationInBackground() {
     int attempts = 0;
-    const maxAttempts = 15; // 最大15秒待機（30秒→15秒に短縮）
+    const maxAttempts = AppConstants.maxLocationAttempts;
 
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    Timer.periodic(AppConstants.realtimeUpdateInterval, (timer) {
       attempts++;
 
       final location = LocationService.cachedLocation;
@@ -144,7 +190,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
       // 強制的に新しい位置情報を取得
       final location = await LocationService.getCurrentLocationAsLatLng(forceRefresh: true)
-          .timeout(const Duration(seconds: 10));
+          .timeout(AppConstants.locationTimeout);
 
       if (location != null) {
         setState(() {
@@ -154,11 +200,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         _saveLocationAsync();
       } else {
         print("❌ フォールバック位置情報取得失敗");
-        _showLocationError();
       }
     } catch (e) {
       print("❌ フォールバック位置情報取得エラー: $e");
-      _showLocationError();
     } finally {
       setState(() {
         _isLoading = false;
@@ -166,18 +210,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  /// 位置情報エラー表示
-  void _showLocationError() {
-    setState(() {
-      // エラー状態を示すための仮の位置情報を設定
-      // これにより地図は表示されませんが、エラーメッセージが表示されます
-    });
-  }
-
-  /// 通知の初期化（権限は既に AppInitializationService で処理済み）
+  /// 通知の初期化
   Future<void> _initializeNotifications() async {
     try {
-      // 権限確認のみ（リクエストは不要）
       print("✅ 通知権限確認完了（初期化済み）");
     } catch (e) {
       print("❌ 通知初期化エラー: $e");
@@ -203,6 +238,11 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         _currentLocation!.longitude,
       );
       print("✅ 位置情報保存完了");
+
+      // 気象データのリアルタイム監視を開始
+      print("📡 気象データのリアルタイム監視を開始");
+      WeatherDataService.instance.startRealtimeWeatherDataListener(_currentLocation!);
+
     } catch (e) {
       print("❌ 位置情報保存エラー: $e");
     }
@@ -235,10 +275,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     // 位置情報保存（非同期）
     _saveLocationAsync();
 
-    // 気象データは Firebase で自動管理されているため、
-    // ユーザー操作による手動取得は行わない
     print("🔄 位置更新 - 気象データはFirebaseで自動管理中");
-
     _updateLastUpdateTime();
   }
 
@@ -274,8 +311,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       print("📍 現在位置: ${_currentLocation!.latitude}, ${_currentLocation!.longitude}");
 
       // 複数方向をテスト
-      final directions = ['north', 'south', 'east', 'west'];
-      final distances = [50.0, 160.0, 250.0];
+      const directions = AppConstants.checkDirections;
+      const distances = AppConstants.checkDistances;
 
       for (String direction in directions) {
         print("\n🧭 $direction方向をテスト中...");
@@ -284,18 +321,18 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           print("📏 距離: ${distance}km");
 
           // 座標計算をテスト
-          final testLat = _currentLocation!.latitude + (direction == 'north' ? distance / 111.0 :
-                                                       direction == 'south' ? -distance / 111.0 : 0);
-          final testLon = _currentLocation!.longitude + (direction == 'east' ? distance / 111.0 :
-                                                        direction == 'west' ? -distance / 111.0 : 0);
+          final testLat = _currentLocation!.latitude + (direction == 'north' ? distance / AppConstants.latitudePerDegreeKm :
+                                                       direction == 'south' ? -distance / AppConstants.latitudePerDegreeKm : 0);
+          final testLon = _currentLocation!.longitude + (direction == 'east' ? distance / AppConstants.latitudePerDegreeKm :
+                                                        direction == 'west' ? -distance / AppConstants.latitudePerDegreeKm : 0);
 
           print("🎯 テスト座標: ($testLat, $testLon)");
 
           // 実際の気象データ取得をテスト
-          await WeatherDebugService.debugWeatherDataAtLocation(testLat, testLon);
+          await WeatherDebugService().debugWeatherData(testLat, testLon);
 
           // 少し待機
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(AppConstants.debugTestDelay);
         }
       }
 
@@ -556,6 +593,15 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     );
   }
 
+  /// 位置情報の状態テキストを取得
+  String _getLocationStatusText() {
+    if (_currentLocation != null) {
+      return '取得済み';
+    } else {
+      return '取得中...';
+    }
+  }
+
   /// ボトムナビゲーションバー
   Widget _buildBottomNavigationBar(BuildContext context) {
     return Container(
@@ -642,24 +688,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         ),
       ),
     );
-  }
-
-  /// 位置情報の詳細状態を取得
-  String _getLocationStatusText() {
-    final status = LocationService.getLocationStatus();
-    final hasLocation = status['hasLocation'] as bool? ?? false;
-    final isValid = status['isValid'] as bool? ?? false;
-    final isMonitoring = status['isMonitoring'] as bool? ?? false;
-
-    if (hasLocation && isValid) {
-      return 'アクティブ';
-    } else if (hasLocation && !isValid) {
-      return '期限切れ';
-    } else if (isMonitoring) {
-      return '取得中';
-    } else {
-      return '無効';
-    }
   }
 }
 
@@ -777,10 +805,51 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
 
       setState(() {});
     } else {
-      print("⚠️ キャッシュされた位置情報がありません - バックグラウンドで取得中");
+      print("⚠️ キャッシュされた位置情報がありません - Firestoreから取得を試行");
       print("🔍 LocationServiceの状態: ${LocationService.getLocationStatus()}");
 
-      // バックグラウンドで位置情報が取得されるまで待機
+      // Firestoreから位置情報を取得
+      _loadLocationFromFirestore();
+    }
+  }
+
+  /// Firestoreから位置情報を取得
+  void _loadLocationFromFirestore() async {
+    try {
+      print("🔍 Firestoreからユーザー位置情報を取得中...");
+
+      // 固定ユーザーIDから位置情報を取得
+      const userId = AppConstants.defaultUserId;
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        if (userData != null &&
+            userData.containsKey('latitude') &&
+            userData.containsKey('longitude')) {
+
+          final latitude = userData['latitude']?.toDouble();
+          final longitude = userData['longitude']?.toDouble();
+
+          if (latitude != null && longitude != null) {
+            final firestoreLocation = LatLng(latitude, longitude);
+
+            setState(() {
+              _currentLocation = firestoreLocation;
+            });
+
+            print("✅ Firestoreからユーザー位置取得成功: $firestoreLocation");
+            _saveLocationAsync();
+            return;
+          }
+        }
+      }
+
+      print("⚠️ Firestoreにユーザー位置情報が見つかりません - バックグラウンドで位置取得を開始");
+      _waitForLocationInBackground();
+
+    } catch (e) {
+      print("❌ Firestoreからの位置取得エラー: $e - バックグラウンドで位置取得を開始");
       _waitForLocationInBackground();
     }
   }
@@ -788,9 +857,9 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
   /// バックグラウンドで位置情報取得を待機
   void _waitForLocationInBackground() {
     int attempts = 0;
-    const maxAttempts = 15; // 最大15秒待機（30秒→15秒に短縮）
+    const maxAttempts = AppConstants.maxLocationAttempts;
 
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    Timer.periodic(AppConstants.realtimeUpdateInterval, (timer) {
       attempts++;
 
       final location = LocationService.cachedLocation;
@@ -823,7 +892,7 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
 
       // 強制的に新しい位置情報を取得
       final location = await LocationService.getCurrentLocationAsLatLng(forceRefresh: true)
-          .timeout(const Duration(seconds: 10));
+          .timeout(AppConstants.locationTimeout);
 
       if (location != null) {
         setState(() {
@@ -833,11 +902,9 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
         _saveLocationAsync();
       } else {
         print("❌ フォールバック位置情報取得失敗");
-        _showLocationError();
       }
     } catch (e) {
       print("❌ フォールバック位置情報取得エラー: $e");
-      _showLocationError();
     } finally {
       setState(() {
         _isLoading = false;
@@ -845,18 +912,9 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
     }
   }
 
-  /// 位置情報エラー表示
-  void _showLocationError() {
-    setState(() {
-      // エラー状態を示すための仮の位置情報を設定
-      // これにより地図は表示されませんが、エラーメッセージが表示されます
-    });
-  }
-
-  /// 通知の初期化（権限は既に AppInitializationService で処理済み）
+  /// 通知の初期化
   Future<void> _initializeNotifications() async {
     try {
-      // 権限確認のみ（リクエストは不要）
       print("✅ 通知権限確認完了（初期化済み）");
     } catch (e) {
       print("❌ 通知初期化エラー: $e");
@@ -882,6 +940,11 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
         _currentLocation!.longitude,
       );
       print("✅ 位置情報保存完了");
+
+      // 気象データのリアルタイム監視を開始
+      print("📡 気象データのリアルタイム監視を開始");
+      WeatherDataService.instance.startRealtimeWeatherDataListener(_currentLocation!);
+
     } catch (e) {
       print("❌ 位置情報保存エラー: $e");
     }
@@ -914,10 +977,7 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
     // 位置情報保存（非同期）
     _saveLocationAsync();
 
-    // 気象データは Firebase で自動管理されているため、
-    // ユーザー操作による手動取得は行わない
     print("🔄 位置更新 - 気象データはFirebaseで自動管理中");
-
     _updateLastUpdateTime();
   }
 
@@ -971,7 +1031,7 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
           print("🎯 テスト座標: ($testLat, $testLon)");
 
           // 実際の気象データ取得をテスト
-          await WeatherDebugService.debugWeatherDataAtLocation(testLat, testLon);
+          await WeatherDebugService().debugWeatherData(testLat, testLon);
 
           // 少し待機
           await Future.delayed(const Duration(milliseconds: 500));
@@ -1231,21 +1291,12 @@ class WeatherScreenContentState extends State<WeatherScreenContent> with Widgets
     );
   }
 
-  /// 位置情報の詳細状態を取得
+  /// 位置情報の状態テキストを取得
   String _getLocationStatusText() {
-    final status = LocationService.getLocationStatus();
-    final hasLocation = status['hasLocation'] as bool? ?? false;
-    final isValid = status['isValid'] as bool? ?? false;
-    final isMonitoring = status['isMonitoring'] as bool? ?? false;
-
-    if (hasLocation && isValid) {
-      return 'アクティブ';
-    } else if (hasLocation && !isValid) {
-      return '期限切れ';
-    } else if (isMonitoring) {
-      return '取得中';
+    if (_currentLocation != null) {
+      return '取得済み';
     } else {
-      return '無効';
+      return '取得中...';
     }
   }
 }
