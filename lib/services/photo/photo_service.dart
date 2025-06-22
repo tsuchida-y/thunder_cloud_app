@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../../constants/app_constants.dart';
 import '../../models/photo.dart';
 import '../../utils/logger.dart';
 import '../location/location_service.dart';
@@ -474,8 +475,6 @@ class PhotoService {
 
   /// 2点間の距離を計算（km）
   static double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double earthRadius = 6371; // 地球の半径（km）
-
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLon = _degreesToRadians(lon2 - lon1);
 
@@ -485,7 +484,7 @@ class PhotoService {
 
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
-    return earthRadius * c;
+    return AppConstants.earthRadiusKm * c;
   }
 
   /// 度をラジアンに変換

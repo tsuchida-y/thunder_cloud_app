@@ -33,6 +33,9 @@ class AppConstants {
   // 距離計算
   static const double latitudePerDegreeKm = 111.0; // 緯度1度あたりのkm
 
+  // 地球の半径（km）- 地理計算に使用
+  static const double earthRadiusKm = 6371.0;
+
   // 位置監視設定
   static const double locationUpdateDistanceFilter = 5000.0; // 5km移動で更新
   static const int locationUpdateTimeInterval = 5; // 最低5分間隔

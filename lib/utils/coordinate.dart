@@ -2,12 +2,13 @@ import 'dart:math' as math;
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../constants/app_constants.dart';
+
 /// 座標計算に関するユーティリティクラス
 class CoordinateUtils {
 
   /// 指定した方向と距離から新しい座標を計算
   static LatLng calculateDirectionCoordinates(String direction, double lat, double lon, double distance) {
-    const double earthRadius = 6371.0; // 地球の半径（km）
     double bearing;
 
     switch (direction) {
@@ -32,13 +33,13 @@ class CoordinateUtils {
     final double lonRad = lon * (math.pi / 180.0);
 
     final double newLatRad = math.asin(
-      math.sin(latRad) * math.cos(distance / earthRadius) +
-      math.cos(latRad) * math.sin(distance / earthRadius) * math.cos(bearingRad)
+      math.sin(latRad) * math.cos(distance / AppConstants.earthRadiusKm) +
+      math.cos(latRad) * math.sin(distance / AppConstants.earthRadiusKm) * math.cos(bearingRad)
     );
 
     final double newLonRad = lonRad + math.atan2(
-      math.sin(bearingRad) * math.sin(distance / earthRadius) * math.cos(latRad),
-      math.cos(distance / earthRadius) - math.sin(latRad) * math.sin(newLatRad)
+      math.sin(bearingRad) * math.sin(distance / AppConstants.earthRadiusKm) * math.cos(latRad),
+      math.cos(distance / AppConstants.earthRadiusKm) - math.sin(latRad) * math.sin(newLatRad)
     );
 
     return LatLng(
@@ -49,8 +50,6 @@ class CoordinateUtils {
 
   /// 2つの座標間の距離を計算（km）
   static double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double earthRadius = 6371.0;
-
     final double lat1Rad = lat1 * (math.pi / 180.0);
     final double lat2Rad = lat2 * (math.pi / 180.0);
     final double deltaLatRad = (lat2 - lat1) * (math.pi / 180.0);
@@ -62,6 +61,6 @@ class CoordinateUtils {
 
     final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
 
-    return earthRadius * c;
+    return AppConstants.earthRadiusKm * c;
   }
 }
