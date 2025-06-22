@@ -1,35 +1,40 @@
-// functions/coordinate_utils.js - 既存のDartロジックを移植
-function calculateDirectionCoordinates(
-  direction,
-  currentLatitude,
-  currentLongitude,
-  distanceKm
-) {
+// functions/coordinate_utils.js - 座標計算ユーティリティ（定数ファイル対応）
 
-  // ✅ Dartの LatLngUtil.calculateDirectionCoordinates と同じロジック
-  const latitudePerDegreeKm = 111.0;
-  let latitudeOffset = 0.0;
-  let longitudeOffset = 0.0;
+// 定数ファイルをインポート
+const { WEATHER_CONSTANTS } = require('./constants');
 
-  switch (direction.toLowerCase()) {
-    case "north":
+/**
+ * 指定方向と距離から座標を計算
+ */
+function calculateDirectionCoordinates(direction, currentLatitude, currentLongitude, distanceKm) {
+  // 緯度1度あたりの距離（定数ファイルから参照）
+  const latitudePerDegreeKm = WEATHER_CONSTANTS.LATITUDE_PER_DEGREE_KM;
+  let latitudeOffset = WEATHER_CONSTANTS.DEFAULT_WEATHER_VALUE;
+  let longitudeOffset = WEATHER_CONSTANTS.DEFAULT_WEATHER_VALUE;
+
+  switch (direction) {
+    case 'north':
       latitudeOffset = distanceKm / latitudePerDegreeKm;
       break;
-    case "south":
+    case 'south':
       latitudeOffset = -distanceKm / latitudePerDegreeKm;
       break;
-    case "east":
+    case 'east':
       longitudeOffset = distanceKm / (latitudePerDegreeKm * Math.cos(currentLatitude * Math.PI / 180.0));
       break;
-    case "west":
+    case 'west':
       longitudeOffset = -distanceKm / (latitudePerDegreeKm * Math.cos(currentLatitude * Math.PI / 180.0));
       break;
+    default:
+      throw new Error(`未知の方向: ${direction}`);
   }
 
   return {
     latitude: currentLatitude + latitudeOffset,
-    longitude: currentLongitude + longitudeOffset,
+    longitude: currentLongitude + longitudeOffset
   };
 }
 
-module.exports = { calculateDirectionCoordinates };
+module.exports = {
+  calculateDirectionCoordinates
+};

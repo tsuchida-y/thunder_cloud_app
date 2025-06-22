@@ -1,75 +1,117 @@
-import 'dart:async';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../services/weather_data_service.dart';
+import '../constants/app_constants.dart';
+import '../utils/logger.dart';
+import 'settings/settings_service.dart';
 
+/// 設定画面 - アプリの各種設定と状態確認
 class SettingsScreen extends StatefulWidget {
   final LatLng? currentLocation;
 
-  const SettingsScreen({super.key, this.currentLocation});
+  const SettingsScreen({
+    super.key,
+    this.currentLocation,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final WeatherDataService _weatherService = WeatherDataService.instance;
-  Timer? _updateTimer;
+  // ===== サービス =====
+  late final SettingsService _settingsService;
+
+  // ===== 状態管理 =====
   bool _isLoading = false;
+  bool _isLoadingUserInfo = true;
+  Map<String, dynamic> _weatherData = {};
+  Map<String, dynamic> _userInfo = {};
+  DateTime? _lastUpdateTime;
 
   @override
   void initState() {
     super.initState();
-    _startAutoUpdate();
-    // WeatherDataServiceの変更を監視
-    _weatherService.addListener(_onWeatherDataChanged);
+    _settingsService = SettingsService();
+    _initializeScreen();
   }
 
   @override
   void dispose() {
-    _updateTimer?.cancel();
-    _weatherService.removeListener(_onWeatherDataChanged);
+    _settingsService.dispose();
     super.dispose();
   }
 
-  /// WeatherDataServiceの変更を監視するリスナー
-  void _onWeatherDataChanged() {
+  // ===== 初期化 =====
+
+  /// 画面を初期化
+  Future<void> _initializeScreen() async {
+    setState(() {
+      _isLoading = true;
+      _isLoadingUserInfo = true;
+    });
+
+    try {
+      AppLogger.info('設定画面初期化開始', tag: 'SettingsScreen');
+
+      await _settingsService.initialize(widget.currentLocation);
+
+      // データ更新のコールバックを設定
+      _settingsService.setDataUpdateCallback(_onDataUpdate);
+
+      // 初期データを取得
+      _updateDataFromService();
+
+      AppLogger.success('設定画面初期化完了', tag: 'SettingsScreen');
+    } catch (e) {
+      AppLogger.error('設定画面初期化エラー', error: e, tag: 'SettingsScreen');
+      _showErrorSnackBar('初期化に失敗しました: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingUserInfo = false;
+        });
+      }
+    }
+  }
+
+  /// サービスからデータを更新
+  void _updateDataFromService() {
+    setState(() {
+      _weatherData = _settingsService.weatherData;
+      _userInfo = _settingsService.userInfo;
+      _lastUpdateTime = _settingsService.lastUpdateTime;
+    });
+  }
+
+  /// データ更新時のコールバック
+  void _onDataUpdate(Map<String, dynamic> weatherData, DateTime? updateTime) {
     if (mounted) {
       setState(() {
-        // UIを更新
+        _weatherData = weatherData;
+        _lastUpdateTime = updateTime;
       });
     }
   }
 
-  /// 自動更新を開始
-  void _startAutoUpdate() {
-    // 30秒ごとに気象データを更新
-    _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted && widget.currentLocation != null) {
-        _autoRefreshWeatherData();
-      }
-    });
-  }
+  // ===== イベントハンドラー =====
 
-  /// 自動で気象データを更新（ユーザー操作不可）
-  Future<void> _autoRefreshWeatherData() async {
-    if (widget.currentLocation == null || _isLoading) return;
-
+  /// 位置情報を更新
+  Future<void> _updateLocation() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      await _weatherService.fetchAndStoreWeatherData(widget.currentLocation!);
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      await _settingsService.updateLocation();
+      _updateDataFromService();
+      _showSuccessSnackBar('位置情報を更新しました');
     } catch (e) {
-      print("❌ 気象データ自動更新エラー: $e");
+      AppLogger.error('位置情報更新エラー', error: e, tag: 'SettingsScreen');
+      _showErrorSnackBar('位置情報の更新に失敗しました: $e');
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -78,325 +120,531 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// 方向名を日本語に変換
-  String _getDirectionName(String direction) {
-    switch (direction) {
-      case 'north':
-        return '北';
-      case 'south':
-        return '南';
-      case 'east':
-        return '東';
-      case 'west':
-        return '西';
-      default:
-        return direction;
+  /// 気象データを手動更新
+  Future<void> _refreshWeatherData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _settingsService.fetchWeatherData();
+      _updateDataFromService();
+      _showSuccessSnackBar('気象データを更新しました');
+    } catch (e) {
+      AppLogger.error('気象データ更新エラー', error: e, tag: 'SettingsScreen');
+      _showErrorSnackBar('気象データの更新に失敗しました: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  /// リスクレベルに応じた色を取得
-  Color _getRiskColor(String riskLevel) {
-    switch (riskLevel) {
-      case 'HIGH':
-        return Colors.red;
-      case 'MEDIUM':
-        return Colors.orange;
-      case 'LOW':
-        return Colors.yellow;
-      default:
-        return Colors.grey;
+  /// キャッシュをクリア
+  Future<void> _clearCache() async {
+    try {
+      await _settingsService.clearCache();
+      _showSuccessSnackBar('キャッシュをクリアしました');
+    } catch (e) {
+      AppLogger.error('キャッシュクリアエラー', error: e, tag: 'SettingsScreen');
+      _showErrorSnackBar('キャッシュのクリアに失敗しました: $e');
     }
   }
 
-  /// 最終更新時刻をフォーマット
-  String _formatUpdateTime(DateTime? dateTime) {
-    if (dateTime == null) return '';
-    return '${dateTime.month}/${dateTime.day} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  /// プロフィール編集ダイアログを表示
+  Future<void> _showProfileEditDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _ProfileEditDialog(
+        currentUserInfo: _userInfo,
+      ),
+    );
+
+    if (result != null) {
+      try {
+        await _settingsService.updateUserInfo(result);
+        _updateDataFromService();
+        _showSuccessSnackBar('プロフィールを更新しました');
+      } catch (e) {
+        AppLogger.error('プロフィール更新エラー', error: e, tag: 'SettingsScreen');
+        _showErrorSnackBar('プロフィールの更新に失敗しました: $e');
+      }
+    }
   }
+
+  // ===== UI構築 =====
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
+      backgroundColor: AppConstants.backgroundColorLight,
+      appBar: _buildAppBar(),
+      body: _buildBody(),
+    );
+  }
+
+  /// アプリバーを構築
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: const Text(
+        '設定',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      backgroundColor: AppConstants.primarySkyBlue,
+      elevation: AppConstants.elevationMedium,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh, color: Colors.white),
+          onPressed: _isLoading ? null : _refreshWeatherData,
+          tooltip: '気象データ更新',
+        ),
+      ],
+    );
+  }
+
+  /// メインボディを構築
+  Widget _buildBody() {
+    if (_isLoading && _weatherData.isEmpty) {
+      return _buildLoadingIndicator();
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppConstants.paddingMedium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildUserSection(),
+          const SizedBox(height: AppConstants.paddingLarge),
+          _buildLocationSection(),
+          const SizedBox(height: AppConstants.paddingLarge),
+          _buildWeatherSection(),
+          const SizedBox(height: AppConstants.paddingLarge),
+          _buildCacheSection(),
+          const SizedBox(height: AppConstants.paddingLarge),
+          _buildSystemSection(),
+        ],
+      ),
+    );
+  }
+
+  /// ローディングインジケーターを構築
+  Widget _buildLoadingIndicator() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primarySkyBlue),
+          ),
+          SizedBox(height: AppConstants.paddingMedium),
+          Text(
+            '設定を読み込み中...',
+            style: TextStyle(fontSize: AppConstants.fontSizeMedium),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ユーザーセクションを構築
+  Widget _buildUserSection() {
+    return _buildSection(
+      title: 'ユーザー情報',
+      icon: Icons.person,
+      children: [
+        _buildUserCard(),
+        const SizedBox(height: AppConstants.paddingMedium),
+        _buildActionButton(
+          label: 'プロフィール編集',
+          icon: Icons.edit,
+          onPressed: _showProfileEditDialog,
+        ),
+      ],
+    );
+  }
+
+  /// ユーザーカードを構築
+  Widget _buildUserCard() {
+    if (_isLoadingUserInfo) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(AppConstants.paddingMedium),
+          child: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: AppConstants.paddingMedium),
+              Text('ユーザー情報を読み込み中...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final userName = _userInfo['userName'] as String? ?? 'ユーザー';
+    final avatarUrl = _userInfo['avatarUrl'] as String?;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingMedium),
+        child: Row(
           children: [
-            Icon(
-              Icons.analytics_outlined,
-              color: Colors.white,
-              size: 24,
+            CircleAvatar(
+              radius: AppConstants.avatarRadiusSmall,
+              backgroundColor: AppConstants.primarySkyBlue,
+              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? CachedNetworkImageProvider(avatarUrl)
+                  : null,
+              child: avatarUrl == null || avatarUrl.isEmpty
+                  ? Text(
+                      userName.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: AppConstants.paddingMedium),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    userName,
+                    style: const TextStyle(
+                      fontSize: AppConstants.fontSizeLarge,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'ユーザーID: ${AppConstants.currentUserId}',
+                    style: TextStyle(
+                      fontSize: AppConstants.fontSizeSmall,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 位置情報セクションを構築
+  Widget _buildLocationSection() {
+    final location = _settingsService.currentLocation;
+
+    return _buildSection(
+      title: '位置情報',
+      icon: Icons.location_on,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingMedium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (location != null) ...[
+                  Text(
+                    '緯度: ${location.latitude.toStringAsFixed(4)}',
+                    style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
+                  ),
+                  Text(
+                    '経度: ${location.longitude.toStringAsFixed(4)}',
+                    style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
+                  ),
+                ] else ...[
+                  const Text(
+                    '位置情報が取得されていません',
+                    style: TextStyle(
+                      fontSize: AppConstants.fontSizeMedium,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppConstants.paddingMedium),
+        _buildActionButton(
+          label: '位置情報を更新',
+          icon: Icons.my_location,
+          onPressed: _updateLocation,
+        ),
+      ],
+    );
+  }
+
+  /// 気象データセクションを構築
+  Widget _buildWeatherSection() {
+    return _buildSection(
+      title: '気象データ',
+      icon: Icons.cloud,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingMedium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_weatherData.isNotEmpty) ...[
+                  Text(
+                    '最終更新: ${_formatDateTime(_lastUpdateTime)}',
+                    style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
+                  ),
+                  const SizedBox(height: AppConstants.paddingSmall),
+                  Text(
+                    'データ件数: ${_weatherData.length}件',
+                    style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
+                  ),
+                ] else ...[
+                  const Text(
+                    '気象データが取得されていません',
+                    style: TextStyle(
+                      fontSize: AppConstants.fontSizeMedium,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppConstants.paddingMedium),
+        _buildActionButton(
+          label: '気象データを更新',
+          icon: Icons.refresh,
+          onPressed: _refreshWeatherData,
+        ),
+      ],
+    );
+  }
+
+  /// キャッシュセクションを構築
+  Widget _buildCacheSection() {
+    return _buildSection(
+      title: 'キャッシュ管理',
+      icon: Icons.storage,
+      children: [
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(AppConstants.paddingMedium),
+            child: Text(
+              'アプリのパフォーマンス向上のため、データをキャッシュしています。',
+              style: TextStyle(fontSize: AppConstants.fontSizeMedium),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppConstants.paddingMedium),
+        _buildActionButton(
+          label: 'キャッシュをクリア',
+          icon: Icons.clear,
+          onPressed: _clearCache,
+          color: Colors.orange,
+        ),
+      ],
+    );
+  }
+
+  /// システムセクションを構築
+  Widget _buildSystemSection() {
+    return _buildSection(
+      title: 'システム情報',
+      icon: Icons.info,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingMedium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'アプリ名: ${AppConstants.appTitle}',
+                  style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
+                ),
+                Text(
+                  'バージョン: ${AppConstants.appVersion}',
+                  style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// セクションを構築
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: AppConstants.primarySkyBlue),
+            const SizedBox(width: AppConstants.paddingSmall),
             Text(
-              '気象データ',
-              style: TextStyle(
-                color: Colors.white,
+              title,
+              style: const TextStyle(
+                fontSize: AppConstants.fontSizeLarge,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-        backgroundColor: const Color.fromARGB(255, 135, 206, 250), // 空色（Sky Blue）
-        foregroundColor: Colors.white, // アイコンと戻るボタンも白色に
-        elevation: 3,
-      ),
-      body: _buildBody(),
+        const SizedBox(height: AppConstants.paddingMedium),
+        ...children,
+      ],
     );
   }
 
-  Widget _buildBody() {
-    final weatherData = _weatherService.lastWeatherData;
-    final lastUpdate = _weatherService.lastUpdateTime;
-    final lastLocation = _weatherService.lastLocation;
+  /// アクションボタンを構築
+  Widget _buildActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+    Color? color,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isLoading ? null : onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color ?? AppConstants.primarySkyBlue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: AppConstants.paddingMedium),
+        ),
+      ),
+    );
+  }
 
-    return Column(
-      children: [
-        // ヘッダー情報
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          color: const Color.fromARGB(255, 240, 248, 255), // より薄い空色
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    _isLoading ? Icons.sync : Icons.location_on,
-                    size: 16,
-                    color: _isLoading ? Colors.orange : Colors.green,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: lastLocation != null
-                        ? Text(
-                            '監視地点: ${lastLocation.latitude.toStringAsFixed(4)}, ${lastLocation.longitude.toStringAsFixed(4)}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          )
-                        : const Text(
-                            '監視地点: 未設定',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 4),
-                  if (lastUpdate != null)
-                    Text(
-                      '最終更新: ${_formatUpdateTime(lastUpdate)}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    )
-                  else
-                    const Text(
-                      '最終更新: データなし',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  const Spacer(),
-                  if (_isLoading)
-                    const Text(
-                      '更新中...',
-                      style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 14,
-                    color: Colors.orange,
-                  ),
-                  SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'データは30秒ごとに自動更新されます（手動更新不可）',
-                      style: TextStyle(fontSize: 11, color: Colors.orange),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+  // ===== ヘルパーメソッド =====
+
+  /// 日時をフォーマット
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return '未取得';
+    
+    return '${dateTime.year}/${dateTime.month.toString().padLeft(2, '0')}/'
+           '${dateTime.day.toString().padLeft(2, '0')} '
+           '${dateTime.hour.toString().padLeft(2, '0')}:'
+           '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// エラースナックバーを表示
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
+      ),
+    );
+  }
+
+  /// 成功スナックバーを表示
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
+      ),
+    );
+  }
+}
+
+/// プロフィール編集ダイアログ
+class _ProfileEditDialog extends StatefulWidget {
+  final Map<String, dynamic> currentUserInfo;
+
+  const _ProfileEditDialog({
+    required this.currentUserInfo,
+  });
+
+  @override
+  State<_ProfileEditDialog> createState() => _ProfileEditDialogState();
+}
+
+class _ProfileEditDialogState extends State<_ProfileEditDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _avatarUrlController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.currentUserInfo['userName'] as String? ?? '',
+    );
+    _avatarUrlController = TextEditingController(
+      text: widget.currentUserInfo['avatarUrl'] as String? ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _avatarUrlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('プロフィール編集'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'ユーザー名',
+              border: OutlineInputBorder(),
+            ),
           ),
+          const SizedBox(height: AppConstants.paddingMedium),
+          TextField(
+            controller: _avatarUrlController,
+            decoration: const InputDecoration(
+              labelText: 'アバターURL（任意）',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('キャンセル'),
         ),
-
-        // 気象データ表示
-        Expanded(
-          child: weatherData.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_off, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        '気象データがまだ取得されていません',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'しばらくお待ちください',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: weatherData.length,
-                  itemBuilder: (context, index) {
-                    final direction = weatherData.keys.elementAt(index);
-                    final data = weatherData[direction]!;
-                    return _buildWeatherCard(direction, data);
-                  },
-                ),
+        ElevatedButton(
+          onPressed: () {
+            final updatedInfo = {
+              'userName': _nameController.text.trim(),
+              'avatarUrl': _avatarUrlController.text.trim(),
+            };
+            Navigator.of(context).pop(updatedInfo);
+          },
+          child: const Text('保存'),
         ),
       ],
-    );
-  }
-
-  Widget _buildWeatherCard(String direction, Map<String, dynamic> data) {
-    final analysis = data['analysis'] as Map<String, dynamic>;
-    final coordinates = data['coordinates'] as Map<String, dynamic>;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ヘッダー
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${_getDirectionName(direction)}方向',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getRiskColor(analysis['riskLevel']),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    analysis['riskLevel'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // 座標情報
-            Text(
-              '座標: ${coordinates['lat'].toStringAsFixed(4)}, ${coordinates['lon'].toStringAsFixed(4)}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-
-            // 分析結果
-            Row(
-              children: [
-                Icon(
-                  analysis['isLikely'] ? Icons.warning : Icons.check_circle,
-                  color: analysis['isLikely'] ? Colors.orange : Colors.green,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  analysis['isLikely'] ? '入道雲の可能性あり' : '入道雲なし',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: analysis['isLikely'] ? Colors.orange : Colors.green,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'スコア: ${(analysis['totalScore'] * 100).toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // 気象データ
-            _buildDataGrid(data),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDataGrid(Map<String, dynamic> data) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            _buildDataItem('CAPE', '${data['cape'].toStringAsFixed(1)} J/kg'),
-            _buildDataItem('温度', '${data['temperature'].toStringAsFixed(1)}°C'),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _buildDataItem('LI', data['lifted_index'].toStringAsFixed(1)),
-            _buildDataItem('CIN', '${data['convective_inhibition'].toStringAsFixed(1)} J/kg'),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _buildDataItem('全雲量', '${data['cloud_cover'].toStringAsFixed(1)}%'),
-            _buildDataItem('中層雲', '${data['cloud_cover_mid'].toStringAsFixed(1)}%'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDataItem(String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
