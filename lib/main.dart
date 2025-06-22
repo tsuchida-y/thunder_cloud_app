@@ -9,6 +9,7 @@ import 'screens/community_screen.dart';
 import 'screens/gallery_screen.dart';
 import 'screens/weather_screen.dart';
 import 'services/core/app_initialization.dart';
+import 'utils/logger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +31,8 @@ void main() async {
   runApp(const MyApp());
 }
 
+/// アプリケーションのルートウィジェット
+/// テーマとナビゲーションの基本設定を管理
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -49,6 +52,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// メイン画面 - タブナビゲーションと各画面の管理
+/// 天気画面、ギャラリー画面、コミュニティ画面を切り替え
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -70,21 +75,27 @@ class _MainScreenState extends State<MainScreen> {
     _initializeApp();
   }
 
+  /// アプリケーション初期化処理
+  /// Firebase、位置情報、プッシュ通知などの設定を実行
   Future<void> _initializeApp() async {
     try {
+      AppLogger.info('アプリケーション初期化開始', tag: 'MainScreen');
       await AppInitializationService.initializeApp();
 
       // 少し待ってから位置情報の自動保存を実行
       await Future.delayed(AppConstants.mainScreenDelay);
       // 位置情報保存処理は既にinitializeApp内で実行される
+
+      AppLogger.success('アプリケーション初期化完了', tag: 'MainScreen');
     } catch (e) {
-      print("❌ アプリ初期化エラー: $e");
+      AppLogger.error('アプリケーション初期化エラー', error: e, tag: 'MainScreen');
     }
   }
 
   /// 全画面を更新（プロフィール変更時に呼び出される）
+  /// ギャラリーとコミュニティ画面を強制再構築し、天気画面は軽量更新
   void _refreshAllScreens() {
-    print("🔄 全画面更新開始");
+    AppLogger.info('全画面更新開始', tag: 'MainScreen');
 
     setState(() {
       // ギャラリーとコミュニティのキーを再生成して強制再構築
@@ -93,9 +104,9 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     // 地図画面は軽量更新
-    weatherScreenKey.currentState?.refreshData();
+    weatherScreenKey.currentState?.setState(() {});
 
-    print("✅ 全画面更新完了");
+    AppLogger.success('全画面更新完了', tag: 'MainScreen');
   }
 
   @override
@@ -103,7 +114,7 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
@@ -121,7 +132,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.paddingLarge,
               vertical: AppConstants.paddingSmall
             ),
@@ -134,18 +145,27 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
-      floatingActionButton: _currentIndex == AppConstants.navigationIndexCommunity // コミュニティ画面の時のみ表示
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/camera');
-              },
-              backgroundColor: AppConstants.primarySkyBlue,
-              child: const Icon(Icons.camera_alt, color: Colors.white),
-            )
-          : null,
+      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
+  /// フローティングアクションボタンを構築
+  /// コミュニティ画面でのみカメラボタンを表示
+  Widget? _buildFloatingActionButton() {
+    if (_currentIndex != AppConstants.navigationIndexCommunity) {
+      return null;
+    }
+
+    return FloatingActionButton(
+      onPressed: () {
+        Navigator.pushNamed(context, '/camera');
+      },
+      backgroundColor: AppConstants.primarySkyBlue,
+      child: const Icon(Icons.camera_alt, color: Colors.white),
+    );
+  }
+
+  /// タブバーを構築
   Widget _buildTabBar() {
     return Container(
       decoration: BoxDecoration(
@@ -173,13 +193,15 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// タブボタンを構築
   Widget _buildTabButton(String label, IconData icon, {required int index}) {
-    final isActive = _currentIndex == index;
+    final bool isActive = _currentIndex == index;
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _currentIndex = index),
         child: Container(
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.paddingMedium,
             vertical: AppConstants.paddingSmall
           ),
@@ -197,10 +219,10 @@ class _MainScreenState extends State<MainScreen> {
                 color: Colors.white,
                 size: AppConstants.iconSizeLarge,
               ),
-              SizedBox(height: AppConstants.paddingXSmall),
+              const SizedBox(height: AppConstants.paddingXSmall),
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: AppConstants.fontSizeSmall,
                   fontWeight: FontWeight.w500,
@@ -213,16 +235,23 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// 現在選択されている画面を構築
   Widget _buildCurrentScreen() {
     switch (_currentIndex) {
-      case 0: // AppConstants.navigationIndexWeather
-        return WeatherScreen(key: weatherScreenKey, onProfileUpdated: _refreshAllScreens);
-      case 1: // AppConstants.navigationIndexGallery
+      case AppConstants.navigationIndexWeather:
+        return WeatherScreen(
+          key: weatherScreenKey,
+          onProfileUpdated: _refreshAllScreens,
+        );
+      case AppConstants.navigationIndexGallery:
         return GalleryScreen(key: galleryScreenKey);
-      case 2: // AppConstants.navigationIndexCommunity
+      case AppConstants.navigationIndexCommunity:
         return CommunityScreen(key: communityScreenKey);
       default:
-        return WeatherScreen(key: weatherScreenKey, onProfileUpdated: _refreshAllScreens);
+        return WeatherScreen(
+          key: weatherScreenKey,
+          onProfileUpdated: _refreshAllScreens,
+        );
     }
   }
 }

@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../constants/app_constants.dart';
+import '../../utils/logger.dart';
 
 /// 気象データの管理と共有を行うサービスクラス
+/// Firestoreからの気象データ取得とリアルタイム監視を提供
 class WeatherDataService extends ChangeNotifier {
   static WeatherDataService? _instance;
   static WeatherDataService get instance => _instance ??= WeatherDataService._();
@@ -33,22 +35,22 @@ class WeatherDataService extends ChangeNotifier {
 
   /// Firestoreから気象データを取得・保存
   Future<void> fetchAndStoreWeatherData(LatLng? providedLocation) async {
-    print("🌦️ === Firestoreから気象データ取得開始 ===");
+    AppLogger.info('Firestoreから気象データ取得開始', tag: 'WeatherDataService');
 
     LatLng? currentLocation = providedLocation;
 
     // 位置情報が提供されていない場合は、Firestoreから最新のユーザー位置を取得
     if (currentLocation == null) {
-      print("📍 位置情報が未提供のため、Firestoreからユーザー位置を取得");
+      AppLogger.info('位置情報が未提供のため、Firestoreからユーザー位置を取得', tag: 'WeatherDataService');
       currentLocation = await _getUserLocationFromFirestore();
     }
 
     if (currentLocation == null) {
-      print("❌ 位置情報を取得できませんでした");
+      AppLogger.warning('位置情報を取得できませんでした', tag: 'WeatherDataService');
       return;
     }
 
-    print("📍 使用する位置情報: 緯度 ${currentLocation.latitude}, 経度 ${currentLocation.longitude}");
+    AppLogger.info('使用する位置情報: 緯度 ${currentLocation.latitude}, 経度 ${currentLocation.longitude}', tag: 'WeatherDataService');
 
     try {
       // Firestoreのweather_cacheコレクションからデータを取得
@@ -80,12 +82,12 @@ class WeatherDataService extends ChangeNotifier {
           // リスナーに変更を通知
           notifyListeners();
 
-          print("✅ Firestoreから気象データ取得完了: ${weatherData.length}方向");
+          AppLogger.success('Firestoreから気象データ取得完了: ${weatherData.length}方向', tag: 'WeatherDataService');
           return;
         }
       }
 
-      print("⚠️ Firestoreにキャッシュデータが見つかりません。Firebase Functionsによる自動更新を待機中...");
+      AppLogger.warning('Firestoreにキャッシュデータが見つかりません。Firebase Functionsによる自動更新を待機中...', tag: 'WeatherDataService');
 
       // キャッシュがない場合は空のデータで初期化
       _lastWeatherData = {};
@@ -94,7 +96,7 @@ class WeatherDataService extends ChangeNotifier {
       notifyListeners();
 
     } catch (e) {
-      print("❌ Firestore気象データ取得エラー: $e");
+      AppLogger.error('Firestore気象データ取得エラー', error: e, tag: 'WeatherDataService');
 
       // エラー時は空のデータで初期化
       _lastWeatherData = {};
@@ -103,13 +105,13 @@ class WeatherDataService extends ChangeNotifier {
       notifyListeners();
     }
 
-    print("🌦️ === Firestoreから気象データ取得終了 ===");
+    AppLogger.info('Firestoreから気象データ取得終了', tag: 'WeatherDataService');
   }
 
   /// Firestoreからユーザーの最新位置情報を取得
   Future<LatLng?> _getUserLocationFromFirestore() async {
     try {
-      print("🔍 Firestoreからユーザー位置情報を取得中...");
+      AppLogger.info('Firestoreからユーザー位置情報を取得中...', tag: 'WeatherDataService');
 
       // 固定ユーザーIDから位置情報を取得
       const userId = 'user_001';
@@ -125,24 +127,24 @@ class WeatherDataService extends ChangeNotifier {
           final longitude = userData['longitude']?.toDouble();
 
           if (latitude != null && longitude != null) {
-            print("✅ Firestoreからユーザー位置取得成功: 緯度 $latitude, 経度 $longitude");
+            AppLogger.success('Firestoreからユーザー位置取得成功: 緯度 $latitude, 経度 $longitude', tag: 'WeatherDataService');
             return LatLng(latitude, longitude);
           }
         }
       }
 
-      print("⚠️ Firestoreにユーザー位置情報が見つかりません");
+      AppLogger.warning('Firestoreにユーザー位置情報が見つかりません', tag: 'WeatherDataService');
       return null;
 
     } catch (e) {
-      print("❌ Firestoreからのユーザー位置取得エラー: $e");
+      AppLogger.error('Firestoreからのユーザー位置取得エラー', error: e, tag: 'WeatherDataService');
       return null;
     }
   }
 
   /// Firestoreの気象データをリアルタイム監視
   void startRealtimeWeatherDataListener(LatLng currentLocation) {
-    print("🔄 気象データのリアルタイム監視を開始");
+    AppLogger.info('気象データのリアルタイム監視を開始', tag: 'WeatherDataService');
 
     final cacheKey = _generateCacheKey(currentLocation);
 
@@ -160,7 +162,7 @@ class WeatherDataService extends ChangeNotifier {
             _lastUpdateTime = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
             _lastLocation = currentLocation;
 
-            print("🔄 リアルタイム更新: ${weatherData.length}方向のデータを受信");
+            AppLogger.info('リアルタイム更新: ${weatherData.length}方向のデータを受信', tag: 'WeatherDataService');
 
             // リスナーに変更を通知
             notifyListeners();
@@ -168,7 +170,7 @@ class WeatherDataService extends ChangeNotifier {
         }
       },
       onError: (error) {
-        print("❌ リアルタイム監視エラー: $error");
+        AppLogger.error('リアルタイム監視エラー', error: error, tag: 'WeatherDataService');
       }
     );
   }
@@ -180,27 +182,35 @@ class WeatherDataService extends ChangeNotifier {
 
   /// 気象データをログ出力
   void _logWeatherData(Map<String, dynamic> weatherData, String direction) {
-    print("📊 === [$direction] 受信した気象データ ===");
-    print("🔥 CAPE: ${weatherData['cape']?.toStringAsFixed(1) ?? 'N/A'} J/kg");
-    print("📈 Lifted Index: ${weatherData['lifted_index']?.toStringAsFixed(1) ?? 'N/A'}");
-    print("🚧 CIN: ${weatherData['convective_inhibition']?.toStringAsFixed(1) ?? 'N/A'} J/kg");
-    print("🌡️ 温度: ${weatherData['temperature']?.toStringAsFixed(1) ?? 'N/A'}°C");
-    print("☁️ 全雲量: ${weatherData['cloud_cover']?.toStringAsFixed(1) ?? 'N/A'}%");
-    print("🌫️ 中層雲: ${weatherData['cloud_cover_mid']?.toStringAsFixed(1) ?? 'N/A'}%");
-    print("⛅ 高層雲: ${weatherData['cloud_cover_high']?.toStringAsFixed(1) ?? 'N/A'}%");
+    final logData = {
+      '方向': direction,
+      'CAPE': '${weatherData['cape']?.toStringAsFixed(1) ?? 'N/A'} J/kg',
+      'Lifted Index': weatherData['lifted_index']?.toStringAsFixed(1) ?? 'N/A',
+      'CIN': '${weatherData['convective_inhibition']?.toStringAsFixed(1) ?? 'N/A'} J/kg',
+      '温度': '${weatherData['temperature']?.toStringAsFixed(1) ?? 'N/A'}°C',
+      '全雲量': '${weatherData['cloud_cover']?.toStringAsFixed(1) ?? 'N/A'}%',
+      '中層雲': '${weatherData['cloud_cover_mid']?.toStringAsFixed(1) ?? 'N/A'}%',
+      '高層雲': '${weatherData['cloud_cover_high']?.toStringAsFixed(1) ?? 'N/A'}%',
+    };
+
+    AppLogger.debug('受信した気象データ: $logData', tag: 'WeatherDataService');
   }
 
   /// 分析結果をログ出力
   void _logAnalysisResults(Map<String, dynamic> analysis, String direction) {
-    print("⚡ === [$direction] 入道雲分析結果 ===");
-    print("🎯 判定: ${analysis['isLikely'] == true ? '入道雲の可能性あり' : '入道雲なし'}");
-    print("📊 総合スコア: ${((analysis['totalScore'] ?? 0) * 100).toStringAsFixed(1)}%");
-    print("🏷️ リスクレベル: ${analysis['riskLevel'] ?? 'N/A'}");
-    print("📋 詳細スコア:");
-    print("   - CAPE: ${((analysis['capeScore'] ?? 0) * 100).toStringAsFixed(1)}%");
-    print("   - Lifted Index: ${((analysis['liScore'] ?? 0) * 100).toStringAsFixed(1)}%");
-    print("   - CIN: ${((analysis['cinScore'] ?? 0) * 100).toStringAsFixed(1)}%");
-    print("   - 温度: ${((analysis['tempScore'] ?? 0) * 100).toStringAsFixed(1)}%");
+    final analysisData = {
+      '方向': direction,
+      '判定': analysis['isLikely'] == true ? '入道雲の可能性あり' : '入道雲なし',
+      '総合スコア': '${((analysis['totalScore'] ?? 0) * 100).toStringAsFixed(1)}%',
+      'リスクレベル': analysis['riskLevel'] ?? 'N/A',
+      'CAPEスコア': '${((analysis['capeScore'] ?? 0) * 100).toStringAsFixed(1)}%',
+      'LIスコア': '${((analysis['liScore'] ?? 0) * 100).toStringAsFixed(1)}%',
+      'CINスコア': '${((analysis['cinScore'] ?? 0) * 100).toStringAsFixed(1)}%',
+      '温度スコア': '${((analysis['tempScore'] ?? 0) * 100).toStringAsFixed(1)}%',
+      '雲量スコア': '${((analysis['cloudScore'] ?? 0) * 100).toStringAsFixed(1)}%',
+    };
+
+    AppLogger.debug('入道雲分析結果: $analysisData', tag: 'WeatherDataService');
   }
 
   /// データをクリア
@@ -212,8 +222,8 @@ class WeatherDataService extends ChangeNotifier {
   }
 
   /// リアルタイム監視を停止
-  void stopRealtimeListener() {
-    // StreamSubscriptionがあれば停止処理を追加
-    print("🛑 リアルタイム監視を停止");
+  void stopRealtimeWeatherDataListener() {
+    AppLogger.info('リアルタイム監視を停止', tag: 'WeatherDataService');
+    // 実際の監視停止処理は呼び出し元で管理
   }
 }
