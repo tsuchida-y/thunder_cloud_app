@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../constants/app_constants.dart';
+
 ///　GoogleMapを背景として表示するウィジェット
 class BackgroundMapWidget extends StatefulWidget {
   final LatLng? currentLocation;
 
   const BackgroundMapWidget({
     super.key,
-    required this.currentLocation,
+    this.currentLocation,
   });
 
   @override
@@ -17,6 +19,7 @@ class BackgroundMapWidget extends StatefulWidget {
 class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
   bool _mapLoadError = false;
   String _errorMessage = "";
+  GoogleMapController? _controller;
 
   @override
   Widget build(BuildContext context) {
@@ -30,31 +33,24 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
             children: [
               const Icon(
                 Icons.location_searching,
-                size: 48,
+                size: AppConstants.iconSizeXLarge,
                 color: Colors.grey,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppConstants.paddingLarge),
               const Text(
                 '位置情報を取得中...',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: AppConstants.fontSizeLarge),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppConstants.paddingSmall),
               Text(
-                '初回起動時は時間がかかる場合があります',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                '位置情報の取得に時間がかかる場合があります',
+                style: TextStyle(fontSize: AppConstants.fontSizeSmall, color: Colors.grey[600]),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppConstants.paddingLarge),
               SizedBox(
                 width: 200,
                 child: LinearProgressIndicator(
                   backgroundColor: Colors.grey[400],
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
                 ),
               ),
             ],
@@ -98,7 +94,7 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
       key: const ValueKey('weather_map_view'),
       initialCameraPosition: CameraPosition(
         target: widget.currentLocation!,
-        zoom: 12.0,
+        zoom: AppConstants.defaultMapZoom,
       ),
       //入道雲情報が主目的のため、現在地マーカ(青いやつ)を表示するだけで他の機能は無効化
       myLocationEnabled: true,
@@ -119,6 +115,7 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
       liteModeEnabled: true,          // Liteモードを有効化（CPU/メモリ最適化）
 
       onMapCreated: (GoogleMapController controller) {
+        _controller = controller;
         try {
           print("✅ GoogleMap初期化完了");
           // コントローラーの設定も最適化

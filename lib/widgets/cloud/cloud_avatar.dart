@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_constants.dart';
+
 /// 入道雲または青空の画像を表示するウィジェット。
 ///
 /// [name]: 表示する雲の名前。
@@ -7,19 +9,15 @@ import 'package:flutter/material.dart';
 /// [left]: 画像の水平方向の位置。
 /// [isCloudy]: 入道雲を表示するかどうかのフラグ。
 class CloudAvatar extends StatelessWidget {
-  final String name;
-  final double top;
-  final double left;
-  final bool isCloudy;
+  final String imageUrl;
+  final String userName;
   final double radius;
 
   const CloudAvatar({
     super.key,
-    required this.name,
-    required this.top,
-    required this.left,
-    required this.isCloudy,
-    this.radius = 50.0,
+    required this.imageUrl,
+    required this.userName,
+    this.radius = AppConstants.defaultAvatarRadius,
   });
 
   /// 天候に応じた画像を取得する。
@@ -32,12 +30,12 @@ class CloudAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: top,
-      left: left,
+      top: 0.0,
+      left: 0.0,
       child: CircleAvatar(
         radius: radius,
         backgroundColor: Colors.white,
-        backgroundImage: _getImage(isCloudy),
+        backgroundImage: _getImage(false),
       ),
     );
   }

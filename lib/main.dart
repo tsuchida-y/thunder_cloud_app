@@ -1,17 +1,31 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'screens/camera_screen.dart';
+import 'constants/app_constants.dart';
+import 'firebase_options.dart';
 import 'screens/community_screen.dart';
 import 'screens/gallery_screen.dart';
 import 'screens/weather_screen.dart';
 import 'services/core/app_initialization.dart';
-import 'widgets/common/app_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // アプリケーション全体の初期化（バックグラウンドで実行）
-  AppInitializationService.initializeApp();
+  // 画面の向きを縦向きに固定
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // .envファイルを読み込み
+  await dotenv.load(fileName: ".env");
+
+  // Firebaseを初期化
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   runApp(const MyApp());
 }
@@ -22,19 +36,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Thunder Cloud App',
-      debugShowCheckedModeBanner: false,
+      title: AppConstants.appTitle,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromRGBO(135, 206, 250, 1.0),
+          seedColor: AppConstants.primarySkyBlue,
         ),
+        useMaterial3: true,
       ),
       home: const MainScreen(),
-      routes: {
-        '/camera': (context) => const CameraScreen(),
-      },
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -47,145 +57,172 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
+  int _currentIndex = AppConstants.navigationIndexWeather;
 
-  // 画面の再構築用のキー（地図画面は固定、他は再構築）
-  final GlobalKey<WeatherScreenContentState> _weatherKey = GlobalKey<WeatherScreenContentState>();
-  Key _galleryKey = UniqueKey();
-  Key _communityKey = UniqueKey();
+  // 各画面のキーを管理
+  GlobalKey<WeatherScreenState> weatherScreenKey = GlobalKey<WeatherScreenState>();
+  GlobalKey galleryScreenKey = GlobalKey();
+  GlobalKey communityScreenKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      await AppInitializationService.initializeApp();
+
+      // 少し待ってから位置情報の自動保存を実行
+      await Future.delayed(AppConstants.mainScreenDelay);
+      // 位置情報保存処理は既にinitializeApp内で実行される
+    } catch (e) {
+      print("❌ アプリ初期化エラー: $e");
+    }
+  }
+
+  /// 全画面を更新（プロフィール変更時に呼び出される）
+  void _refreshAllScreens() {
+    print("🔄 全画面更新開始");
+
+    setState(() {
+      // ギャラリーとコミュニティのキーを再生成して強制再構築
+      galleryScreenKey = GlobalKey();
+      communityScreenKey = GlobalKey();
+    });
+
+    // 地図画面は軽量更新
+    weatherScreenKey.currentState?.refreshData();
+
+    print("✅ 全画面更新完了");
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const WeatherAppBar(),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          WeatherScreenContent(key: _weatherKey),
-          GalleryScreenContent(key: _galleryKey),
-          CommunityScreenContent(key: _communityKey),
-        ],
-      ),
-      bottomNavigationBar: Container(
+      body: Container(
         decoration: BoxDecoration(
-          color: const Color.fromRGBO(135, 206, 250, 1.0),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppConstants.primarySkyBlue,
+              Colors.white,
+            ],
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, -2),
+              color: Colors.black.withOpacity(AppConstants.opacityMinimal),
+              blurRadius: AppConstants.elevationHigh,
+              offset: AppConstants.shadowOffsetMedium,
             ),
           ],
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            padding: EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingLarge,
+              vertical: AppConstants.paddingSmall
+            ),
+            child: Column(
               children: [
-                _buildNavButton(
-                  icon: Icons.map,
-                  label: '地図',
-                  index: 0,
-                ),
-                _buildNavButton(
-                  icon: Icons.photo_library,
-                  label: 'ギャラリー',
-                  index: 1,
-                ),
-                _buildNavButton(
-                  icon: Icons.people,
-                  label: 'コミュニティ',
-                  index: 2,
-                ),
+                _buildTabBar(),
+                Expanded(child: _buildCurrentScreen()),
               ],
             ),
           ),
         ),
       ),
-      floatingActionButton: _currentIndex == 2 // コミュニティ画面の時のみ表示
+      floatingActionButton: _currentIndex == AppConstants.navigationIndexCommunity // コミュニティ画面の時のみ表示
           ? FloatingActionButton(
-              onPressed: () async {
-                final result = await Navigator.pushNamed(context, '/camera');
-                // カメラから戻ってきた時にデータを再読み込み
-                if (result == true) {
-                  _refreshCurrentScreen();
-                }
+              onPressed: () {
+                Navigator.pushNamed(context, '/camera');
               },
-              backgroundColor: const Color.fromRGBO(135, 206, 250, 1.0),
-              child: const Icon(
-                Icons.camera_alt,
-                color: Colors.white,
-              ),
+              backgroundColor: AppConstants.primarySkyBlue,
+              child: const Icon(Icons.camera_alt, color: Colors.white),
             )
           : null,
     );
   }
 
-  Widget _buildNavButton({
-    required IconData icon,
-    required String label,
-    required int index,
-  }) {
-    final isActive = _currentIndex == index;
+  Widget _buildTabBar() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+      ),
+      child: Row(
+        children: [
+          _buildTabButton(
+            "地図",
+            Icons.map,
+            index: AppConstants.navigationIndexWeather,
+          ),
+          _buildTabButton(
+            "ギャラリー",
+            Icons.photo_library,
+            index: AppConstants.navigationIndexGallery,
+          ),
+          _buildTabButton(
+            "コミュニティ",
+            Icons.people,
+            index: AppConstants.navigationIndexCommunity,
+          ),
+        ],
+      ),
+    );
+  }
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-        // 画面遷移後の処理
-        if (index == 0) {
-          // 地図画面への遷移時は軽量更新
-          _weatherKey.currentState?.lightweightUpdate();
-        } else {
-          // 他の画面への遷移時はデータ再読み込み
-          _refreshCurrentScreen();
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? Colors.white : Colors.white70,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.white70,
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+  Widget _buildTabButton(String label, IconData icon, {required int index}) {
+    final isActive = _currentIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _currentIndex = index),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppConstants.paddingMedium,
+            vertical: AppConstants.paddingSmall
+          ),
+          decoration: BoxDecoration(
+            color: isActive
+                ? Colors.white.withOpacity(AppConstants.opacityVeryLow)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: Colors.white,
+                size: AppConstants.iconSizeLarge,
               ),
-            ),
-          ],
+              SizedBox(height: AppConstants.paddingXSmall),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: AppConstants.fontSizeSmall,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// 現在の画面のデータを再読み込み（画面を再構築）
-  void _refreshCurrentScreen() {
-    setState(() {
-      switch (_currentIndex) {
-        case 0:
-          // 地図画面は再構築しない（固定キー使用）
-          break;
-        case 1:
-          _galleryKey = UniqueKey();
-          break;
-        case 2:
-          _communityKey = UniqueKey();
-          break;
-      }
-    });
+  Widget _buildCurrentScreen() {
+    switch (_currentIndex) {
+      case 0: // AppConstants.navigationIndexWeather
+        return WeatherScreen(key: weatherScreenKey, onProfileUpdated: _refreshAllScreens);
+      case 1: // AppConstants.navigationIndexGallery
+        return GalleryScreen(key: galleryScreenKey);
+      case 2: // AppConstants.navigationIndexCommunity
+        return CommunityScreen(key: communityScreenKey);
+      default:
+        return WeatherScreen(key: weatherScreenKey, onProfileUpdated: _refreshAllScreens);
+    }
   }
 }
