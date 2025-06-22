@@ -3,7 +3,6 @@ import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 
 import 'fcm_token_manager.dart';
 import 'notification_service.dart';
@@ -99,30 +98,18 @@ class PushNotificationService {
     }
   }
 
-  /// ユーザー位置情報をFirestoreに保存（本番環境のみ）
+  /// ユーザー位置情報をFirestoreに保存（固定ユーザーID使用）
   static Future<void> saveUserLocation(double latitude, double longitude) async {
-    // 開発環境では位置情報保存をスキップ
-    if (kDebugMode) {
-      dev.log("🚧 開発環境のため位置情報保存をスキップ: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})");
-      return;
-    }
-
-    final fcmToken = FCMTokenManager.currentToken;
-
-    if (fcmToken == null) {
-      dev.log("⚠️ FCMトークンが未取得のため位置情報保存をスキップ");
-      return;
-    }
-
-    // 開発用トークンの場合はスキップ
-    if (fcmToken.startsWith('dev_token_')) {
-      dev.log("🎭 開発用トークンのため位置情報保存をスキップ");
-      return;
-    }
+    dev.log("📍 saveUserLocation開始: 緯度=$latitude, 経度=$longitude");
 
     try {
-      await _firestore!.collection('users').doc(fcmToken).set({
-        'fcmToken': fcmToken,
+      dev.log("💾 Firestore保存処理開始（固定ユーザーID使用）...");
+
+      // 固定ユーザーIDでusersコレクションに保存
+      const userId = 'user_001';
+
+      await _firestore!.collection('users').doc(userId).set({
+        'userId': userId,
         'latitude': latitude,
         'longitude': longitude,
         'lastUpdated': FieldValue.serverTimestamp(),
@@ -131,7 +118,26 @@ class PushNotificationService {
         'platform': 'flutter',
       }, SetOptions(merge: true));
 
-      dev.log("📍 ユーザー位置情報保存完了: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})");
+      dev.log("📍 ✅ ユーザー位置情報保存完了: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})");
+      dev.log("📍 ドキュメントID: users/$userId");
+
+      // 保存確認のためにデータを読み取り
+      try {
+        final doc = await _firestore!.collection('users').doc(userId).get();
+        if (doc.exists) {
+          final data = doc.data();
+          dev.log("📍 ✅ Firestore保存確認成功:");
+          dev.log("📍    緯度: ${data?['latitude']}");
+          dev.log("📍    経度: ${data?['longitude']}");
+          dev.log("📍    最終更新: ${data?['lastUpdated']}");
+          dev.log("📍    ドキュメントID: users/$userId");
+        } else {
+          dev.log("❌ 保存確認失敗: ドキュメントが見つかりません");
+        }
+      } catch (readError) {
+        dev.log("❌ 保存確認エラー: $readError");
+      }
+
     } catch (e) {
       dev.log("❌ ユーザー位置情報保存エラー: $e");
     }
@@ -170,22 +176,10 @@ class PushNotificationService {
   /// FCMトークンを取得（マネージャーを経由）
   static String? get fcmToken => FCMTokenManager.currentToken;
 
-  /// ユーザーのアクティブ状態を更新（本番環境のみ）
+  /// ユーザーのアクティブ状態を更新
   static Future<void> updateUserActiveStatus(bool isActive) async {
-    // 開発環境ではアクティブ状態更新をスキップ
-    if (kDebugMode) {
-      dev.log("🚧 開発環境のためアクティブ状態更新をスキップ: $isActive");
-      return;
-    }
-
     final fcmToken = FCMTokenManager.currentToken;
     if (fcmToken == null) return;
-
-    // 開発用トークンの場合はスキップ
-    if (fcmToken.startsWith('dev_token_')) {
-      dev.log("🎭 開発用トークンのためアクティブ状態更新をスキップ");
-      return;
-    }
 
     try {
       await _firestore!.collection('users').doc(fcmToken).update({

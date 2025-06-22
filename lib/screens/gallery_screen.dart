@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/photo.dart';
+import '../services/photo/local_photo_service.dart';
 import '../services/photo/photo_service.dart';
 import '../services/photo/user_service.dart';
 
@@ -85,53 +88,22 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
 
   Future<void> _loadPhotos() async {
     try {
-      print('📱 ギャラリー写真読み込み開始 - ユーザーID: $_currentUserId');
+      print('📱 ローカルギャラリー写真読み込み開始 - ユーザーID: $_currentUserId');
       setState(() {
         _isLoading = true;
       });
 
-      // Firebaseの接続状態をチェック
-      try {
-        final testQuery = await FirebaseFirestore.instance.collection('photos').limit(1).get();
-        print('🔥 Firebase接続確認: ${testQuery.docs.length}件のドキュメント取得可能');
-      } catch (e) {
-        print('❌ Firebase接続エラー: $e');
-      }
-
-      final photos = await PhotoService.getUserPhotos(_currentUserId);
-      print('📊 取得した写真数: ${photos.length}');
-
-      // 全ての写真データを確認
-      if (photos.isEmpty) {
-        print('⚠️ ユーザー写真が見つかりません。全写真を確認中...');
-        try {
-          final allPhotos = await FirebaseFirestore.instance.collection('photos').get();
-          print('📈 データベース内の全写真数: ${allPhotos.docs.length}');
-
-          for (var doc in allPhotos.docs.take(5)) {
-            final data = doc.data();
-            print('📋 写真データ例: ${doc.id}');
-            print('   - userId: ${data['userId']}');
-            print('   - userName: ${data['userName']}');
-            print('   - timestamp: ${data['timestamp']}');
-            print('   - imageUrl: ${data['imageUrl']?.substring(0, 50)}...');
-          }
-        } catch (e) {
-          print('❌ 全写真確認エラー: $e');
-        }
-      } else {
-        for (int i = 0; i < photos.length && i < 3; i++) {
-          print('📸 写真${i + 1}: ${photos[i].id} - ${photos[i].timestamp}');
-        }
-      }
+      // ローカルストレージから写真を取得
+      final photos = await LocalPhotoService.getUserLocalPhotos(_currentUserId);
+      print('📊 取得したローカル写真数: ${photos.length}');
 
       setState(() {
         _photos = photos;
         _isLoading = false;
       });
-      print('✅ ギャラリー写真読み込み完了: ${photos.length}件');
+      print('✅ ローカルギャラリー写真読み込み完了: ${photos.length}件');
     } catch (e) {
-      print('❌ 写真読み込みエラー: $e');
+      print('❌ ローカル写真読み込みエラー: $e');
       print('❌ エラータイプ: ${e.runtimeType}');
       print('❌ スタックトレース: ${StackTrace.current}');
       setState(() {
@@ -176,7 +148,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
   Future<void> _deleteSelectedPhotos() async {
     try {
       for (String photoId in _selectedPhotos) {
-        await PhotoService.deletePhoto(photoId, _currentUserId);
+        await LocalPhotoService.deleteLocalPhoto(photoId, _currentUserId);
       }
 
       setState(() {
@@ -244,6 +216,62 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
     return '${dateTime.year}/${dateTime.month}/${dateTime.day} '
            '${dateTime.hour.toString().padLeft(2, '0')}:'
            '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 写真の表示ウィジェットを構築（ローカル/ネットワーク対応）
+  Widget _buildPhotoImage(Photo photo) {
+    // ローカルファイルかどうかを判定（パスが'/'で始まる場合はローカル）
+    final isLocalFile = photo.imageUrl.startsWith('/');
+
+    if (isLocalFile) {
+      // ローカルファイルの場合
+      final file = File(photo.imageUrl);
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.error),
+          );
+        },
+      );
+    } else {
+      // ネットワーク画像の場合
+      return CachedNetworkImage(
+        imageUrl: photo.imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        placeholder: (context, url) => Container(
+          color: Colors.grey[300],
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey[300],
+          child: const Icon(Icons.error),
+        ),
+      );
+    }
+  }
+
+  Widget _buildDownloadedPhotoImage(String imageUrl) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      placeholder: (context, url) => Container(
+        color: Colors.grey[300],
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.grey[300],
+        child: const Icon(Icons.error),
+      ),
+    );
   }
 
   @override
@@ -445,20 +473,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
                     ? Border.all(color: Colors.blue, width: 3)
                     : null,
                 ),
-                child: CachedNetworkImage(
-                  imageUrl: photo.imageUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[300],
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.error),
-                  ),
-                ),
+                child: _buildPhotoImage(photo),
               ),
               if (_isSelectionMode)
                 Positioned(
@@ -509,18 +524,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
                       ? Border.all(color: Colors.blue, width: 2)
                       : null,
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: photo.imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.error),
-                    ),
-                  ),
+                  child: _buildPhotoImage(photo),
                 ),
                 if (_isSelectionMode)
                   Positioned(
@@ -602,20 +606,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
                     ? Border.all(color: Colors.blue, width: 3)
                     : null,
                 ),
-                child: CachedNetworkImage(
-                  imageUrl: photoData['imageUrl'] as String,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[300],
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.error),
-                  ),
-                ),
+                child: _buildDownloadedPhotoImage(photoData['imageUrl'] as String),
               ),
               if (_isSelectionMode)
                 Positioned(
@@ -668,18 +659,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
                       ? Border.all(color: Colors.blue, width: 2)
                       : null,
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: photoData['imageUrl'] as String,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.error),
-                    ),
-                  ),
+                  child: _buildDownloadedPhotoImage(photoData['imageUrl'] as String),
                 ),
                 if (_isSelectionMode)
                   Positioned(
@@ -877,7 +857,7 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
   /// 外部から呼び出し可能なデータ再読み込みメソッド
   void refreshData() {
     print('🔄 ギャラリーデータ再読み込み開始');
-    _loadUserInfo();
+    _loadUserInfo(); // ユーザー情報を再読み込み（アバター更新反映のため）
     _loadPhotos();
     _loadDownloadedPhotos();
   }
@@ -910,53 +890,22 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
 
   Future<void> _loadPhotos() async {
     try {
-      print('📱 ギャラリー写真読み込み開始 - ユーザーID: $_currentUserId');
+      print('📱 ローカルギャラリー写真読み込み開始 - ユーザーID: $_currentUserId');
       setState(() {
         _isLoading = true;
       });
 
-      // Firebaseの接続状態をチェック
-      try {
-        final testQuery = await FirebaseFirestore.instance.collection('photos').limit(1).get();
-        print('🔥 Firebase接続確認: ${testQuery.docs.length}件のドキュメント取得可能');
-      } catch (e) {
-        print('❌ Firebase接続エラー: $e');
-      }
-
-      final photos = await PhotoService.getUserPhotos(_currentUserId);
-      print('📊 取得した写真数: ${photos.length}');
-
-      // 全ての写真データを確認
-      if (photos.isEmpty) {
-        print('⚠️ ユーザー写真が見つかりません。全写真を確認中...');
-        try {
-          final allPhotos = await FirebaseFirestore.instance.collection('photos').get();
-          print('📈 データベース内の全写真数: ${allPhotos.docs.length}');
-
-          for (var doc in allPhotos.docs.take(5)) {
-            final data = doc.data();
-            print('📋 写真データ例: ${doc.id}');
-            print('   - userId: ${data['userId']}');
-            print('   - userName: ${data['userName']}');
-            print('   - timestamp: ${data['timestamp']}');
-            print('   - imageUrl: ${data['imageUrl']?.substring(0, 50)}...');
-          }
-        } catch (e) {
-          print('❌ 全写真確認エラー: $e');
-        }
-      } else {
-        for (int i = 0; i < photos.length && i < 3; i++) {
-          print('📸 写真${i + 1}: ${photos[i].id} - ${photos[i].timestamp}');
-        }
-      }
+      // ローカルストレージから写真を取得
+      final photos = await LocalPhotoService.getUserLocalPhotos(_currentUserId);
+      print('📊 取得したローカル写真数: ${photos.length}');
 
       setState(() {
         _photos = photos;
         _isLoading = false;
       });
-      print('✅ ギャラリー写真読み込み完了: ${photos.length}件');
+      print('✅ ローカルギャラリー写真読み込み完了: ${photos.length}件');
     } catch (e) {
-      print('❌ 写真読み込みエラー: $e');
+      print('❌ ローカル写真読み込みエラー: $e');
       print('❌ エラータイプ: ${e.runtimeType}');
       print('❌ スタックトレース: ${StackTrace.current}');
       setState(() {
@@ -1001,7 +950,7 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
   Future<void> _deleteSelectedPhotos() async {
     try {
       for (String photoId in _selectedPhotos) {
-        await PhotoService.deletePhoto(photoId, _currentUserId);
+        await LocalPhotoService.deleteLocalPhoto(photoId, _currentUserId);
       }
 
       setState(() {
@@ -1071,6 +1020,62 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
            '${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
+  /// 写真の表示ウィジェットを構築（ローカル/ネットワーク対応）
+  Widget _buildPhotoImage(Photo photo) {
+    // ローカルファイルかどうかを判定（パスが'/'で始まる場合はローカル）
+    final isLocalFile = photo.imageUrl.startsWith('/');
+
+    if (isLocalFile) {
+      // ローカルファイルの場合
+      final file = File(photo.imageUrl);
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.error),
+          );
+        },
+      );
+    } else {
+      // ネットワーク画像の場合
+      return CachedNetworkImage(
+        imageUrl: photo.imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        placeholder: (context, url) => Container(
+          color: Colors.grey[300],
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey[300],
+          child: const Icon(Icons.error),
+        ),
+      );
+    }
+  }
+
+  Widget _buildDownloadedPhotoImage(String imageUrl) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      placeholder: (context, url) => Container(
+        color: Colors.grey[300],
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+      errorWidget: (context, url, error) => Container(
+        color: Colors.grey[300],
+        child: const Icon(Icons.error),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1100,14 +1105,19 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
                     CircleAvatar(
                       radius: 25,
                       backgroundColor: const Color.fromRGBO(135, 206, 250, 1.0),
-                      child: Text(
-                        _userInfo['userName']?.substring(0, 1).toUpperCase() ?? 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      backgroundImage: _userInfo['avatarUrl'] != null && _userInfo['avatarUrl'].isNotEmpty
+                          ? CachedNetworkImageProvider(_userInfo['avatarUrl'])
+                          : null,
+                      child: _userInfo['avatarUrl'] == null || _userInfo['avatarUrl'].isEmpty
+                          ? Text(
+                              _userInfo['userName']?.substring(0, 1).toUpperCase() ?? 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1383,20 +1393,7 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
                     ? Border.all(color: Colors.blue, width: 3)
                     : null,
                 ),
-                child: CachedNetworkImage(
-                  imageUrl: photo.imageUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey[300],
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.error),
-                  ),
-                ),
+                child: _buildPhotoImage(photo),
               ),
               if (_isSelectionMode)
                 Positioned(
@@ -1447,26 +1444,13 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
                       ? Border.all(color: Colors.blue, width: 2)
                       : null,
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: photo.imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.error),
-                    ),
-                  ),
+                  child: _buildPhotoImage(photo),
                 ),
                 if (_isSelectionMode)
                   Positioned(
                     top: 0,
                     right: 0,
                     child: Container(
-                      width: 24,
-                      height: 24,
                       decoration: BoxDecoration(
                         color: isSelected ? Colors.blue : Colors.white.withOpacity(0.8),
                         shape: BoxShape.circle,
@@ -1570,18 +1554,7 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
                       ? Border.all(color: Colors.blue, width: 2)
                       : null,
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: photoData['imageUrl'] as String,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.error),
-                    ),
-                  ),
+                  child: _buildDownloadedPhotoImage(photoData['imageUrl'] as String),
                 ),
                 if (_isSelectionMode)
                   Positioned(
@@ -1654,7 +1627,7 @@ class _GalleryScreenContentState extends State<GalleryScreenContent> with Single
 
     if (confirmed == true) {
       try {
-        await PhotoService.deletePhoto(photo.id, _currentUserId);
+        await LocalPhotoService.deleteLocalPhoto(photo.id, _currentUserId);
         setState(() {
           _photos.removeWhere((p) => p.id == photo.id);
         });

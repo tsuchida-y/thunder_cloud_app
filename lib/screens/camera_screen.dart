@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../services/location/location_service.dart';
 import '../services/photo/camera_service.dart';
+import '../services/photo/local_photo_service.dart';
 import '../services/photo/photo_service.dart';
 import '../services/photo/user_service.dart';
 import '../services/weather/weather_data_service.dart';
@@ -480,12 +482,66 @@ class PhotoPreviewScreen extends StatefulWidget {
 
 class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
   bool _isUploading = false;
-  final TextEditingController _captionController = TextEditingController();
+  bool _isSaving = false;
 
-  @override
-  void dispose() {
-    _captionController.dispose();
-    super.dispose();
+  /// 写真をローカルに保存
+  Future<void> _savePhotoLocally() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      // 簡易的なユーザーID（実際のアプリでは認証システムを使用）
+      const userId = 'user_001';
+      print('💾 写真ローカル保存開始 - ユーザーID: $userId');
+
+      // 最新のユーザー情報を取得
+      print('👤 ユーザー情報取得中...');
+      final userInfo = await UserService.getUserInfo(userId);
+      final userName = userInfo['userName'] ?? 'ユーザー';
+      print('✅ ユーザー情報取得完了: $userName');
+
+      // 現在の位置情報を取得
+      final location = await LocationService.getCurrentLocationAsLatLng();
+
+      // 現在の気象データを取得
+      Map<String, dynamic>? weatherData;
+      if (location != null) {
+        final weatherDataService = WeatherDataService.instance;
+        await weatherDataService.fetchAndStoreWeatherData(location);
+        weatherData = weatherDataService.lastWeatherData;
+      }
+
+      print('📱 写真ローカル保存開始...');
+      final success = await LocalPhotoService.savePhotoLocally(
+        imageFile: widget.imageFile,
+        userId: userId,
+        userName: userName,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        locationName: '撮影地点',
+        weatherData: weatherData,
+      );
+
+      print('💾 ローカル保存結果: ${success ? '成功' : '失敗'}');
+
+      if (success) {
+        print('✅ 写真ローカル保存成功');
+        _showLocalSaveSuccessDialog();
+      } else {
+        print('❌ 写真ローカル保存失敗');
+        _showErrorDialog('写真のローカル保存に失敗しました');
+      }
+    } catch (e) {
+      print('❌ 写真ローカル保存エラー: $e');
+      print('❌ エラータイプ: ${e.runtimeType}');
+      AppLogger.error('写真ローカル保存エラー: $e', tag: 'PhotoPreviewScreen');
+      _showErrorDialog('ローカル保存エラー: $e');
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
   }
 
   /// 写真を共有
@@ -505,19 +561,55 @@ class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       final userName = userInfo['userName'] ?? 'ユーザー';
       print('✅ ユーザー情報取得完了: $userName');
 
+      // 現在の位置情報を取得
+      final location = await LocationService.getCurrentLocationAsLatLng();
+
+      // 現在の気象データを取得
+      Map<String, dynamic>? weatherData;
+      if (location != null) {
+        final weatherDataService = WeatherDataService.instance;
+        await weatherDataService.fetchAndStoreWeatherData(location);
+        weatherData = weatherDataService.lastWeatherData;
+      }
+
       print('📸 写真アップロード開始...');
       final success = await PhotoService.uploadPhoto(
         imageFile: widget.imageFile,
         userId: userId,
         userName: userName,
-        caption: _captionController.text.trim(),
+        caption: '', // キャプションなし
       );
 
       print('📤 アップロード結果: ${success ? '成功' : '失敗'}');
 
       if (success) {
         print('✅ 写真共有成功');
-        _showSuccessDialog();
+
+        // コミュニティ共有成功時、ローカルにも保存
+        print('💾 ローカル保存も実行中...');
+        try {
+          final localSaveSuccess = await LocalPhotoService.savePhotoLocally(
+            imageFile: widget.imageFile,
+            userId: userId,
+            userName: userName,
+            latitude: location?.latitude,
+            longitude: location?.longitude,
+            locationName: '撮影地点',
+            weatherData: weatherData,
+          );
+
+          if (localSaveSuccess) {
+            print('✅ ローカル保存も成功');
+            _showShareAndSaveSuccessDialog();
+          } else {
+            print('⚠️ ローカル保存は失敗、コミュニティ共有は成功');
+            _showSuccessDialog();
+          }
+        } catch (e) {
+          print('❌ ローカル保存エラー: $e');
+          print('⚠️ コミュニティ共有は成功、ローカル保存のみ失敗');
+          _showSuccessDialog();
+        }
       } else {
         print('❌ 写真共有失敗');
         _showErrorDialog('写真のアップロードに失敗しました');
@@ -532,6 +624,48 @@ class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         _isUploading = false;
       });
     }
+  }
+
+  /// ローカル保存成功ダイアログを表示
+  void _showLocalSaveSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('保存完了'),
+        content: const Text('写真をギャラリーに保存しました！'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // ダイアログを閉じる
+              Navigator.pop(context); // プレビュー画面を閉じる
+              Navigator.pop(context, true); // カメラ画面を閉じて成功を返す
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 共有・保存両方成功ダイアログを表示
+  void _showShareAndSaveSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('共有・保存完了'),
+        content: const Text('写真をコミュニティに共有し、ギャラリーにも保存しました！'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // ダイアログを閉じる
+              Navigator.pop(context); // プレビュー画面を閉じる
+              Navigator.pop(context, true); // カメラ画面を閉じて成功を返す
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 成功ダイアログを表示
@@ -613,60 +747,210 @@ class PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
             ),
           ),
 
-          // キャプション入力とボタン
+          // ボタンエリア
           Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.grey[900],
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.grey[900]!,
+                  Colors.grey[800]!,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
             child: Column(
               children: [
-                TextField(
-                  controller: _captionController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'キャプションを入力（任意）',
-                    hintStyle: TextStyle(color: Colors.white54),
-                    border: OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white54),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.blue),
-                    ),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
+                // 保存・共有ボタン
                 Row(
                   children: [
+                    // ローカル保存ボタン
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[700],
+                      child: Container(
+                        height: 56,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.green.withOpacity(0.5),
+                            width: 2,
+                          ),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.green[700]!.withOpacity(0.8),
+                              Colors.green[600]!.withOpacity(0.9),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Text('再撮影'),
+                        child: ElevatedButton.icon(
+                          onPressed: _isSaving ? null : _savePhotoLocally,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          icon: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.save_alt,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                          label: Text(
+                            _isSaving ? '保存中...' : 'ギャラリーに保存',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+
+                    // コミュニティ共有ボタン
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isUploading ? null : _sharePhoto,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                      child: Container(
+                        height: 56,
+                        margin: const EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.blue.withOpacity(0.5),
+                            width: 2,
+                          ),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue[700]!.withOpacity(0.8),
+                              Colors.blue[600]!.withOpacity(0.9),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: _isUploading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
+                        child: ElevatedButton.icon(
+                          onPressed: _isUploading ? null : _sharePhoto,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          icon: _isUploading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.share,
                                   color: Colors.white,
-                                  strokeWidth: 2,
+                                  size: 24,
                                 ),
-                              )
-                            : const Text('共有'),
+                          label: Text(
+                            _isUploading ? 'アップロード中...' : 'コミュニティに共有',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // 再撮影ボタン
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 2,
+                      ),
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.grey[800]!.withOpacity(0.8),
+                          Colors.grey[700]!.withOpacity(0.9),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        '再撮影',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

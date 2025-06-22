@@ -17,7 +17,7 @@ class AppInitializationService {
   /// 初期化状態の確認
   static bool get isInitialized => _isInitialized;
 
-  /// アプリケーションの超高速初期化（Firebase初期化なし）
+  /// アプリケーションの初期化（Firebase Coreは同期、他はバックグラウンド）
   static Future<void> initializeApp() async {
     if (_isInitialized) {
       dev.log("✅ アプリは既に初期化済みです");
@@ -25,27 +25,28 @@ class AppInitializationService {
     }
 
     try {
-      dev.log("⚡ 超高速初期化開始（Firebase後回し）");
+      dev.log("🔥 Firebase Core初期化開始");
+
+      // Firebase Core初期化（同期的に実行）
+      await _initializeFirebaseCore();
 
       _isInitialized = true;
-      dev.log("✅ 超高速初期化完了 (0.1秒)");
+      dev.log("✅ Firebase Core初期化完了");
 
-      // Firebase初期化をバックグラウンドに完全移行
-      _initializeAllServicesInBackground();
+      // 他のサービスはバックグラウンドで初期化
+      _initializeOtherServicesInBackground();
 
     } catch (e) {
       dev.log("❌ 初期化エラー: $e");
+      rethrow;
     }
   }
 
-  /// すべてのサービスをバックグラウンドで初期化
-  static void _initializeAllServicesInBackground() {
+  /// その他のサービスをバックグラウンドで初期化
+  static void _initializeOtherServicesInBackground() {
     Future.microtask(() async {
       try {
-        dev.log("🔄 バックグラウンド初期化開始");
-
-        // Firebase Core初期化
-        await _initializeFirebaseCore();
+        dev.log("🔄 バックグラウンドサービス初期化開始");
 
         // バックグラウンド通知ハンドラーを設定
         FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -58,9 +59,9 @@ class AppInitializationService {
           await _quickFirestoreTest();
         }
 
-        dev.log("✅ バックグラウンド初期化完了");
+        dev.log("✅ バックグラウンドサービス初期化完了");
       } catch (e) {
-        dev.log("❌ バックグラウンド初期化エラー: $e");
+        dev.log("❌ バックグラウンドサービス初期化エラー: $e");
       }
     });
   }
@@ -143,6 +144,20 @@ class AppInitializationService {
 
         if (location != null) {
           dev.log("✅ バックグラウンド位置情報取得成功: $location");
+
+          // 位置情報をFirestoreに自動保存
+          try {
+            dev.log("📍 アプリ起動時の位置情報をFirestoreに保存開始...");
+            await PushNotificationService.saveUserLocation(
+              location.latitude,
+              location.longitude,
+            );
+            dev.log("📍 ✅ アプリ起動時の位置情報をFirestoreに自動保存完了");
+            dev.log("📍 保存された座標: 緯度=${location.latitude}, 経度=${location.longitude}");
+          } catch (saveError) {
+            dev.log("❌ 位置情報自動保存エラー: $saveError");
+          }
+
         } else {
           dev.log("⚠️ バックグラウンド位置情報取得失敗");
         }

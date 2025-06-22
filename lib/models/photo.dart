@@ -54,6 +54,28 @@ class Photo {
     );
   }
 
+  /// Mapから写真オブジェクトを作成（ローカルストレージ用）
+  factory Photo.fromMap(Map<String, dynamic> map) {
+    return Photo(
+      id: map['id'] ?? '',
+      userId: map['userId'] ?? '',
+      userName: map['userName'] ?? '',
+      imageUrl: map['imageUrl'] ?? '',
+      thumbnailUrl: map['thumbnailUrl'] ?? '',
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+      locationName: map['locationName'] ?? '',
+      timestamp: map['timestamp'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['timestamp'] as int)
+          : DateTime.now(),
+      weatherData: Map<String, dynamic>.from(map['weatherData'] ?? {}),
+      likes: map['likes'] ?? 0,
+      comments: map['comments'] ?? 0,
+      isPublic: map['isPublic'] ?? true,
+      tags: List<String>.from(map['tags'] ?? []),
+    );
+  }
+
   /// FirestoreドキュメントへのMap変換
   Map<String, dynamic> toMap() {
     return {
@@ -64,6 +86,26 @@ class Photo {
       'location': GeoPoint(latitude, longitude),
       'locationName': locationName,
       'timestamp': Timestamp.fromDate(timestamp),
+      'weatherData': weatherData,
+      'likes': likes,
+      'comments': comments,
+      'isPublic': isPublic,
+      'tags': tags,
+    };
+  }
+
+  /// ローカルストレージ用のMap変換
+  Map<String, dynamic> toLocalMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'userName': userName,
+      'imageUrl': imageUrl,
+      'thumbnailUrl': thumbnailUrl,
+      'latitude': latitude,
+      'longitude': longitude,
+      'locationName': locationName,
+      'timestamp': timestamp.millisecondsSinceEpoch,
       'weatherData': weatherData,
       'likes': likes,
       'comments': comments,

@@ -31,6 +31,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   // いいね状態を管理するマップ
   Map<String, bool> _likeStatus = {};
 
+  // ユーザー情報キャッシュ
+  final Map<String, Map<String, dynamic>> _userInfoCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -48,7 +51,51 @@ class _CommunityScreenState extends State<CommunityScreen> {
   /// 外部から呼び出し可能なデータ再読み込みメソッド
   void refreshData() {
     print('🔄 コミュニティデータ再読み込み開始');
+    _userInfoCache.clear(); // キャッシュをクリア
     _loadPhotos();
+  }
+
+  /// ユーザー情報を取得（キャッシュ機能付き）
+  Future<Map<String, dynamic>> _getUserInfo(String userId) async {
+    // キャッシュから取得を試行
+    if (_userInfoCache.containsKey(userId)) {
+      return _userInfoCache[userId]!;
+    }
+
+    try {
+      // UserServiceから最新情報を取得
+      final userInfo = await UserService.getUserInfo(userId);
+      _userInfoCache[userId] = userInfo; // キャッシュに保存
+      return userInfo;
+    } catch (e) {
+      print('❌ ユーザー情報取得エラー (userId: $userId): $e');
+      // デフォルト情報を返す
+      final defaultInfo = {
+        'userId': userId,
+        'userName': 'ユーザー',
+        'avatarUrl': '',
+      };
+      _userInfoCache[userId] = defaultInfo;
+      return defaultInfo;
+    }
+  }
+
+  /// 複数のユーザー情報を事前読み込み
+  Future<void> _preloadUserInfos(List<String> userIds) async {
+    print('👤 ユーザー情報事前読み込み開始: ${userIds.length}件');
+
+    // キャッシュにないユーザーIDのみを対象にする
+    final uncachedUserIds = userIds.where((id) => !_userInfoCache.containsKey(id)).toList();
+    if (uncachedUserIds.isEmpty) {
+      print('✅ 全てキャッシュ済み');
+      return;
+    }
+
+    print('📋 新規読み込み対象: ${uncachedUserIds.length}件');
+
+    // 並列でユーザー情報を取得
+    await Future.wait(uncachedUserIds.map((userId) => _getUserInfo(userId)));
+    print('✅ ユーザー情報事前読み込み完了');
   }
 
   void _onScroll() {
@@ -136,6 +183,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
         }
       }
 
+      // ユーザー情報を事前読み込み（ちらつき防止）
+      if (photos.isNotEmpty) {
+        final uniqueUserIds = photos.map((photo) => photo.userId).toSet().toList();
+        await _preloadUserInfos(uniqueUserIds);
+      }
+
       setState(() {
         _photos = photos;
         _isLoading = false;
@@ -175,6 +228,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
           _likeStatus.addAll(likeStatus);
         });
       }
+
+      // ユーザー情報を事前読み込み（ちらつき防止）
+      final uniqueUserIds = photos.map((photo) => photo.userId).toSet().toList();
+      await _preloadUserInfos(uniqueUserIds);
 
       setState(() {
         _photos.addAll(photos);
@@ -288,20 +345,109 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('写真を削除'),
-          content: const Text('この写真を削除しますか？\nこの操作は取り消せません。'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange,
+                size: 28,
+              ),
+              SizedBox(width: 8),
+              Text(
+                '写真を削除',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'この写真を完全に削除しますか？',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.red.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.red,
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'この操作は取り消せません',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('キャンセル'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text(
+                'キャンセル',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
                 _deletePhoto(photo.id);
               },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('削除'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    '削除する',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -340,18 +486,58 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('写真を削除しました'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '写真を削除しました',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
             ),
           );
           // 写真リストを更新
           _loadPhotos();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('写真の削除に失敗しました'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '写真の削除に失敗しました',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
             ),
           );
         }
@@ -361,8 +547,30 @@ class _CommunityScreenState extends State<CommunityScreen> {
         Navigator.pop(context); // 削除中ダイアログを閉じる
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('削除エラー: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '削除エラー: $e',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -486,6 +694,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget _buildPhotoCard(Photo photo) {
     final isLiked = _likeStatus[photo.id] ?? false;
     print('🎨 写真カード表示: ${photo.id}, いいね状態: $isLiked, いいね数: ${photo.likes}');
+    print('🗑️ 削除ボタン表示判定: photo.userId="${photo.userId}", _currentUserId="$_currentUserId", 表示=${photo.userId == _currentUserId}');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -495,43 +704,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           // ユーザー情報ヘッダー
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color.fromRGBO(135, 206, 250, 1.0),
-                  child: Text(
-                    photo.userName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        photo.userName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        _formatDateTime(photo.timestamp),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: _buildUserHeader(photo),
           ),
 
           // 写真画像
@@ -603,93 +776,78 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  /// ボトムナビゲーションバー
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(135, 206, 250, 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  /// ユーザー情報ヘッダーを構築（同期的表示でちらつき防止）
+  Widget _buildUserHeader(Photo photo) {
+    // キャッシュからユーザー情報を取得（事前読み込み済み）
+    final userInfo = _userInfoCache[photo.userId] ?? {
+      'userName': photo.userName,
+      'avatarUrl': '',
+    };
+    final avatarUrl = userInfo['avatarUrl'] as String? ?? '';
+    final userName = userInfo['userName'] as String? ?? photo.userName;
+
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: const Color.fromRGBO(135, 206, 250, 1.0),
+          backgroundImage: avatarUrl.isNotEmpty
+              ? CachedNetworkImageProvider(avatarUrl)
+              : null,
+          child: avatarUrl.isEmpty
+              ? Text(
+                  userName.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildNavButton(
-                context,
-                icon: Icons.map,
-                label: '地図',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/weather');
-                },
+              Text(
+                userName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-              _buildNavButton(
-                context,
-                icon: Icons.photo_library,
-                label: 'ギャラリー',
-                onTap: () {
-                  Navigator.pushReplacementNamed(context, '/gallery');
-                },
-              ),
-              _buildNavButton(
-                context,
-                icon: Icons.people,
-                label: 'コミュニティ',
-                onTap: () {
-                  // 現在のページなので何もしない
-                },
-                isActive: true,
+              Text(
+                _formatDateTime(photo.timestamp),
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  /// ナビゲーションボタン
-  Widget _buildNavButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isActive = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+        // 削除ボタン（自分の投稿のみ表示）
+        if (photo.userId == _currentUserId)
+          GestureDetector(
+            onTap: _isDeletingPhoto ? null : () => _showDeleteConfirmDialog(photo),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 18,
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }
@@ -809,81 +967,146 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
     }
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('プロフィール編集'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // アバター画像
-            GestureDetector(
-              onTap: _isUpdating ? null : _updateAvatar,
-              child: Stack(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Center(
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            margin: EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            constraints: BoxConstraints(
+              maxWidth: 350,
+              maxHeight: MediaQuery.of(context).size.height -
+                         MediaQuery.of(context).viewInsets.bottom - 100,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey[300],
-                    backgroundImage: _currentAvatarUrl.isNotEmpty
-                        ? CachedNetworkImageProvider(_currentAvatarUrl)
-                        : null,
-                    child: _currentAvatarUrl.isEmpty
-                        ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                        : null,
-                  ),
-                  if (_isUpdating)
-                    const Positioned.fill(
-                      child: CircularProgressIndicator(),
+                  // タイトル
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: const Text(
+                      'プロフィール編集',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  const Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.blue,
-                      child: Icon(Icons.edit, size: 16, color: Colors.white),
+                  ),
+
+                  // コンテンツ
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // アバター画像
+                          GestureDetector(
+                            onTap: _isUpdating ? null : _updateAvatar,
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 35,
+                                  backgroundColor: Colors.grey[300],
+                                  backgroundImage: _currentAvatarUrl.isNotEmpty
+                                      ? CachedNetworkImageProvider(_currentAvatarUrl)
+                                      : null,
+                                  child: _currentAvatarUrl.isEmpty
+                                      ? const Icon(Icons.person, size: 35, color: Colors.grey)
+                                      : null,
+                                ),
+                                if (_isUpdating)
+                                  const Positioned.fill(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                const Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: CircleAvatar(
+                                    radius: 10,
+                                    backgroundColor: Colors.blue,
+                                    child: Icon(Icons.edit, size: 10, color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'アバター画像をタップして変更',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ユーザー名入力
+                          TextField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'ユーザー名',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.person_outline),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              isDense: true,
+                            ),
+                            enabled: !_isUpdating,
+                            maxLength: 20,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // アクションボタン
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: _isUpdating ? null : () => Navigator.pop(context),
+                          child: const Text('キャンセル'),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: _isUpdating ? null : _updateUserName,
+                          child: _isUpdating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('保存'),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'アバター画像をタップして変更',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-
-            // ユーザー名入力
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'ユーザー名',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              enabled: !_isUpdating,
-            ),
-          ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isUpdating ? null : () => Navigator.pop(context),
-          child: const Text('キャンセル'),
-        ),
-        ElevatedButton(
-          onPressed: _isUpdating ? null : _updateUserName,
-          child: _isUpdating
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('保存'),
-        ),
-      ],
     );
   }
 }
@@ -907,10 +1130,13 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
   bool _hasMore = true;
   final ScrollController _scrollController = ScrollController();
   final bool _isDownloadingPhoto = false;
-  final bool _isDeletingPhoto = false;
+  bool _isDeletingPhoto = false;
 
   // いいね状態を管理するマップ
   Map<String, bool> _likeStatus = {};
+
+  // ユーザー情報キャッシュ
+  final Map<String, Map<String, dynamic>> _userInfoCache = {};
 
   @override
   void initState() {
@@ -929,7 +1155,51 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
   /// 外部から呼び出し可能なデータ再読み込みメソッド
   void refreshData() {
     print('🔄 コミュニティデータ再読み込み開始');
+    _userInfoCache.clear(); // キャッシュをクリア
     _loadPhotos();
+  }
+
+  /// ユーザー情報を取得（キャッシュ機能付き）
+  Future<Map<String, dynamic>> _getUserInfo(String userId) async {
+    // キャッシュから取得を試行
+    if (_userInfoCache.containsKey(userId)) {
+      return _userInfoCache[userId]!;
+    }
+
+    try {
+      // UserServiceから最新情報を取得
+      final userInfo = await UserService.getUserInfo(userId);
+      _userInfoCache[userId] = userInfo; // キャッシュに保存
+      return userInfo;
+    } catch (e) {
+      print('❌ ユーザー情報取得エラー (userId: $userId): $e');
+      // デフォルト情報を返す
+      final defaultInfo = {
+        'userId': userId,
+        'userName': 'ユーザー',
+        'avatarUrl': '',
+      };
+      _userInfoCache[userId] = defaultInfo;
+      return defaultInfo;
+    }
+  }
+
+  /// 複数のユーザー情報を事前読み込み
+  Future<void> _preloadUserInfos(List<String> userIds) async {
+    print('👤 ユーザー情報事前読み込み開始: ${userIds.length}件');
+
+    // キャッシュにないユーザーIDのみを対象にする
+    final uncachedUserIds = userIds.where((id) => !_userInfoCache.containsKey(id)).toList();
+    if (uncachedUserIds.isEmpty) {
+      print('✅ 全てキャッシュ済み');
+      return;
+    }
+
+    print('📋 新規読み込み対象: ${uncachedUserIds.length}件');
+
+    // 並列でユーザー情報を取得
+    await Future.wait(uncachedUserIds.map((userId) => _getUserInfo(userId)));
+    print('✅ ユーザー情報事前読み込み完了');
   }
 
   void _onScroll() {
@@ -1017,6 +1287,12 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
         }
       }
 
+      // ユーザー情報を事前読み込み（ちらつき防止）
+      if (photos.isNotEmpty) {
+        final uniqueUserIds = photos.map((photo) => photo.userId).toSet().toList();
+        await _preloadUserInfos(uniqueUserIds);
+      }
+
       setState(() {
         _photos = photos;
         _isLoading = false;
@@ -1056,6 +1332,10 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
           _likeStatus.addAll(likeStatus);
         });
       }
+
+      // ユーザー情報を事前読み込み（ちらつき防止）
+      final uniqueUserIds = photos.map((photo) => photo.userId).toSet().toList();
+      await _preloadUserInfos(uniqueUserIds);
 
       setState(() {
         _photos.addAll(photos);
@@ -1243,6 +1523,7 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
   Widget _buildPhotoCard(Photo photo) {
     final isLiked = _likeStatus[photo.id] ?? false;
     print('🎨 写真カード表示: ${photo.id}, いいね状態: $isLiked, いいね数: ${photo.likes}');
+    print('🗑️ 削除ボタン表示判定: photo.userId="${photo.userId}", _currentUserId="$_currentUserId", 表示=${photo.userId == _currentUserId}');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1252,43 +1533,7 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
           // ユーザー情報ヘッダー
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color.fromRGBO(135, 206, 250, 1.0),
-                  child: Text(
-                    photo.userName.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        photo.userName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        _formatDateTime(photo.timestamp),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: _buildUserHeader(photo),
           ),
 
           // 写真画像
@@ -1360,16 +1605,331 @@ class _CommunityScreenContentState extends State<CommunityScreenContent> {
     );
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}/${dateTime.month}/${dateTime.day} '
-           '${dateTime.hour.toString().padLeft(2, '0')}:'
-           '${dateTime.minute.toString().padLeft(2, '0')}';
-  }
-
   void _showPhotoDetail(Photo photo) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('写真詳細画面は準備中です')),
     );
   }
-}
 
+  void _showDeleteConfirmDialog(Photo photo) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange,
+                size: 28,
+              ),
+              SizedBox(width: 8),
+              Text(
+                '写真を削除',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'この写真を完全に削除しますか？',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.red.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.red,
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'この操作は取り消せません',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text(
+                'キャンセル',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _deletePhoto(photo.id);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    '削除する',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deletePhoto(String photoId) async {
+    setState(() {
+      _isDeletingPhoto = true;
+    });
+
+    try {
+      // 削除中のダイアログを表示
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text('削除中...'),
+              ],
+            ),
+          );
+        },
+      );
+
+      // 写真を削除
+      final success = await PhotoService.deletePhoto(photoId, _currentUserId);
+
+      if (mounted) {
+        Navigator.pop(context); // 削除中ダイアログを閉じる
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '写真を削除しました',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+          // 写真リストを更新
+          _loadPhotos();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '写真の削除に失敗しました',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // 削除中ダイアログを閉じる
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '削除エラー: $e',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isDeletingPhoto = false;
+      });
+    }
+  }
+
+  /// ユーザー情報ヘッダーを構築（同期的表示でちらつき防止）
+  Widget _buildUserHeader(Photo photo) {
+    // キャッシュからユーザー情報を取得（事前読み込み済み）
+    final userInfo = _userInfoCache[photo.userId] ?? {
+      'userName': photo.userName,
+      'avatarUrl': '',
+    };
+    final avatarUrl = userInfo['avatarUrl'] as String? ?? '';
+    final userName = userInfo['userName'] as String? ?? photo.userName;
+
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: const Color.fromRGBO(135, 206, 250, 1.0),
+          backgroundImage: avatarUrl.isNotEmpty
+              ? CachedNetworkImageProvider(avatarUrl)
+              : null,
+          child: avatarUrl.isEmpty
+              ? Text(
+                  userName.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                userName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                _formatDateTime(photo.timestamp),
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 削除ボタン（自分の投稿のみ表示）
+        if (photo.userId == _currentUserId)
+          GestureDetector(
+            onTap: _isDeletingPhoto ? null : () => _showDeleteConfirmDialog(photo),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 18,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}/${dateTime.month}/${dateTime.day} '
+           '${dateTime.hour.toString().padLeft(2, '0')}:'
+           '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+}

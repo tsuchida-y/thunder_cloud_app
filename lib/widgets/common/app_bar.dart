@@ -7,10 +7,13 @@ import '../../screens/settings_screen.dart';
 ///今後おしゃれにしていきたいから、別ファイルに分離
 class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
   final LatLng? currentLocation;
+  final VoidCallback? onProfileUpdated;
 
-  const WeatherAppBar({super.key, this.currentLocation});
-
-
+  const WeatherAppBar({
+    super.key,
+    this.currentLocation,
+    this.onProfileUpdated,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,12 +45,16 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.settings),
-          onPressed: () {
-            Navigator.of(context).push(
+          onPressed: () async {
+            final result = await Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => SettingsScreen(currentLocation: currentLocation),
               ),
             );
+            // プロフィールが更新された場合、コールバックを実行
+            if (result == true && onProfileUpdated != null) {
+              onProfileUpdated!();
+            }
           },
         ),
       ],
