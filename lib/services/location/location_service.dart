@@ -5,7 +5,7 @@ import 'dart:developer' as dev;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../constants/weather_constants.dart';
+import '../../constants/app_constants.dart';
 
 /// 位置情報の取得と管理を行う統合サービス
 class LocationService {
@@ -14,7 +14,7 @@ class LocationService {
   static StreamSubscription<Position>? _positionStream;
 
   /// 位置情報の有効期限（10分）
-  static const Duration _locationValidityDuration = Duration(minutes: 10);
+  static const Duration _locationValidityDuration = AppConstants.locationValidityDuration;
 
   /// 位置情報更新のコールバック
   static Function(LatLng)? onLocationChanged;
@@ -54,8 +54,8 @@ class LocationService {
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: LocationSettings(
-        accuracy: WeatherConstants.locationAccuracy,
-        distanceFilter: WeatherConstants.locationUpdateDistanceFilter.toInt(),
+        accuracy: AppConstants.locationAccuracy,
+        distanceFilter: AppConstants.locationUpdateDistanceFilter.toInt(),
       ),
     ).listen(
       _handleLocationUpdate,
@@ -71,7 +71,7 @@ class LocationService {
   }
 
   /// 現在の位置情報を取得（リトライ付き）
-  static Future<Position> _getCurrentPositionWithRetry({int maxRetries = 3}) async {
+  static Future<Position> _getCurrentPositionWithRetry({int maxRetries = AppConstants.maxLocationRetries}) async {
     Exception? lastException;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
@@ -82,7 +82,7 @@ class LocationService {
 
         return await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 20 + (attempt * 10)),
+          timeLimit: Duration(seconds: AppConstants.baseLocationTimeoutSeconds + (attempt * AppConstants.locationTimeoutIncrementSeconds)),
         );
 
       } catch (e) {
@@ -90,7 +90,7 @@ class LocationService {
         dev.log("❌ 位置情報取得エラー (試行 $attempt/$maxRetries): $e");
 
         if (attempt < maxRetries) {
-          await Future.delayed(Duration(seconds: attempt * 2));
+          await Future.delayed(Duration(seconds: attempt * AppConstants.retryDelayMultiplier));
         }
       }
     }
@@ -144,7 +144,7 @@ class LocationService {
     if (_cachedLocation == null) return true;
 
     final distance = calculateDistance(_cachedLocation!, newLocation);
-    return distance >= WeatherConstants.locationUpdateDistanceFilter;
+    return distance >= AppConstants.locationUpdateDistanceFilter;
   }
 
   /// 位置情報をキャッシュ

@@ -1,20 +1,23 @@
-// lib/constants/weather_constants.dart - 位置監視設定
+// lib/constants/weather_constants.dart - 位置監視設定（AppConstantsを参照）
 import 'package:geolocator/geolocator.dart';
 
+import 'app_constants.dart';
+
 class WeatherConstants {
-  static const List<String> checkDirections = ["north", "south", "east", "west"];
-  static const List<double> checkDistances = [50.0, 160.0, 250.0];
+  // AppConstantsから参照
+  static const List<String> checkDirections = AppConstants.checkDirections;
+  static const List<double> checkDistances = AppConstants.checkDistances;
 
   // 表示用設定
-  static const String appTitle = "入道雲サーチ";
-  static const String monitoringMessage = "サーバーが5分間隔で監視中";
+  static const String appTitle = AppConstants.appTitle;
+  static const String monitoringMessage = AppConstants.monitoringMessage;
 
   // 位置監視設定
-  static const double locationUpdateDistanceFilter = 5000.0; // 5km移動で更新（CPU負荷軽減）
-  static const int locationUpdateTimeInterval = 5; // 最低5分間隔
-  static const LocationAccuracy locationAccuracy = LocationAccuracy.medium; // CPU負荷軽減
+  static const double locationUpdateDistanceFilter = AppConstants.locationUpdateDistanceFilter;
+  static const int locationUpdateTimeInterval = AppConstants.locationUpdateTimeInterval;
+  static const LocationAccuracy locationAccuracy = AppConstants.locationAccuracy;
 
   // バッテリー節約モード
-  static const double batterySaveDistanceFilter = 5000.0; // 5km移動で更新
-  static const LocationAccuracy batterySaveAccuracy = LocationAccuracy.medium;
+  static const double batterySaveDistanceFilter = AppConstants.batterySaveDistanceFilter;
+  static const LocationAccuracy batterySaveAccuracy = AppConstants.batterySaveAccuracy;
 }

@@ -1,247 +1,196 @@
-import 'dart:convert';
-import 'dart:developer' as dev;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/app_constants.dart';
 
-import '../../utils/coordinate.dart';
-
-/// 気象データのキャッシュ機能付きサービスクラス
+/// 気象データのFirestore取得サービスクラス
 class WeatherCacheService {
-  static const String _cacheKeyPrefix = 'weather_cache_';
-  static const Duration _cacheValidDuration = Duration(minutes: 10);
+  static final WeatherCacheService _instance = WeatherCacheService._internal();
+  factory WeatherCacheService() => _instance;
+  WeatherCacheService._internal();
 
-  // Firebase Functions インスタンス
-  static final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Duration _cacheValidityDuration = AppConstants.cacheValidityDuration;
 
-  /// 現在地の各方向の気象データを取得（キャッシュ機能付き）
-  static Future<Map<String, Map<String, dynamic>>?> getWeatherDataWithCache(
-    LatLng currentLocation,
+  /// 現在地の各方向の気象データを取得（Firestoreから直接）
+  Future<Map<String, dynamic>?> getWeatherDataWithCache(
+    double latitude,
+    double longitude,
   ) async {
-    dev.log("🌦️ === キャッシュ付き気象データ取得開始 ===");
-    dev.log("📍 現在地: 緯度 ${currentLocation.latitude}, 経度 ${currentLocation.longitude}");
+    final cacheKey = _generateCacheKey(latitude, longitude);
 
-    final cacheKey = _generateCacheKey(currentLocation);
+    print("🔍 === Firestore気象データ取得デバッグ ===");
+    print("📍 位置情報: 緯度 $latitude, 経度 $longitude");
+    print("🔑 生成されたキャッシュキー: $cacheKey");
 
     try {
-      // キャッシュから取得を試行
-      final cachedData = await _getCachedData(cacheKey);
-      if (cachedData != null) {
-        dev.log("💾 キャッシュからデータを取得");
-        return cachedData;
-      }
+      // Firestoreから直接取得
+      print("📡 Firestoreからデータを取得中...");
+      final doc = await _firestore.collection('weather_cache').doc(cacheKey).get();
 
-      dev.log("🌐 新しいデータを取得中...");
+      print("📄 ドキュメント存在: ${doc.exists}");
 
-      // Firebase Functionsから複数方向の気象データを一括取得
-      final result = await _functions.httpsCallable('getDirectionalWeatherData').call({
-        'latitude': currentLocation.latitude,
-        'longitude': currentLocation.longitude,
-        'directions': 'north,south,east,west',
-      });
+      if (doc.exists) {
+        final data = doc.data();
+        print("📊 ドキュメントデータ: ${data != null ? 'あり' : 'なし'}");
 
-      final Map<String, Map<String, dynamic>> weatherData = {};
+        if (data != null) {
+          print("🔍 データキー: ${data.keys.toList()}");
 
-      if (result.data != null) {
-        final data = result.data as Map<String, dynamic>;
+          final timestamp = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final now = DateTime.now();
+          final timeDiff = now.difference(timestamp);
 
-        // 各方向のデータを処理
-        for (String direction in ['north', 'south', 'east', 'west']) {
-          if (data.containsKey(direction)) {
-            final directionData = Map<String, dynamic>.from(data[direction]);
-            weatherData[direction] = directionData;
+          print("⏰ タイムスタンプ: $timestamp");
+          print("🕐 現在時刻: $now");
+          print("⌛ 経過時間: ${timeDiff.inMinutes}分");
+          print("✅ 有効期限: ${_cacheValidityDuration.inMinutes}分");
+
+          // Firestoreのデータが有効期限内かチェック
+          if (timeDiff < _cacheValidityDuration) {
+            final weatherData = data['data'] as Map<String, dynamic>?;
+            print("🌦️ 気象データ: ${weatherData != null ? 'あり' : 'なし'}");
+
+            if (weatherData != null) {
+              print("📋 気象データキー: ${weatherData.keys.toList()}");
+              print("✅ Firestoreから有効なデータを取得");
+              return weatherData;
+            } else {
+              print("❌ 気象データがnull");
+            }
+          } else {
+            print("⏰ Firestoreのデータが期限切れ (${timeDiff.inMinutes}分経過)");
           }
+        } else {
+          print("❌ ドキュメントデータがnull");
+        }
+      } else {
+        print("❌ ドキュメントが存在しません");
+
+        // 存在するドキュメントを確認
+        print("🔍 weather_cacheコレクション内の全ドキュメントを確認中...");
+        final allDocs = await _firestore.collection('weather_cache').get();
+        print("📊 コレクション内のドキュメント数: ${allDocs.docs.length}");
+
+        for (var doc in allDocs.docs) {
+          print("📄 ドキュメントID: ${doc.id}");
         }
       }
 
-      if (weatherData.isNotEmpty) {
-        // キャッシュに保存
-        await _saveCachedData(cacheKey, weatherData);
-        dev.log("✅ 気象データ取得・キャッシュ保存完了: ${weatherData.length}方向");
-        return weatherData;
-      }
-
-      dev.log("❌ 気象データの取得に失敗");
+      print("⚠️ 有効なキャッシュデータが見つかりません。Firebase Functionsによる自動更新を待機中...");
       return null;
 
     } catch (e) {
-      dev.log("❌ 気象データ取得エラー: $e");
-
-      // エラー時は単一地点データ取得にフォールバック
-      return await _fetchSingleLocationFallback(currentLocation);
+      print("❌ Firestoreからのデータ取得エラー: $e");
+      print("❌ エラータイプ: ${e.runtimeType}");
+      return null;
     }
   }
 
-  /// フォールバック用の単一地点データ取得
-  static Future<Map<String, Map<String, dynamic>>?> _fetchSingleLocationFallback(
-    LatLng currentLocation,
-  ) async {
-    dev.log("🔄 フォールバック処理開始");
+  /// Firestoreの気象データをリアルタイム監視
+  Stream<Map<String, dynamic>?> watchWeatherData(
+    double latitude,
+    double longitude,
+  ) {
+    final cacheKey = _generateCacheKey(latitude, longitude);
 
-    try {
-      final Map<String, Map<String, dynamic>> result = {};
+    print("📡 === リアルタイム監視開始 ===");
+    print("📍 監視位置: 緯度 $latitude, 経度 $longitude");
+    print("🔑 監視キー: $cacheKey");
 
-      // 各方向の気象データを個別に取得
-      for (String direction in ['north', 'south', 'east', 'west']) {
-        final coordinates = CoordinateUtils.calculateDirectionCoordinates(
-          direction,
-          currentLocation.latitude,
-          currentLocation.longitude,
-          50.0
-        );
+    return _firestore.collection('weather_cache').doc(cacheKey).snapshots().map((snapshot) {
+      print("📡 リアルタイム更新受信: ${snapshot.exists ? 'データあり' : 'データなし'}");
 
-        try {
-          // Firebase Functionsから単一地点のデータを取得
-          final functionResult = await _functions.httpsCallable('getWeatherData').call({
-            'latitude': coordinates.latitude,
-            'longitude': coordinates.longitude,
-          });
+      if (snapshot.exists) {
+        final data = snapshot.data();
+        if (data != null) {
+          print("🔍 受信データキー: ${data.keys.toList()}");
 
-          if (functionResult.data != null) {
-            final weatherData = Map<String, dynamic>.from(functionResult.data);
-            result[direction] = weatherData;
+          final timestamp = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final now = DateTime.now();
+          final timeDiff = now.difference(timestamp);
+
+          print("⏰ データタイムスタンプ: $timestamp");
+          print("⌛ 経過時間: ${timeDiff.inMinutes}分");
+
+          // データが有効期限内かチェック
+          if (timeDiff < _cacheValidityDuration) {
+            final weatherData = data['data'] as Map<String, dynamic>?;
+            if (weatherData != null) {
+              print("✅ リアルタイム: 有効な気象データを受信");
+              print("📋 気象データキー: ${weatherData.keys.toList()}");
+              return weatherData;
+            } else {
+              print("❌ リアルタイム: 気象データがnull");
+            }
+          } else {
+            print("⏰ リアルタイム: データが期限切れ (${timeDiff.inMinutes}分経過)");
           }
-        } catch (e) {
-          dev.log("❌ [$direction方向] データ取得エラー: $e");
+        } else {
+          print("❌ リアルタイム: ドキュメントデータがnull");
         }
+      } else {
+        print("❌ リアルタイム: ドキュメントが存在しません");
       }
 
-      if (result.isNotEmpty) {
-        // キャッシュに保存
-        final cacheKey = _generateCacheKey(currentLocation);
-        await _saveCachedData(cacheKey, result);
-        dev.log("✅ フォールバック処理完了: ${result.length}方向");
-      }
-
-      return result.isNotEmpty ? result : null;
-    } catch (e) {
-      dev.log("❌ フォールバック処理エラー: $e");
       return null;
-    }
+    }).handleError((error) {
+      print("❌ リアルタイム監視エラー: $error");
+      print("❌ エラータイプ: ${error.runtimeType}");
+    });
   }
 
   /// キャッシュキーを生成
-  static String _generateCacheKey(LatLng location) {
-    return '$_cacheKeyPrefix${location.latitude.toStringAsFixed(4)}_${location.longitude.toStringAsFixed(4)}';
+  String _generateCacheKey(double latitude, double longitude) {
+    // 精度を下げて、より広い範囲で同じキャッシュを使用
+    // 0.01度 ≈ 約1km の範囲で同じキャッシュを使用
+    final roundedLat = (latitude * 100).round() / 100;
+    final roundedLng = (longitude * 100).round() / 100;
+    return 'weather_${roundedLat.toStringAsFixed(2)}_${roundedLng.toStringAsFixed(2)}';
   }
 
-  /// キャッシュからデータを取得
-  static Future<Map<String, Map<String, dynamic>>?> _getCachedData(
-    String cacheKey,
-  ) async {
+  /// キャッシュの統計情報を取得（Firestoreベース）
+  Future<Map<String, dynamic>> getCacheStats() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString(cacheKey);
-      final cacheTimeKey = '${cacheKey}_time';
-      final cacheTime = prefs.getInt(cacheTimeKey);
+      final querySnapshot = await _firestore.collection('weather_cache').get();
+      final now = DateTime.now();
 
-      if (cachedJson != null && cacheTime != null) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final cacheAge = now - cacheTime;
+      int validEntries = 0;
+      List<String> allCacheKeys = [];
+      List<String> validCacheKeys = [];
 
-        // キャッシュが有効期限内かチェック
-        if (cacheAge < _cacheValidDuration.inMilliseconds) {
-          final data = json.decode(cachedJson) as Map<String, dynamic>;
-          return data.cast<String, Map<String, dynamic>>();
-        } else {
-          // 期限切れのキャッシュを削除
-          await _clearCache(cacheKey);
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+        allCacheKeys.add(doc.id);
+
+        if (timestamp != null && now.difference(timestamp) < _cacheValidityDuration) {
+          validEntries++;
+          validCacheKeys.add(doc.id);
         }
       }
 
-      return null;
-    } catch (e) {
-      dev.log("❌ キャッシュ読み込みエラー: $e");
-      return null;
-    }
-  }
-
-  /// データをキャッシュに保存
-  static Future<void> _saveCachedData(
-    String cacheKey,
-    Map<String, Map<String, dynamic>> data,
-  ) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = json.encode(data);
-      final currentTime = DateTime.now().millisecondsSinceEpoch;
-
-      await prefs.setString(cacheKey, jsonString);
-      await prefs.setInt('${cacheKey}_time', currentTime);
-
-      dev.log("💾 データをキャッシュに保存: $cacheKey");
-    } catch (e) {
-      dev.log("❌ キャッシュ保存エラー: $e");
-    }
-  }
-
-  /// 特定のキャッシュを削除
-  static Future<void> _clearCache(String cacheKey) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(cacheKey);
-      await prefs.remove('${cacheKey}_time');
-    } catch (e) {
-      dev.log("❌ キャッシュ削除エラー: $e");
-    }
-  }
-
-  /// 全ての気象データキャッシュを削除
-  static Future<void> clearAllCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys();
-
-      for (String key in keys) {
-        if (key.startsWith(_cacheKeyPrefix)) {
-          await prefs.remove(key);
-          await prefs.remove('${key}_time');
-        }
-      }
-
-      dev.log("🧹 全ての気象データキャッシュを削除");
-    } catch (e) {
-      dev.log("❌ キャッシュ全削除エラー: $e");
-    }
-  }
-
-  /// キャッシュの状態を取得
-  static Future<Map<String, dynamic>> getCacheStatus() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final keys = prefs.getKeys();
-      int cacheCount = 0;
-      int validCacheCount = 0;
-      final now = DateTime.now().millisecondsSinceEpoch;
-
-      for (String key in keys) {
-        if (key.startsWith(_cacheKeyPrefix) && !key.endsWith('_time')) {
-          cacheCount++;
-
-          final timeKey = '${key}_time';
-          final cacheTime = prefs.getInt(timeKey);
-
-          if (cacheTime != null) {
-            final cacheAge = now - cacheTime;
-            if (cacheAge < _cacheValidDuration.inMilliseconds) {
-              validCacheCount++;
-            }
-          }
-        }
-      }
+      print("📊 === キャッシュ統計情報 ===");
+      print("📄 全キャッシュ数: ${querySnapshot.docs.length}");
+      print("✅ 有効キャッシュ数: $validEntries");
+      print("📋 全キャッシュキー: $allCacheKeys");
+      print("✅ 有効キャッシュキー: $validCacheKeys");
+      print("⏰ キャッシュ有効期限: ${_cacheValidityDuration.inMinutes}分");
 
       return {
-        'totalCaches': cacheCount,
-        'validCaches': validCacheCount,
-        'cacheValidDuration': _cacheValidDuration.inMinutes,
+        'totalEntries': querySnapshot.docs.length,
+        'validEntries': validEntries,
+        'cacheValidityMinutes': _cacheValidityDuration.inMinutes,
+        'allCacheKeys': allCacheKeys,
+        'validCacheKeys': validCacheKeys,
       };
     } catch (e) {
-      dev.log("❌ キャッシュ状態取得エラー: $e");
+      print("❌ キャッシュ統計取得エラー: $e");
       return {
-        'totalCaches': 0,
-        'validCaches': 0,
-        'cacheValidDuration': _cacheValidDuration.inMinutes,
+        'totalEntries': 0,
+        'validEntries': 0,
+        'cacheValidityMinutes': _cacheValidityDuration.inMinutes,
+        'allCacheKeys': [],
+        'validCacheKeys': [],
       };
     }
   }
