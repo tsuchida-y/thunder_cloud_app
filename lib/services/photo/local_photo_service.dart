@@ -4,27 +4,35 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../constants/app_constants.dart';
 import '../../models/photo.dart';
 import '../../utils/logger.dart';
 
+/// ローカル写真管理サービス
 class LocalPhotoService {
   static const String _photosKey = 'local_photos';
   static const String _photosDir = 'thunder_cloud_photos';
 
-  /// ローカルに写真を保存
+  /// 写真をローカルに保存
   static Future<bool> savePhotoLocally({
     required File imageFile,
     required String userId,
     required String userName,
     String? caption,
-    List<String>? tags,
-    Map<String, dynamic>? weatherData,
     double? latitude,
     double? longitude,
     String? locationName,
+    Map<String, dynamic>? weatherData,
+    List<String>? tags,
   }) async {
     try {
-      AppLogger.info('ローカル写真保存開始', tag: 'LocalPhotoService');
+
+
+            // 座標を小数点2位に丸める（プライバシー保護）
+      final roundedLatitude = AppConstants.roundCoordinate(latitude ?? 0.0);
+      final roundedLongitude = AppConstants.roundCoordinate(longitude ?? 0.0);
+
+
 
       // アプリのドキュメントディレクトリを取得
       final appDir = await getApplicationDocumentsDirectory();
@@ -35,35 +43,34 @@ class LocalPhotoService {
         await photosDir.create(recursive: true);
       }
 
-      // 一意のファイル名を生成
-      final timestamp = DateTime.now();
-      final fileName = 'photo_${timestamp.millisecondsSinceEpoch}.jpg';
-      final localFile = File('${photosDir.path}/$fileName');
+      // ファイル名を生成（重複を避けるためタイムスタンプを使用）
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'photo_$timestamp.jpg';
+      final savedImagePath = '${photosDir.path}/$fileName';
 
       // 画像ファイルをコピー
-      await imageFile.copy(localFile.path);
+      await imageFile.copy(savedImagePath);
 
-      // 写真のメタデータを作成
-      final photoId = 'local_${timestamp.millisecondsSinceEpoch}';
+      // 写真メタデータを作成
+      final photoId = 'local_$timestamp';
       final photo = Photo(
         id: photoId,
         userId: userId,
         userName: userName,
-        imageUrl: localFile.path, // ローカルパスを使用
-        thumbnailUrl: localFile.path,
-        latitude: latitude ?? 0.0,
-        longitude: longitude ?? 0.0,
-        locationName: locationName ?? '撮影地点',
-        timestamp: timestamp,
+        imageUrl: savedImagePath, // ローカルパスを保存
+        thumbnailUrl: savedImagePath,
+        latitude: roundedLatitude,
+        longitude: roundedLongitude,
+        locationName: locationName ?? '',
+        timestamp: DateTime.now(),
         weatherData: weatherData ?? {},
         tags: tags ?? [],
-        isPublic: false, // ローカル写真は非公開
       );
 
-      // SharedPreferencesに写真情報を保存
+      // SharedPreferencesに写真メタデータを保存
       await _savePhotoMetadata(photo);
 
-      AppLogger.success('ローカル写真保存完了: $photoId', tag: 'LocalPhotoService');
+
       return true;
     } catch (e) {
       AppLogger.error('ローカル写真保存エラー: $e', tag: 'LocalPhotoService');
@@ -89,7 +96,7 @@ class LocalPhotoService {
   /// ユーザーのローカル写真一覧を取得
   static Future<List<Photo>> getUserLocalPhotos(String userId) async {
     try {
-      AppLogger.info('ローカル写真取得開始 - ユーザーID: $userId', tag: 'LocalPhotoService');
+
 
       final prefs = await SharedPreferences.getInstance();
       final photosJson = prefs.getStringList(_photosKey) ?? [];
@@ -119,7 +126,7 @@ class LocalPhotoService {
       // タイムスタンプの降順でソート
       photos.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      AppLogger.success('ローカル写真取得完了: ${photos.length}件', tag: 'LocalPhotoService');
+
       return photos;
     } catch (e) {
       AppLogger.error('ローカル写真取得エラー: $e', tag: 'LocalPhotoService');

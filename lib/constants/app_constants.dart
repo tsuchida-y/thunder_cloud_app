@@ -102,6 +102,7 @@ class AppConstants {
 
   // エレベーション
   static const double elevationLow = 2.0;
+  static const double elevationSmall = 1.0;
   static const double elevationMedium = 3.0;
   static const double elevationHigh = 4.0;
 
@@ -112,6 +113,7 @@ class AppConstants {
   // ===== アバター・画像関連 =====
   static const double defaultAvatarRadius = 50.0;
   static const double avatarBorderWidth = 2.0;
+  static const double thumbnailSize = 60.0;
 
   // パディング・マージンの追加定数
   static const double smallPadding = 8.0;

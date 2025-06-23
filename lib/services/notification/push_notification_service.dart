@@ -98,9 +98,13 @@ class PushNotificationService {
     }
   }
 
-  /// ユーザー位置情報をFirestoreに保存（固定ユーザーID使用）
+  /// ユーザー位置情報をFirestoreに保存（固定ユーザーID使用、座標は小数点2位に丸める）
   static Future<void> saveUserLocation(double latitude, double longitude) async {
-    dev.log("📍 saveUserLocation開始: 緯度=$latitude, 経度=$longitude");
+    // 座標を小数点2位に丸める（プライバシー保護）
+    final roundedLatitude = double.parse(latitude.toStringAsFixed(2));
+    final roundedLongitude = double.parse(longitude.toStringAsFixed(2));
+
+    dev.log("📍 saveUserLocation開始: 緯度=$latitude → $roundedLatitude, 経度=$longitude → $roundedLongitude");
 
     try {
       dev.log("💾 Firestore保存処理開始（固定ユーザーID使用）...");
@@ -110,8 +114,8 @@ class PushNotificationService {
 
       await _firestore!.collection('users').doc(userId).set({
         'userId': userId,
-        'latitude': latitude,
-        'longitude': longitude,
+        'latitude': roundedLatitude,
+        'longitude': roundedLongitude,
         'lastUpdated': FieldValue.serverTimestamp(),
         'isActive': true,
         'appVersion': '1.0.0',
