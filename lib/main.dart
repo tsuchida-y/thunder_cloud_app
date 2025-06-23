@@ -1,15 +1,18 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'constants/app_constants.dart';
 import 'firebase_options.dart';
+import 'screens/camera_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/gallery_screen.dart';
 import 'screens/weather_screen.dart';
 import 'services/core/app_initialization.dart';
+import 'services/location/location_service.dart';
 import 'utils/logger.dart';
+import 'widgets/common/app_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +22,6 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
-  // .envファイルを読み込み
-  await dotenv.load(fileName: ".env");
 
   // Firebaseを初期化
   await Firebase.initializeApp(
@@ -55,14 +55,19 @@ class MyApp extends StatelessWidget {
 /// メイン画面 - タブナビゲーションと各画面の管理
 /// 天気画面、ギャラリー画面、コミュニティ画面を切り替え
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialTab;
+
+  const MainScreen({
+    super.key,
+    this.initialTab = AppConstants.navigationIndexWeather,
+  });
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = AppConstants.navigationIndexWeather;
+  late int _currentIndex;
 
   // 各画面のキーを管理
   GlobalKey<WeatherScreenState> weatherScreenKey = GlobalKey<WeatherScreenState>();
@@ -72,6 +77,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialTab;
     _initializeApp();
   }
 
@@ -92,11 +98,17 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  /// ギャラリーを更新（ダウンロード後に呼び出される）
+  void _refreshGallery() {
+    // ギャラリー画面を再構築
+    setState(() {
+      galleryScreenKey = GlobalKey();
+    });
+  }
+
   /// 全画面を更新（プロフィール変更時に呼び出される）
   /// ギャラリーとコミュニティ画面を強制再構築し、天気画面は軽量更新
   void _refreshAllScreens() {
-    AppLogger.info('全画面更新開始', tag: 'MainScreen');
-
     setState(() {
       // ギャラリーとコミュニティのキーを再生成して強制再構築
       galleryScreenKey = GlobalKey();
@@ -105,46 +117,48 @@ class _MainScreenState extends State<MainScreen> {
 
     // 地図画面は軽量更新
     weatherScreenKey.currentState?.setState(() {});
+  }
 
-    AppLogger.success('全画面更新完了', tag: 'MainScreen');
+  /// 現在の位置情報を取得
+  LatLng? _getCurrentLocation() {
+    // まずキャッシュされた位置情報を確認
+    final cachedLocation = LocationService.cachedLocation;
+    if (cachedLocation != null) {
+      return cachedLocation;
+    }
+
+    // キャッシュがない場合のみWeatherScreenから取得
+    if (_currentIndex == AppConstants.navigationIndexWeather) {
+      return weatherScreenKey.currentState?.getCurrentLocationForAppBar();
+    }
+
+    return null;
+  }
+
+  /// 現在の画面タイトルを取得
+  String _getCurrentScreenTitle() {
+    switch (_currentIndex) {
+      case AppConstants.navigationIndexWeather:
+        return '入道雲';
+      case AppConstants.navigationIndexGallery:
+        return 'ギャラリー';
+      case AppConstants.navigationIndexCommunity:
+        return 'コミュニティ';
+      default:
+        return '入道雲';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppConstants.primarySkyBlue,
-              Colors.white,
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(AppConstants.opacityMinimal),
-              blurRadius: AppConstants.elevationHigh,
-              offset: AppConstants.shadowOffsetMedium,
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.paddingLarge,
-              vertical: AppConstants.paddingSmall
-            ),
-            child: Column(
-              children: [
-                _buildTabBar(),
-                Expanded(child: _buildCurrentScreen()),
-              ],
-            ),
-          ),
-        ),
+      appBar: WeatherAppBar(
+        currentLocation: _getCurrentLocation(),
+        onProfileUpdated: _refreshAllScreens,
+        title: _getCurrentScreenTitle(),
       ),
+      body: _buildCurrentScreen(),
+      bottomNavigationBar: _buildBottomNavigationBar(),
       floatingActionButton: _buildFloatingActionButton(),
     );
   }
@@ -158,80 +172,48 @@ class _MainScreenState extends State<MainScreen> {
 
     return FloatingActionButton(
       onPressed: () {
-        Navigator.pushNamed(context, '/camera');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CameraScreen(),
+          ),
+        );
       },
       backgroundColor: AppConstants.primarySkyBlue,
       child: const Icon(Icons.camera_alt, color: Colors.white),
     );
   }
 
-  /// タブバーを構築
-  Widget _buildTabBar() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+  /// ボトムナビゲーションバーを構築
+  Widget _buildBottomNavigationBar() {
+    return BottomNavigationBar(
+      currentIndex: _currentIndex,
+      onTap: (index) => setState(() => _currentIndex = index),
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: AppConstants.primarySkyBlue,
+      selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.white.withValues(alpha: 0.6),
+      selectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: AppConstants.fontSizeSmall,
       ),
-      child: Row(
-        children: [
-          _buildTabButton(
-            "地図",
-            Icons.map,
-            index: AppConstants.navigationIndexWeather,
-          ),
-          _buildTabButton(
-            "ギャラリー",
-            Icons.photo_library,
-            index: AppConstants.navigationIndexGallery,
-          ),
-          _buildTabButton(
-            "コミュニティ",
-            Icons.people,
-            index: AppConstants.navigationIndexCommunity,
-          ),
-        ],
+      unselectedLabelStyle: const TextStyle(
+        fontSize: AppConstants.fontSizeSmall,
       ),
-    );
-  }
-
-  /// タブボタンを構築
-  Widget _buildTabButton(String label, IconData icon, {required int index}) {
-    final bool isActive = _currentIndex == index;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _currentIndex = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.paddingMedium,
-            vertical: AppConstants.paddingSmall
-          ),
-          decoration: BoxDecoration(
-            color: isActive
-                ? Colors.white.withOpacity(AppConstants.opacityVeryLow)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: Colors.white,
-                size: AppConstants.iconSizeLarge,
-              ),
-              const SizedBox(height: AppConstants.paddingXSmall),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: AppConstants.fontSizeSmall,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.cloud),
+          label: '入道雲',
         ),
-      ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.photo_library),
+          label: 'ギャラリー',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people),
+          label: 'コミュニティ',
+        ),
+      ],
     );
   }
 
@@ -246,7 +228,10 @@ class _MainScreenState extends State<MainScreen> {
       case AppConstants.navigationIndexGallery:
         return GalleryScreen(key: galleryScreenKey);
       case AppConstants.navigationIndexCommunity:
-        return CommunityScreen(key: communityScreenKey);
+        return CommunityScreen(
+          key: communityScreenKey,
+          onPhotoDownloaded: _refreshGallery,
+        );
       default:
         return WeatherScreen(
           key: weatherScreenKey,
