@@ -204,6 +204,7 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
   /// 写真アクションを構築
   Widget _buildPhotoActions() {
     final isLiked = widget.communityService.getLikeStatus(widget.photo.id);
+    final likeCount = widget.communityService.getLikeCount(widget.photo.id, widget.photo.likes);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -221,7 +222,7 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
             tooltip: isLiked ? 'いいねを取り消す' : 'いいね',
           ),
           Text(
-            '${widget.photo.likes}',
+            '$likeCount',
             style: TextStyle(
               color: Colors.grey[600],
               fontSize: AppConstants.fontSizeSmall,
@@ -240,50 +241,8 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
 
   /// 写真情報を構築
   Widget _buildPhotoInfo() {
-    final hasLocationName = widget.photo.locationName.isNotEmpty;
-    final hasCoordinates = widget.photo.latitude != 0.0 || widget.photo.longitude != 0.0;
-
-    if (!hasLocationName && !hasCoordinates) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(AppConstants.paddingMedium),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasLocationName) ...[
-            Text(
-              widget.photo.locationName,
-              style: const TextStyle(fontSize: AppConstants.fontSizeMedium),
-            ),
-            const SizedBox(height: AppConstants.paddingSmall),
-          ],
-          if (hasCoordinates) ...[
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on,
-                  size: AppConstants.iconSizeSmall,
-                  color: Colors.grey[600],
-                ),
-                const SizedBox(width: AppConstants.paddingXSmall),
-                Expanded(
-                  child: Text(
-                    '緯度: ${widget.photo.latitude.toStringAsFixed(4)}, '
-                    '経度: ${widget.photo.longitude.toStringAsFixed(4)}',
-                    style: TextStyle(
-                      fontSize: AppConstants.fontSizeSmall,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
+    // 撮影地点情報を表示しないため、空のウィジェットを返す
+    return const SizedBox.shrink();
   }
 
   /// 日時をフォーマット

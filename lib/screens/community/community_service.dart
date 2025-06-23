@@ -1,6 +1,11 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:io';
 
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+
+import '../../constants/app_constants.dart';
 import '../../models/photo.dart';
+import '../../services/photo/local_photo_service.dart';
 import '../../services/photo/photo_service.dart';
 import '../../services/photo/user_service.dart';
 import '../../utils/logger.dart';
@@ -21,41 +26,30 @@ class CommunityService {
   // ===== キャッシュ =====
   final Map<String, Map<String, dynamic>> _userInfoCache = {};
   final Map<String, bool> _likeStatusCache = {};
+  final Map<String, int> _likeCountCache = {};
 
   // ===== 定数 =====
   static const int _defaultPhotoLimit = 20;
-  static const double _nearbyPhotosRadiusKm = 50.0;
-  static const String _currentUserId = 'user_001';
 
   // ===== 公開メソッド =====
 
   /// 写真一覧を読み込み
   Future<PhotoLoadResult> loadPhotos({
-    LatLng? currentLocation,
     bool isInitialLoad = true,
     int limit = _defaultPhotoLimit,
   }) async {
     AppLogger.info('写真読み込み開始 (初期読み込み: $isInitialLoad)', tag: 'CommunityService');
 
     try {
-      List<Photo> photos;
+      // 全ての公開写真を取得（位置情報による制限なし）
+      AppLogger.info('全ての公開写真を取得', tag: 'CommunityService');
+      final photos = await PhotoService.getPublicPhotos(limit: limit);
 
-      if (currentLocation != null) {
-        AppLogger.info('近くの写真を取得: $currentLocation', tag: 'CommunityService');
-        photos = await PhotoService.getNearbyPhotos(
-          center: currentLocation,
-          radiusKm: _nearbyPhotosRadiusKm,
-          limit: limit,
-        );
-      } else {
-        AppLogger.info('公開写真を取得', tag: 'CommunityService');
-        photos = await PhotoService.getPublicPhotos(limit: limit);
-      }
-
-      // ユーザー情報といいね状態を並行して取得
+      // ユーザー情報、いいね状態、いいね数を並行して取得
       await Future.wait([
         _preloadUserInfos(photos.map((p) => p.userId).toSet().toList()),
         _preloadLikeStatus(photos.map((p) => p.id).toList()),
+        _preloadLikeCounts(photos),
       ]);
 
       final hasMore = photos.length >= limit;
@@ -82,6 +76,7 @@ class CommunityService {
         await Future.wait([
           _preloadUserInfos(photos.map((p) => p.userId).toSet().toList()),
           _preloadLikeStatus(photos.map((p) => p.id).toList()),
+          _preloadLikeCounts(photos),
         ]);
       }
 
@@ -101,35 +96,73 @@ class CommunityService {
 
     try {
       final currentStatus = _likeStatusCache[photo.id] ?? false;
+      final currentCount = _likeCountCache[photo.id] ?? photo.likes;
       final newStatus = !currentStatus;
+      final newCount = newStatus ? currentCount + 1 : currentCount - 1;
 
-      // 楽観的更新
+      // 楽観的更新（状態と数値の両方を更新）
       _likeStatusCache[photo.id] = newStatus;
+      _likeCountCache[photo.id] = newCount;
 
       if (newStatus) {
-        await PhotoService.likePhoto(photo.id, _currentUserId);
+        await PhotoService.likePhoto(photo.id, AppConstants.currentUserId);
       } else {
-        await PhotoService.unlikePhoto(photo.id, _currentUserId);
+        await PhotoService.unlikePhoto(photo.id, AppConstants.currentUserId);
       }
 
-      AppLogger.success('いいね切り替え完了: ${photo.id} -> $newStatus', tag: 'CommunityService');
+      AppLogger.success('いいね切り替え完了: ${photo.id} -> $newStatus (count: $newCount)', tag: 'CommunityService');
     } catch (e) {
       // エラー時は元の状態に戻す
       final originalStatus = !(_likeStatusCache[photo.id] ?? false);
+      final originalCount = originalStatus ? (_likeCountCache[photo.id] ?? 0) + 1 : (_likeCountCache[photo.id] ?? 0) - 1;
       _likeStatusCache[photo.id] = originalStatus;
+      _likeCountCache[photo.id] = originalCount;
 
       AppLogger.error('いいね切り替えエラー', error: e, tag: 'CommunityService');
       rethrow;
     }
   }
 
-    /// 写真をダウンロード
+  /// 写真をダウンロードしてローカル保存
   Future<void> downloadPhoto(Photo photo) async {
     AppLogger.info('写真ダウンロード開始: ${photo.id}', tag: 'CommunityService');
 
     try {
-      await PhotoService.downloadPhoto(photo, _currentUserId);
-      AppLogger.success('写真ダウンロード完了: ${photo.id}', tag: 'CommunityService');
+      // 画像をダウンロード
+      final response = await http.get(Uri.parse(photo.imageUrl));
+      if (response.statusCode != 200) {
+        AppLogger.error('画像ダウンロード失敗: ${response.statusCode}', tag: 'CommunityService');
+        throw Exception('画像のダウンロードに失敗しました');
+      }
+
+      // 一時ファイルを作成
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/temp_download_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await tempFile.writeAsBytes(response.bodyBytes);
+
+      // ローカルに保存
+      final success = await LocalPhotoService.savePhotoLocally(
+        imageFile: tempFile,
+        userId: AppConstants.currentUserId,
+        userName: 'ダウンロード',
+        caption: '${photo.userName}さんの投稿をダウンロード',
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        locationName: photo.locationName.isNotEmpty ? photo.locationName : 'ダウンロード済み写真',
+        weatherData: photo.weatherData,
+        tags: [...photo.tags, 'ダウンロード'],
+      );
+
+      // 一時ファイルを削除
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+
+      if (success) {
+        AppLogger.success('写真ローカル保存完了: ${photo.id}', tag: 'CommunityService');
+      } else {
+        throw Exception('ローカル保存に失敗しました');
+      }
     } catch (e) {
       AppLogger.error('写真ダウンロードエラー', error: e, tag: 'CommunityService');
       rethrow;
@@ -141,7 +174,7 @@ class CommunityService {
     AppLogger.info('写真削除開始: $photoId', tag: 'CommunityService');
 
     try {
-      await PhotoService.deletePhoto(photoId, _currentUserId);
+      await PhotoService.deletePhoto(photoId, AppConstants.currentUserId);
 
       // キャッシュからも削除
       _likeStatusCache.remove(photoId);
@@ -182,10 +215,16 @@ class CommunityService {
     return _likeStatusCache[photoId] ?? false;
   }
 
+  /// いいね数を取得
+  int getLikeCount(String photoId, int defaultCount) {
+    return _likeCountCache[photoId] ?? defaultCount;
+  }
+
   /// キャッシュをクリア
   void clearCache() {
     _userInfoCache.clear();
     _likeStatusCache.clear();
+    _likeCountCache.clear();
     AppLogger.info('キャッシュクリア完了', tag: 'CommunityService');
   }
 
@@ -222,13 +261,31 @@ class CommunityService {
     try {
       final likeStatus = await PhotoService.getPhotosLikeStatus(
         uncachedPhotoIds,
-        _currentUserId,
+        AppConstants.currentUserId,
       );
 
       _likeStatusCache.addAll(likeStatus);
       AppLogger.success('いいね状態事前読み込み完了: ${likeStatus.length}件', tag: 'CommunityService');
     } catch (e) {
       AppLogger.error('いいね状態事前読み込みエラー', error: e, tag: 'CommunityService');
+    }
+  }
+
+  /// いいね数を事前読み込み
+  Future<void> _preloadLikeCounts(List<Photo> photos) async {
+    if (photos.isEmpty) return;
+
+    AppLogger.info('いいね数事前読み込み: ${photos.length}件', tag: 'CommunityService');
+
+    try {
+      for (final photo in photos) {
+        if (!_likeCountCache.containsKey(photo.id)) {
+          _likeCountCache[photo.id] = photo.likes;
+        }
+      }
+      AppLogger.success('いいね数事前読み込み完了', tag: 'CommunityService');
+    } catch (e) {
+      AppLogger.error('いいね数事前読み込みエラー', error: e, tag: 'CommunityService');
     }
   }
 }
