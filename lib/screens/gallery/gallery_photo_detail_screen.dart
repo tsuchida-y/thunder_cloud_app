@@ -101,9 +101,6 @@ class GalleryPhotoDetailScreen extends StatelessWidget {
             children: [
               _buildInfoRow('撮影日時', _formatDateTime(photo.timestamp)),
               _buildInfoRow('ユーザー名', photo.userName),
-              _buildInfoRow('場所', photo.locationName.isNotEmpty ? photo.locationName : '不明'),
-              _buildInfoRow('緯度', photo.latitude.toStringAsFixed(6)),
-              _buildInfoRow('経度', photo.longitude.toStringAsFixed(6)),
               if (photo.weatherData.isNotEmpty) ...[
                 const SizedBox(height: AppConstants.paddingMedium),
                 const Text(
