@@ -122,7 +122,7 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
     try {
       AppLogger.success('GoogleMap初期化完了', tag: 'BackgroundMapWidget');
       // コントローラーの設定も最適化
-      controller.setMapStyle(null); // デフォルトスタイル使用
+      // controller.setMapStyle(null); // デフォルトスタイル使用
     } catch (e) {
       AppLogger.error('GoogleMapコントローラー設定エラー', error: e, tag: 'BackgroundMapWidget');
       setState(() {

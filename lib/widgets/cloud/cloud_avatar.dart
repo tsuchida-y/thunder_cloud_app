@@ -61,7 +61,7 @@ class CloudAvatar extends StatelessWidget {
               vertical: AppConstants.extraSmallPadding,
             ),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(AppConstants.overlayOpacity),
+              color: Colors.black.withValues(alpha: AppConstants.overlayOpacity),
               borderRadius: BorderRadius.circular(AppConstants.smallBorderRadius),
             ),
             child: Text(
