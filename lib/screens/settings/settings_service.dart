@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../constants/app_constants.dart';
 import '../../services/location/location_service.dart';
-// import '../../services/photo/user_service.dart'; // サービスが削除されたため無効化
+import '../../services/photo/user_service.dart';
 import '../../services/weather/weather_cache_service.dart';
 import '../../utils/logger.dart';
 
@@ -18,6 +17,9 @@ class SettingsService {
   Timer? _updateTimer;
   StreamSubscription? _realtimeSubscription;
 
+  // データ更新コールバック
+  Function(Map<String, dynamic>, DateTime?)? _dataUpdateCallback;
+
   // ===== 状態 =====
   LatLng? _currentLocation;
   Map<String, dynamic> _weatherData = {};
@@ -29,6 +31,8 @@ class SettingsService {
   Map<String, dynamic> get weatherData => _weatherData;
   Map<String, dynamic> get userInfo => _userInfo;
   DateTime? get lastUpdateTime => _lastUpdateTime;
+
+
 
   // ===== 初期化・終了処理 =====
 
@@ -104,31 +108,57 @@ class SettingsService {
   Future<void> _loadUserInfo() async {
     AppLogger.info('ユーザー情報読み込み開始', tag: 'SettingsService');
 
-    // UserServiceが削除されたため、デフォルト情報を設定
-    _userInfo = {
-      'userId': AppConstants.currentUserId,
-      'userName': 'ユーザー',
-      'avatarUrl': '',
-    };
-
-    AppLogger.success('ユーザー情報読み込み完了（デフォルト）', tag: 'SettingsService');
+    try {
+      // Firestoreからユーザー情報を取得
+      _userInfo = await UserService.getUserInfo(AppConstants.currentUserId);
+      AppLogger.success('ユーザー情報読み込み完了（Firestore）', tag: 'SettingsService');
+    } catch (e) {
+      AppLogger.error('ユーザー情報読み込みエラー', error: e, tag: 'SettingsService');
+      // エラー時はデフォルト情報を設定
+      _userInfo = {
+        'userId': AppConstants.currentUserId,
+        'userName': 'ユーザー',
+        'avatarUrl': '',
+      };
+      AppLogger.info('デフォルトユーザー情報を設定', tag: 'SettingsService');
+    }
   }
 
   /// ユーザー情報を更新
   Future<void> updateUserInfo(Map<String, dynamic> newUserInfo) async {
     AppLogger.info('ユーザー情報更新開始', tag: 'SettingsService');
 
-    // UserServiceが削除されたため、ローカルのみ更新
-    _userInfo = {..._userInfo, ...newUserInfo};
+    try {
+      // Firestoreのユーザー情報を更新
+      final success = await UserService.updateUserInfo(
+        AppConstants.currentUserId,
+        userName: newUserInfo['userName'] as String?,
+        avatarUrl: newUserInfo['avatarUrl'] as String?,
+      );
 
-    AppLogger.success('ユーザー情報更新完了（ローカルのみ）', tag: 'SettingsService');
+      if (success) {
+        // ローカルの情報も更新
+        _userInfo = {..._userInfo, ...newUserInfo};
+        AppLogger.success('ユーザー情報更新完了（Firestore + ローカル）', tag: 'SettingsService');
+      } else {
+        throw Exception('Firestoreの更新に失敗しました');
+      }
+    } catch (e) {
+      AppLogger.error('ユーザー情報更新エラー', error: e, tag: 'SettingsService');
+      rethrow;
+    }
+  }
+
+  /// ユーザー情報を再読み込み
+  Future<void> reloadUserInfo() async {
+    await _loadUserInfo();
   }
 
   // ===== 気象データ管理 =====
 
-  /// 気象データを取得
-  Future<Map<String, dynamic>?> fetchWeatherData({bool isPeriodicCheck = false}) async {
-    if (_currentLocation == null) return null;
+  /// 内部用気象データ取得
+  Future<void> _fetchWeatherData({bool isPeriodicCheck = false}) async {
+    if (_currentLocation == null) return;
 
     try {
       if (isPeriodicCheck) {
@@ -145,59 +175,18 @@ class SettingsService {
       if (weatherData != null) {
         _weatherData = weatherData;
         _lastUpdateTime = DateTime.now();
+
+        // データ更新のコールバックを呼び出し
+        if (_dataUpdateCallback != null) {
+          _dataUpdateCallback!(_weatherData, _lastUpdateTime);
+        }
+
         AppLogger.success('気象データ取得成功', tag: 'SettingsService');
-        return weatherData;
       } else {
-        AppLogger.warning('Firestoreにデータなし。新規取得をリクエスト', tag: 'SettingsService');
-        await _requestNewDataFromFunctions();
-        return null;
+        AppLogger.warning('Firestoreにキャッシュデータなし。Firebase Functionsによる自動更新を待機中', tag: 'SettingsService');
       }
     } catch (e) {
       AppLogger.error('気象データ取得エラー', error: e, tag: 'SettingsService');
-      rethrow;
-    }
-  }
-
-  /// 内部用気象データ取得
-  Future<void> _fetchWeatherData({bool isPeriodicCheck = false}) async {
-    await fetchWeatherData(isPeriodicCheck: isPeriodicCheck);
-  }
-
-  /// Firebase Functionsに新しいデータをリクエスト
-  Future<void> _requestNewDataFromFunctions() async {
-    if (_currentLocation == null) return;
-
-    try {
-      AppLogger.info('Firebase Functionsに新規データリクエスト', tag: 'SettingsService');
-
-      final uri = Uri.parse(
-        'https://us-central1-thunder-cloud-app-292e6.cloudfunctions.net/getWeatherData'
-        '?latitude=${_currentLocation!.latitude}&longitude=${_currentLocation!.longitude}'
-      );
-
-      final response = await HttpClient().getUrl(uri).then((request) => request.close());
-
-      if (response.statusCode == 200) {
-        AppLogger.success('Firebase Functions呼び出し成功', tag: 'SettingsService');
-
-        // 少し待ってから再度Firestoreをチェック
-        await Future.delayed(AppConstants.settingsUpdateDelay);
-
-        final weatherData = await _cacheService.getWeatherDataWithCache(
-          _currentLocation!.latitude,
-          _currentLocation!.longitude,
-        );
-
-        if (weatherData != null) {
-          _weatherData = weatherData;
-          _lastUpdateTime = DateTime.now();
-          AppLogger.success('新規データをFirestoreから取得完了', tag: 'SettingsService');
-        }
-      } else {
-        AppLogger.error('Firebase Functions呼び出し失敗: ${response.statusCode}', tag: 'SettingsService');
-      }
-    } catch (e) {
-      AppLogger.error('Firebase Functions呼び出しエラー', error: e, tag: 'SettingsService');
     }
   }
 
@@ -228,7 +217,13 @@ class SettingsService {
         if (weatherData != null) {
           _weatherData = weatherData;
           _lastUpdateTime = DateTime.now();
-          AppLogger.info('リアルタイム更新: データ受信', tag: 'SettingsService');
+
+          // データ更新のコールバックを呼び出し
+          if (_dataUpdateCallback != null) {
+            _dataUpdateCallback!(_weatherData, _lastUpdateTime);
+          }
+
+          AppLogger.info('リアルタイム更新: データ受信完了', tag: 'SettingsService');
         }
       },
       onError: (error) {
@@ -257,40 +252,40 @@ class SettingsService {
 
   /// キャッシュをクリア
   Future<void> clearCache() async {
-    // WeatherCacheServiceにclearCacheメソッドが存在しないため、
-    // ローカル変数のみクリア
-    _weatherData.clear();
-    _lastUpdateTime = null;
-    AppLogger.success('キャッシュクリア完了（ローカルのみ）', tag: 'SettingsService');
+    try {
+      // Firestoreのキャッシュをクリア
+      if (_currentLocation != null) {
+        final success = await _cacheService.clearCacheForLocation(
+          _currentLocation!.latitude,
+          _currentLocation!.longitude,
+        );
+
+        if (success) {
+          AppLogger.success('Firestoreキャッシュクリア完了', tag: 'SettingsService');
+        } else {
+          AppLogger.warning('Firestoreキャッシュクリアに失敗', tag: 'SettingsService');
+        }
+      }
+
+      // ローカル変数もクリア
+      _weatherData.clear();
+      _lastUpdateTime = null;
+      AppLogger.success('ローカルキャッシュクリア完了', tag: 'SettingsService');
+    } catch (e) {
+      AppLogger.error('キャッシュクリアエラー', error: e, tag: 'SettingsService');
+      rethrow;
+    }
   }
 
   // ===== データ更新コールバック =====
 
   /// データ更新時のコールバックを設定
   void setDataUpdateCallback(Function(Map<String, dynamic>, DateTime?) callback) {
+    _dataUpdateCallback = callback;
+
     // 現在のデータでコールバックを実行
     if (_weatherData.isNotEmpty) {
       callback(_weatherData, _lastUpdateTime);
-    }
-
-    // リアルタイム更新時のコールバックを設定
-    _realtimeSubscription?.cancel();
-    if (_currentLocation != null) {
-      _realtimeSubscription = _cacheService.startRealtimeWeatherDataListener(
-        _currentLocation!.latitude,
-        _currentLocation!.longitude,
-      ).listen(
-        (weatherData) {
-          if (weatherData != null) {
-            _weatherData = weatherData;
-            _lastUpdateTime = DateTime.now();
-            callback(_weatherData, _lastUpdateTime);
-          }
-        },
-        onError: (error) {
-          AppLogger.error('リアルタイム監視エラー', error: error, tag: 'SettingsService');
-        },
-      );
     }
   }
 }
