@@ -13,7 +13,7 @@ class UserService {
   static final ImagePicker _picker = ImagePicker();
 
   /// 現在のユーザーID（固定）
-  static const String currentUserId = AppConstants.defaultUserId;
+  static const String currentUserId = AppConstants.currentUserId;
 
   /// ユーザー情報を取得
   static Future<Map<String, dynamic>> getUserInfo(String userId) async {
@@ -130,13 +130,13 @@ class UserService {
   /// アバター画像を更新（古い画像を自動削除）
   static Future<bool> updateUserAvatar(String userId) async {
     try {
-      AppLogger.info('=== アバター更新開始 ===', tag: 'UserService');
+
 
       // 現在のユーザー情報を取得（古いアバターURL取得のため）
       final currentUserInfo = await getUserInfo(userId);
       final oldAvatarUrl = currentUserInfo['avatarUrl'] as String? ?? '';
 
-      AppLogger.info('現在のアバターURL: $oldAvatarUrl', tag: 'UserService');
+
 
       // 画像選択
       final XFile? image = await _picker.pickImage(
@@ -185,7 +185,7 @@ class UserService {
         AppLogger.info('削除対象の古いアバターがありません', tag: 'UserService');
       }
 
-      AppLogger.success('=== アバター更新完了 ===', tag: 'UserService');
+
       return true;
     } catch (e) {
       AppLogger.error('アバター画像更新エラー: $e', tag: 'UserService');

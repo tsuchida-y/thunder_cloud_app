@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import '../location/location_service.dart';
 import '../notification/notification_service.dart';
 import '../notification/push_notification_service.dart';
+import '../photo/photo_service.dart';
 
 /// アプリケーション全体の初期化を管理するサービス
 class AppInitializationService {
@@ -54,6 +55,9 @@ class AppInitializationService {
         // 通知サービスと位置情報サービスを並列初期化
         await _initializeServicesInParallel();
 
+        // 既存写真のマイグレーション（バックグラウンドで実行）
+        _migratePhotosInBackground();
+
         // デバッグ時のみFirestore接続テスト（軽量化）
         if (kDebugMode) {
           await _quickFirestoreTest();
@@ -62,6 +66,19 @@ class AppInitializationService {
         dev.log("✅ バックグラウンドサービス初期化完了");
       } catch (e) {
         dev.log("❌ バックグラウンドサービス初期化エラー: $e");
+      }
+    });
+  }
+
+  /// 既存写真のマイグレーションをバックグラウンドで実行
+  static void _migratePhotosInBackground() {
+    Future.microtask(() async {
+      try {
+        dev.log("🔄 写真マイグレーション開始");
+        await PhotoService.migrateExistingPhotos();
+        dev.log("✅ 写真マイグレーション完了");
+      } catch (e) {
+        dev.log("❌ 写真マイグレーションエラー: $e");
       }
     });
   }
@@ -153,7 +170,7 @@ class AppInitializationService {
               location.longitude,
             );
             dev.log("📍 ✅ アプリ起動時の位置情報をFirestoreに自動保存完了");
-            dev.log("📍 保存された座標: 緯度=${location.latitude}, 経度=${location.longitude}");
+            dev.log("📍 保存された座標: 緯度=${location.latitude.toStringAsFixed(2)}, 経度=${location.longitude.toStringAsFixed(2)}");
           } catch (saveError) {
             dev.log("❌ 位置情報自動保存エラー: $saveError");
           }
