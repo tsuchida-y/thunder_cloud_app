@@ -1,9 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../constants/app_constants.dart';
 import '../models/photo.dart';
-import '../services/location/location_service.dart';
 import '../utils/logger.dart';
 import 'community/community_photo_card.dart';
 // import 'community/community_profile_dialog.dart'; // ファイルが存在しないためコメントアウト
@@ -11,7 +11,12 @@ import 'community/community_service.dart';
 
 /// コミュニティ画面 - ユーザーが投稿した写真を閲覧・管理
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final VoidCallback? onPhotoDownloaded;
+
+  const CommunityScreen({
+    super.key,
+    this.onPhotoDownloaded,
+  });
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -22,7 +27,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
   List<Photo> _photos = [];
   bool _isLoading = true;
   bool _hasMore = true;
-  LatLng? _currentLocation;
 
   // ===== サービス =====
   late final CommunityService _communityService;
@@ -50,34 +54,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _initializeScreen() async {
     AppLogger.info('コミュニティ画面初期化開始', tag: 'CommunityScreen');
 
-    await Future.wait([
-      _getCurrentLocation(),
-      _loadPhotos(),
-    ]);
+    // 写真を読み込み
+    await _loadPhotos();
 
     AppLogger.success('コミュニティ画面初期化完了', tag: 'CommunityScreen');
-  }
-
-  /// 現在位置を取得
-  Future<void> _getCurrentLocation() async {
-    try {
-      final location = await LocationService.getCurrentLocationAsLatLng();
-      if (mounted) {
-        setState(() {
-          _currentLocation = location;
-        });
-      }
-      AppLogger.info('現在位置取得完了: $location', tag: 'CommunityScreen');
-    } catch (e) {
-      AppLogger.error('現在位置取得エラー', error: e, tag: 'CommunityScreen');
-    }
   }
 
   // ===== データ読み込み =====
 
   /// 写真一覧を読み込み
   Future<void> _loadPhotos({bool isRefresh = false}) async {
-    if (!isRefresh && _isLoading) return;
+    // 初期読み込み以外で既に読み込み中の場合はスキップ
+    if (!isRefresh && _isLoading && _photos.isNotEmpty) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -89,7 +79,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     try {
       final result = await _communityService.loadPhotos(
-        currentLocation: _currentLocation,
         isInitialLoad: isRefresh || _photos.isEmpty,
       );
 
@@ -169,6 +158,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _onLikeToggle(Photo photo) async {
     try {
       await _communityService.toggleLike(photo);
+
+      // UI を更新
+      if (mounted) {
+        setState(() {});
+      }
+
       AppLogger.info('いいね切り替え完了: ${photo.id}', tag: 'CommunityScreen');
     } catch (e) {
       AppLogger.error('いいね切り替えエラー', error: e, tag: 'CommunityScreen');
@@ -181,7 +176,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
     try {
       await _communityService.downloadPhoto(photo);
       if (mounted) {
-        _showSuccessSnackBar('写真をダウンロードしました');
+        _showSuccessSnackBar('写真をギャラリーに保存しました');
+        widget.onPhotoDownloaded?.call();
       }
       AppLogger.success('写真ダウンロード完了: ${photo.id}', tag: 'CommunityScreen');
     } catch (e) {
@@ -212,66 +208,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
-  /// プロフィール編集
-  Future<void> _onProfileEdit() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('プロフィール編集'),
-        content: const Text('プロフィール編集機能は準備中です。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('キャンセル'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
 
-    if (result == true) {
-      refreshData();
-    }
-  }
 
   // ===== UI構築 =====
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppConstants.backgroundColorLight,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
-  }
-
-  /// アプリバーを構築
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: const Text(
-        'コミュニティ',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      backgroundColor: AppConstants.primarySkyBlue,
-      elevation: AppConstants.elevationMedium,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.person, color: Colors.white),
-          onPressed: _onProfileEdit,
-          tooltip: 'プロフィール編集',
-        ),
-        IconButton(
-          icon: const Icon(Icons.refresh, color: Colors.white),
-          onPressed: () => _loadPhotos(isRefresh: true),
-          tooltip: '更新',
-        ),
-      ],
+    return Container(
+      color: AppConstants.backgroundColorLight,
+      child: _buildBody(),
     );
   }
 

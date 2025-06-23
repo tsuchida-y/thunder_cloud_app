@@ -1,25 +1,22 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../constants/app_constants.dart';
 import '../models/photo.dart';
 import '../services/photo/local_photo_service.dart';
-import '../services/photo/photo_service.dart';
-import '../services/photo/user_service.dart';
 import '../utils/logger.dart';
-import 'gallery/gallery_downloaded_detail_screen.dart';
 import 'gallery/gallery_photo_detail_screen.dart';
 
-/// 写真アイテムの抽象インターface
+/// 写真アイテムの抽象クラス
 abstract class PhotoItem {
   String get id;
   String get imageUrl;
   DateTime get timestamp;
   String get displayTitle;
+
   Widget buildSubtitle();
   Future<void> delete();
   Future<void> share();
@@ -43,7 +40,7 @@ class LocalPhotoItem extends PhotoItem {
   DateTime get timestamp => photo.timestamp;
 
   @override
-  String get displayTitle => 'ローカル写真';
+  String get displayTitle => photo.locationName.isNotEmpty ? photo.locationName : '撮影写真';
 
   @override
   Widget buildSubtitle() {
@@ -65,16 +62,21 @@ class LocalPhotoItem extends PhotoItem {
 
   @override
   Future<void> delete() async {
-    await LocalPhotoService.deleteLocalPhoto(photo.id, AppConstants.defaultUserId);
+    await LocalPhotoService.deleteLocalPhoto(photo.id, AppConstants.currentUserId);
     onRefresh();
   }
 
   @override
   Future<void> share() async {
     if (photo.imageUrl.startsWith('/')) {
-      await Share.shareXFiles([XFile(photo.imageUrl)], text: '入道雲の写真をシェアします！');
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(photo.imageUrl)],
+        text: '入道雲の写真をシェアします！',
+      ));
     } else {
-      await Share.share(photo.imageUrl, subject: '入道雲の写真');
+      await SharePlus.instance.share(ShareParams(
+        text: '入道雲の写真: ${photo.imageUrl}',
+      ));
     }
   }
 
@@ -93,74 +95,7 @@ class LocalPhotoItem extends PhotoItem {
   }
 }
 
-/// ダウンロード済み写真アイテム
-class DownloadedPhotoItem extends PhotoItem {
-  final Map<String, dynamic> photoData;
-  final VoidCallback onRefresh;
-
-  DownloadedPhotoItem(this.photoData, this.onRefresh);
-
-  @override
-  String get id => photoData['id'];
-
-  @override
-  String get imageUrl => photoData['imageUrl'];
-
-  @override
-  DateTime get timestamp => (photoData['timestamp'] as Timestamp).toDate();
-
-  @override
-  String get displayTitle => 'ダウンロード済み';
-
-  @override
-  Widget buildSubtitle() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _formatDateTime(timestamp),
-          style: const TextStyle(fontSize: 12),
-        ),
-        Text(
-          '投稿者: ${photoData['userName'] ?? '不明'}',
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
-        if (photoData['locationName'] != null)
-          Text(
-            photoData['locationName'],
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
-      ],
-    );
-  }
-
-  @override
-  Future<void> delete() async {
-    await PhotoService.deleteDownloadedPhoto(photoData['id'], AppConstants.defaultUserId);
-    onRefresh();
-  }
-
-  @override
-  Future<void> share() async {
-    await Share.share(photoData['imageUrl'], subject: 'ダウンロードした入道雲の写真');
-  }
-
-  @override
-  void openDetail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => GalleryDownloadedDetailScreen(photoData: photoData),
-      ),
-    );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.day.toString().padLeft(2, '0')} '
-           '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
-}
-
-/// ギャラリー画面 - ローカル写真とダウンロード済み写真を管理
+/// ギャラリー画面 - マイフォト
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
 
@@ -168,51 +103,31 @@ class GalleryScreen extends StatefulWidget {
   State<GalleryScreen> createState() => _GalleryScreenState();
 }
 
-class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProviderStateMixin {
+class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   // データ管理
   List<Photo> _photos = [];
-  List<Map<String, dynamic>> _downloadedPhotos = [];
-  Map<String, dynamic> _userInfo = {};
 
   // UI状態管理
   bool _isLoading = true;
-  bool _isLoadingDownloaded = true;
-  bool _isLoadingUserInfo = true;
   bool _isGridView = true;
   bool _isSelectionMode = false;
 
   // 選択状態管理
   final Set<String> _selectedPhotos = {};
-  final Set<String> _selectedDownloaded = {};
-
-  // タブ管理
-  late TabController _tabController;
-  int _currentTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _initializeTabController();
     _loadAllData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   // ===== 初期化メソッド =====
 
-  void _initializeTabController() {
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
-  }
-
   void _loadAllData() {
-    _loadUserInfo();
     _loadPhotos();
-    _loadDownloadedPhotos();
   }
 
   /// 外部から呼び出し可能なデータ再読み込みメソッド
@@ -223,33 +138,12 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
 
   // ===== データ読み込みメソッド =====
 
-  Future<void> _loadUserInfo() async {
-    try {
-      AppLogger.info('ユーザー情報読み込み開始', tag: 'GalleryScreen');
-      final Map<String, dynamic> userInfo = await UserService.getUserInfo(AppConstants.defaultUserId);
-
-      if (mounted) {
-        setState(() {
-          _userInfo = userInfo;
-          _isLoadingUserInfo = false;
-        });
-      }
-
-      AppLogger.success('ユーザー情報読み込み完了: ${userInfo['userName']}', tag: 'GalleryScreen');
-    } catch (e) {
-      AppLogger.error('ユーザー情報読み込みエラー', error: e, tag: 'GalleryScreen');
-      if (mounted) {
-        setState(() => _isLoadingUserInfo = false);
-      }
-    }
-  }
-
   Future<void> _loadPhotos() async {
     try {
-      AppLogger.info('ローカル写真読み込み開始', tag: 'GalleryScreen');
+      AppLogger.info('マイフォト読み込み開始', tag: 'GalleryScreen');
       if (mounted) setState(() => _isLoading = true);
 
-      final List<Photo> photos = await LocalPhotoService.getUserLocalPhotos(AppConstants.defaultUserId);
+      final List<Photo> photos = await LocalPhotoService.getUserLocalPhotos(AppConstants.currentUserId);
 
       if (mounted) {
         setState(() {
@@ -258,49 +152,18 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
         });
       }
 
-      AppLogger.success('ローカル写真読み込み完了: ${photos.length}件', tag: 'GalleryScreen');
+      AppLogger.success('マイフォト読み込み完了: ${photos.length}件', tag: 'GalleryScreen');
     } catch (e) {
-      AppLogger.error('ローカル写真読み込みエラー', error: e, tag: 'GalleryScreen');
+      AppLogger.error('マイフォト読み込みエラー', error: e, tag: 'GalleryScreen');
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadDownloadedPhotos() async {
-    try {
-      AppLogger.info('ダウンロード済み写真読み込み開始', tag: 'GalleryScreen');
-      if (mounted) setState(() => _isLoadingDownloaded = true);
-
-      final List<Map<String, dynamic>> downloadedPhotos = await PhotoService.getDownloadedPhotos(AppConstants.defaultUserId);
-
-      if (mounted) {
-        setState(() {
-          _downloadedPhotos = downloadedPhotos;
-          _isLoadingDownloaded = false;
-        });
-      }
-
-      AppLogger.success('ダウンロード済み写真読み込み完了: ${downloadedPhotos.length}件', tag: 'GalleryScreen');
-    } catch (e) {
-      AppLogger.error('ダウンロード済み写真読み込みエラー', error: e, tag: 'GalleryScreen');
-      if (mounted) setState(() => _isLoadingDownloaded = false);
     }
   }
 
   // ===== イベントハンドラー =====
 
-  void _onTabChanged() {
-    if (mounted) {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-        _clearSelectionMode();
-      });
-    }
-  }
-
   void _clearSelectionMode() {
     _isSelectionMode = false;
     _selectedPhotos.clear();
-    _selectedDownloaded.clear();
   }
 
   void _toggleSelectionMode() {
@@ -308,7 +171,6 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
       _isSelectionMode = !_isSelectionMode;
       if (!_isSelectionMode) {
         _selectedPhotos.clear();
-        _selectedDownloaded.clear();
       }
     });
   }
@@ -317,37 +179,23 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
     setState(() => _isGridView = !_isGridView);
   }
 
-  // ===== 統合された削除処理メソッド =====
+  // ===== 削除処理メソッド =====
 
   Future<void> _deleteSelectedItems() async {
-    final Set<String> selectedItems = _currentTabIndex == 0 ? _selectedPhotos : _selectedDownloaded;
-    if (selectedItems.isEmpty) return;
+    if (_selectedPhotos.isEmpty) return;
 
     try {
-      AppLogger.info('選択アイテム削除開始: ${selectedItems.length}件', tag: 'GalleryScreen');
+      AppLogger.info('選択アイテム削除開始: ${_selectedPhotos.length}件', tag: 'GalleryScreen');
 
-      if (_currentTabIndex == 0) {
-        // ローカル写真の削除
-        for (final String photoId in selectedItems) {
-          await LocalPhotoService.deleteLocalPhoto(photoId, AppConstants.defaultUserId);
-        }
-        if (mounted) {
-          setState(() {
-            _photos.removeWhere((Photo photo) => selectedItems.contains(photo.id));
-            _clearSelectionMode();
-          });
-        }
-      } else {
-        // ダウンロード済み写真の削除
-        for (final String photoId in selectedItems) {
-          await PhotoService.deleteDownloadedPhoto(photoId, AppConstants.defaultUserId);
-        }
-        if (mounted) {
-          setState(() {
-            _downloadedPhotos.removeWhere((Map<String, dynamic> photo) => selectedItems.contains(photo['id']));
-            _clearSelectionMode();
-          });
-        }
+      for (final String photoId in _selectedPhotos) {
+        await LocalPhotoService.deleteLocalPhoto(photoId, AppConstants.currentUserId);
+      }
+
+      if (mounted) {
+        setState(() {
+          _photos.removeWhere((Photo photo) => _selectedPhotos.contains(photo.id));
+          _clearSelectionMode();
+        });
       }
 
       _showSuccessMessage('選択したアイテムを削除しました');
@@ -358,27 +206,18 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
     }
   }
 
-  // ===== 統合された写真アイテム処理メソッド =====
+  // ===== 写真アイテム処理メソッド =====
 
   List<PhotoItem> _getCurrentPhotoItems() {
-    if (_currentTabIndex == 0) {
-      return _photos.map((Photo photo) => LocalPhotoItem(photo, () => setState(() {}))).toList();
-    } else {
-      return _downloadedPhotos.map((Map<String, dynamic> photoData) => DownloadedPhotoItem(photoData, () => setState(() {}))).toList();
-    }
-  }
-
-  Set<String> _getCurrentSelectedItems() {
-    return _currentTabIndex == 0 ? _selectedPhotos : _selectedDownloaded;
+    return _photos.map((Photo photo) => LocalPhotoItem(photo, () => setState(() {}))).toList();
   }
 
   void _toggleItemSelection(String itemId) {
     setState(() {
-      final Set<String> selectedItems = _getCurrentSelectedItems();
-      if (selectedItems.contains(itemId)) {
-        selectedItems.remove(itemId);
+      if (_selectedPhotos.contains(itemId)) {
+        _selectedPhotos.remove(itemId);
       } else {
-        selectedItems.add(itemId);
+        _selectedPhotos.add(itemId);
       }
     });
   }
@@ -398,35 +237,61 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
     return isLocalFile ? _buildLocalFileImage(item.imageUrl) : _buildNetworkImage(item.imageUrl);
   }
 
-  Widget _buildLocalFileImage(String imagePath) {
-    return Image.file(
-      File(imagePath),
-      fit: BoxFit.cover,
-      errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => _buildErrorPlaceholder(),
+  Widget _buildLocalFileImage(String filePath) {
+    return AspectRatio(
+      aspectRatio: 1.0, // 正方形を強制
+      child: Image.file(
+        File(filePath),
+        fit: BoxFit.cover, // 正方形内に画像をフィットさせる
+        errorBuilder: (context, error, stackTrace) {
+          AppLogger.error('ローカル画像読み込みエラー: $filePath', error: error, tag: 'GalleryScreen');
+          return _buildErrorImage();
+        },
+      ),
     );
   }
 
   Widget _buildNetworkImage(String imageUrl) {
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      placeholder: (BuildContext context, String url) => _buildLoadingPlaceholder(),
-      errorWidget: (BuildContext context, String url, Object error) => _buildErrorPlaceholder(),
+    return AspectRatio(
+      aspectRatio: 1.0, // 正方形を強制
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover, // 正方形内に画像をフィットさせる
+        placeholder: (context, url) => _buildPlaceholder(),
+        errorWidget: (context, url, error) {
+          AppLogger.error('ネットワーク画像読み込みエラー: $url', error: error, tag: 'GalleryScreen');
+          return _buildErrorImage();
+        },
+      ),
     );
   }
 
-  Widget _buildLoadingPlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: const Center(child: CircularProgressIndicator()),
+  Widget _buildPlaceholder() {
+    return AspectRatio(
+      aspectRatio: 1.0, // 正方形を強制
+      child: Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primarySkyBlue),
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildErrorPlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: const Center(
-        child: Icon(Icons.error, color: Colors.red, size: 50),
+  Widget _buildErrorImage() {
+    return AspectRatio(
+      aspectRatio: 1.0, // 正方形を強制
+      child: Container(
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(
+            Icons.error_outline,
+            color: Colors.red,
+            size: AppConstants.iconSizeLarge,
+          ),
+        ),
       ),
     );
   }
@@ -435,180 +300,278 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppConstants.backgroundColorLight,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      title: const Text('ギャラリー'),
-      backgroundColor: AppConstants.primarySkyBlue,
-      bottom: _buildTabBar(),
-      actions: _buildAppBarActions(),
-    );
-  }
-
-  PreferredSizeWidget _buildTabBar() {
-    return TabBar(
-      controller: _tabController,
-      tabs: const [
-        Tab(text: 'マイフォト', icon: Icon(Icons.photo_library)),
-        Tab(text: 'ダウンロード', icon: Icon(Icons.download)),
-      ],
-    );
-  }
-
-  List<Widget> _buildAppBarActions() {
-    return [
-      IconButton(
-        icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-        onPressed: _toggleViewMode,
-        tooltip: _isGridView ? 'リスト表示' : 'グリッド表示',
-      ),
-      IconButton(
-        icon: Icon(_isSelectionMode ? Icons.close : Icons.select_all),
-        onPressed: _toggleSelectionMode,
-        tooltip: _isSelectionMode ? '選択解除' : '選択モード',
-      ),
-      if (_isSelectionMode && _getCurrentSelectedItems().isNotEmpty)
-        IconButton(
-          icon: const Icon(Icons.delete),
-          onPressed: _deleteSelectedItems,
-          tooltip: '選択項目を削除',
-        ),
-    ];
-  }
-
-  Widget _buildBody() {
-    if (_isLoadingUserInfo) {
-      return _buildUserInfoLoading();
-    }
-
-    return Column(
-      children: [
-        _buildUserInfo(),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildPhotoTab(isLoading: _isLoading, isEmpty: _photos.isEmpty),
-              _buildPhotoTab(isLoading: _isLoadingDownloaded, isEmpty: _downloadedPhotos.isEmpty),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUserInfoLoading() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('ユーザー情報を読み込み中...'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserInfo() {
+    super.build(context); // AutomaticKeepAliveClientMixinの要求
     return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingMedium),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
+      color: AppConstants.backgroundColorLight,
+      child: Column(
+        children: [
+          _buildActionBar(),
+          Expanded(child: _buildBody()),
         ],
+      ),
+    );
+  }
+
+  /// アクションバーを構築
+  Widget _buildActionBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.paddingMedium,
+        vertical: AppConstants.paddingSmall, // 縦の余白を削減
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: AppConstants.primarySkyBlue,
-            child: Text(
-              (_userInfo['userName'] as String? ?? 'U').substring(0, 1).toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+          Text(
+            'マイフォト (${_photos.length})',
+            style: const TextStyle(
+              fontSize: AppConstants.fontSizeLarge,
+              fontWeight: FontWeight.bold,
+              color: AppConstants.primarySkyBlue,
             ),
           ),
-          const SizedBox(width: AppConstants.paddingMedium),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _userInfo['userName'] as String? ?? 'ユーザー',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'マイフォト: ${_photos.length}枚 | ダウンロード: ${_downloadedPhotos.length}枚',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
+          const Spacer(),
+          IconButton(
+            icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
+            onPressed: _toggleViewMode,
+            tooltip: _isGridView ? 'リスト表示' : 'グリッド表示',
+            padding: const EdgeInsets.all(AppConstants.paddingSmall), // アイコンボタンの余白削減
           ),
+          IconButton(
+            icon: Icon(_isSelectionMode ? Icons.close : Icons.select_all),
+            onPressed: _toggleSelectionMode,
+            tooltip: _isSelectionMode ? '選択解除' : '選択モード',
+            padding: const EdgeInsets.all(AppConstants.paddingSmall), // アイコンボタンの余白削減
+          ),
+          if (_isSelectionMode && _selectedPhotos.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: _deleteSelectedItems,
+              tooltip: '選択項目を削除',
+              padding: const EdgeInsets.all(AppConstants.paddingSmall), // アイコンボタンの余白削減
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildPhotoTab({required bool isLoading, required bool isEmpty}) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+  /// メインボディを構築
+  Widget _buildBody() {
+    if (_isLoading && _photos.isEmpty) {
+      return _buildLoadingIndicator();
     }
 
-    if (isEmpty) {
-      final message = _currentTabIndex == 0 ? 'まだ写真がありません' : 'ダウンロードした写真がありません';
-      final icon = _currentTabIndex == 0 ? Icons.photo_library : Icons.download;
-      return _buildEmptyState(message, icon);
+    if (_photos.isEmpty) {
+      return _buildEmptyState();
     }
 
-    return _isGridView ? _buildUnifiedGridView() : _buildUnifiedListView();
+    final photoItems = _getCurrentPhotoItems();
+
+    return RefreshIndicator(
+      onRefresh: () async => _loadPhotos(),
+      child: _isGridView ? _buildGridView(photoItems) : _buildListView(photoItems),
+    );
   }
 
-  Widget _buildEmptyState(String message, IconData icon) {
+  /// グリッドビューを構築
+  Widget _buildGridView(List<PhotoItem> items) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(AppConstants.paddingSmall), // 余白を削減
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4, // 4列に変更
+        crossAxisSpacing: AppConstants.paddingXSmall, // さらに間隔を削減
+        mainAxisSpacing: AppConstants.paddingXSmall, // さらに間隔を削減
+        childAspectRatio: 1.0, // 正方形比率
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => _buildGridItem(items[index]),
+    );
+  }
+
+  /// グリッドアイテムを構築
+  Widget _buildGridItem(PhotoItem item) {
+    final bool isSelected = _selectedPhotos.contains(item.id);
+
+    return GestureDetector(
+      onTap: () => _onItemTap(item),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+              border: isSelected
+                  ? Border.all(color: AppConstants.primarySkyBlue, width: 2)
+                  : null,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+              child: _buildItemImage(item),
+            ),
+          ),
+          if (_isSelectionMode)
+            Positioned(
+              top: AppConstants.paddingXSmall,
+              right: AppConstants.paddingXSmall,
+              child: Container(
+                width: 20, // 4列表示に合わせてサイズを小さく
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppConstants.primarySkyBlue : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppConstants.primarySkyBlue),
+                ),
+                child: Icon(
+                  isSelected ? Icons.check : Icons.circle_outlined,
+                  color: isSelected ? Colors.white : AppConstants.primarySkyBlue,
+                  size: 14, // アイコンサイズも小さく
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// リストビューを構築
+  Widget _buildListView(List<PhotoItem> items) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppConstants.paddingSmall), // グリッドビューと統一
+      itemCount: items.length,
+      itemBuilder: (context, index) => _buildListItem(items[index]),
+    );
+  }
+
+  /// リストアイテムを構築
+  Widget _buildListItem(PhotoItem item) {
+    final bool isSelected = _selectedPhotos.contains(item.id);
+
+    return Card(
+      elevation: AppConstants.elevationSmall,
+      margin: const EdgeInsets.only(bottom: AppConstants.paddingSmall), // 余白を削減
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall), // 角丸を小さく
+        side: isSelected
+            ? const BorderSide(color: AppConstants.primarySkyBlue, width: 2)
+            : BorderSide.none,
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(AppConstants.paddingSmall), // 内部余白を削減
+        leading: SizedBox(
+          width: AppConstants.thumbnailSize,
+          height: AppConstants.thumbnailSize,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+            child: _buildItemImage(item),
+          ),
+        ),
+        title: Text(
+          item.displayTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: item.buildSubtitle(),
+        trailing: _isSelectionMode
+            ? Icon(
+                isSelected ? Icons.check_circle : Icons.circle_outlined,
+                color: isSelected ? AppConstants.primarySkyBlue : Colors.grey,
+              )
+            : PopupMenuButton<String>(
+                onSelected: (value) async {
+                  switch (value) {
+                    case 'share':
+                      await item.share();
+                      break;
+                    case 'delete':
+                      await _showDeleteConfirmation(item);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'share',
+                    child: ListTile(
+                      leading: Icon(Icons.share),
+                      title: Text('シェア'),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(Icons.delete, color: Colors.red),
+                      title: Text('削除'),
+                    ),
+                  ),
+                ],
+              ),
+        onTap: () => _onItemTap(item),
+      ),
+    );
+  }
+
+  /// 削除確認ダイアログを表示
+  Future<void> _showDeleteConfirmation(PhotoItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('写真を削除'),
+        content: Text('「${item.displayTitle}」を削除しますか？\nこの操作は取り消せません。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await item.delete();
+        _showSuccessMessage('写真を削除しました');
+      } catch (e) {
+        _showErrorMessage('削除に失敗しました: $e');
+      }
+    }
+  }
+
+  /// ローディングインジケーターを構築
+  Widget _buildLoadingIndicator() {
+    return const Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primarySkyBlue),
+      ),
+    );
+  }
+
+  /// 空状態を構築
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            icon,
-            size: 80,
+            Icons.photo_library_outlined,
+            size: AppConstants.iconSizeXLarge,
             color: Colors.grey[400],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppConstants.paddingMedium),
           Text(
-            message,
+            'まだ写真がありません',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: AppConstants.fontSizeLarge,
               color: Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppConstants.paddingSmall),
           Text(
-            'カメラで写真を撮影してみましょう！',
+            'カメラボタンから写真を撮影するか、\nコミュニティから写真をダウンロードしてみましょう！',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: AppConstants.fontSizeMedium,
               color: Colors.grey[500],
             ),
           ),
@@ -617,126 +580,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
     );
   }
 
-  // ===== 統合されたビュー構築メソッド =====
-
-  Widget _buildUnifiedGridView() {
-    final items = _getCurrentPhotoItems();
-    final selectedItems = _getCurrentSelectedItems();
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(AppConstants.paddingMedium),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return _buildGridItem(
-          imageWidget: _buildItemImage(item),
-          isSelected: selectedItems.contains(item.id),
-          onTap: () => _onItemTap(item),
-        );
-      },
-    );
-  }
-
-  Widget _buildUnifiedListView() {
-    final items = _getCurrentPhotoItems();
-    final selectedItems = _getCurrentSelectedItems();
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppConstants.paddingMedium),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return _buildListItem(
-          imageWidget: _buildItemImage(item),
-          title: item.displayTitle,
-          subtitle: item.buildSubtitle(),
-          isSelected: selectedItems.contains(item.id),
-          onTap: () => _onItemTap(item),
-        );
-      },
-    );
-  }
-
-  Widget _buildGridItem({
-    required Widget imageWidget,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: imageWidget,
-            ),
-          ),
-          if (_isSelectionMode) _buildSelectionIndicator(isSelected),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelectionIndicator(bool isSelected) {
-    return Positioned(
-      top: 8,
-      right: 8,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected ? AppConstants.primarySkyBlue : Colors.white.withOpacity(0.8),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppConstants.primarySkyBlue,
-            width: 2,
-          ),
-        ),
-        child: Icon(
-          isSelected ? Icons.check : null,
-          color: Colors.white,
-          size: 20,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListItem({
-    required Widget imageWidget,
-    required String title,
-    required Widget subtitle,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppConstants.paddingMedium),
-      child: ListTile(
-        leading: Stack(
-          children: [
-            SizedBox(
-              width: 60,
-              height: 60,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imageWidget,
-              ),
-            ),
-            if (_isSelectionMode) _buildSelectionIndicator(isSelected),
-          ],
-        ),
-        title: Text(title),
-        subtitle: subtitle,
-        onTap: onTap,
-      ),
-    );
-  }
-
-  // ===== メッセージ表示メソッド =====
+  // ===== メッセージ表示 =====
 
   void _showSuccessMessage(String message) {
     if (!mounted) return;
@@ -744,7 +588,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
       ),
     );
   }
@@ -755,7 +599,7 @@ class _GalleryScreenState extends State<GalleryScreen> with SingleTickerProvider
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
       ),
     );
   }
