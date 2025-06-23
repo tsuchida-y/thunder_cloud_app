@@ -1,4 +1,5 @@
-const {onRequest, onSchedule} = require("firebase-functions/v2/https");
+const {onRequest} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const axios = require("axios");
@@ -23,21 +24,13 @@ const {
 // Firebase初期化
 admin.initializeApp();
 const firestore = admin.firestore();
+const messaging = admin.messaging();
 
 // 座標計算ユーティリティ
 const { calculateDirectionCoordinates } = require('./coordinate_utils');
 
 // 入道雲分析器
 const ThunderCloudAnalyzer = require('./thunder_cloud_analyzer');
-
-const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
-const { getMessaging } = require("firebase-admin/messaging");
-
-// Firebase Admin 初期化
-initializeApp();
-const firestoreAdmin = getFirestore();
-const messaging = getMessaging();
 
 // 監視設定（定数ファイルから参照）
 const CHECK_DIRECTIONS = WEATHER_CONSTANTS.CHECK_DIRECTIONS;
@@ -189,7 +182,7 @@ async function getWeatherDataWithCache(lat, lon) {
 
   try {
     // キャッシュをチェック
-    const cacheDoc = await firestoreAdmin.collection('weather_cache').doc(cacheKey).get();
+    const cacheDoc = await firestore.collection('weather_cache').doc(cacheKey).get();
 
     if (cacheDoc.exists) {
       const cachedData = cacheDoc.data();
@@ -210,7 +203,7 @@ async function getWeatherDataWithCache(lat, lon) {
 
     if (result) {
       // キャッシュに保存
-      await firestoreAdmin.collection('weather_cache').doc(cacheKey).set({
+      await firestore.collection('weather_cache').doc(cacheKey).set({
         data: result,
         timestamp: now,
         location: { lat, lon }
@@ -282,11 +275,11 @@ async function getDirectionalWeatherDataBatch(baseLat, baseLon) {
             isLikely: analysis.isThunderCloudLikely,
             totalScore: analysis.totalScore,
             riskLevel: analysis.riskLevel,
-            capeScore: analysis.individualScores.cape || 0,
-            liScore: analysis.individualScores.lifted_index || 0,
-            cinScore: analysis.individualScores.cin || 0,
-            tempScore: analysis.individualScores.temperature || 0,
-            cloudScore: analysis.individualScores.cloud_cover || 0,
+            capeScore: analysis.capeScore || 0,
+            liScore: analysis.liScore || 0,
+            cinScore: analysis.cinScore || 0,
+            tempScore: analysis.tempScore || 0,
+            cloudScore: analysis.cloudScore || 0,
           },
           cape: weatherData.cape,
           lifted_index: weatherData.lifted_index,
@@ -365,16 +358,16 @@ async function getDirectionalWeatherDataFallback(baseLat, baseLon) {
               lat: coordinates.latitude,
               lon: coordinates.longitude
             },
-            analysis: {
-              isLikely: analysis.isThunderCloudLikely,
-              totalScore: analysis.totalScore,
-              riskLevel: analysis.riskLevel,
-              capeScore: analysis.individualScores.cape || 0,
-              liScore: analysis.individualScores.lifted_index || 0,
-              cinScore: analysis.individualScores.cin || 0,
-              tempScore: analysis.individualScores.temperature || 0,
-              cloudScore: analysis.individualScores.cloud_cover || 0,
-            },
+                    analysis: {
+          isLikely: analysis.isThunderCloudLikely,
+          totalScore: analysis.totalScore,
+          riskLevel: analysis.riskLevel,
+          capeScore: analysis.capeScore || 0,
+          liScore: analysis.liScore || 0,
+          cinScore: analysis.cinScore || 0,
+          tempScore: analysis.tempScore || 0,
+          cloudScore: analysis.cloudScore || 0,
+        },
             cape: weatherData.cape,
             lifted_index: weatherData.lifted_index,
             convective_inhibition: weatherData.convective_inhibition,
@@ -463,7 +456,7 @@ exports.cacheWeatherData = onSchedule({
 
   try {
     // アクティブユーザーを取得
-    const usersSnapshot = await firestoreAdmin
+    const usersSnapshot = await firestore
       .collection("users")
       .where("isActive", "==", true)
       .get();
@@ -500,7 +493,7 @@ exports.cacheWeatherData = onSchedule({
       console.log("⚠️ 処理対象のユーザーがいません。usersコレクションの内容を確認してください。");
 
       // 全usersコレクションの内容を確認
-      const allUsersSnapshot = await firestoreAdmin.collection("users").get();
+      const allUsersSnapshot = await firestore.collection("users").get();
       console.log(`📊 全ユーザー数: ${allUsersSnapshot.size}`);
 
       allUsersSnapshot.docs.forEach((doc) => {
@@ -584,7 +577,7 @@ exports.checkThunderClouds = onSchedule({
 
   try {
     // アクティブユーザーを取得
-    const usersSnapshot = await firestoreAdmin
+    const usersSnapshot = await firestore
       .collection("users")
       .where("isActive", "==", true)
       .get();
@@ -667,7 +660,7 @@ async function checkUserThunderCloudWithCache(user) {
       const cacheKey = HelperFunctions.generateCacheKey(coordinates.latitude, coordinates.longitude);
 
       try {
-        const cacheDoc = await firestoreAdmin.collection('weather_cache').doc(cacheKey).get();
+        const cacheDoc = await firestore.collection('weather_cache').doc(cacheKey).get();
 
         if (cacheDoc.exists) {
           const cachedData = cacheDoc.data();
@@ -791,7 +784,7 @@ async function cacheWeatherDataByUsers(users, uniqueCoordinates, allBatchResults
 
         // Firestoreにキャッシュ保存
         const cacheKey = HelperFunctions.generateCacheKey(user.latitude, user.longitude);
-        await firestoreAdmin.collection('weather_cache').doc(cacheKey).set({
+        await firestore.collection('weather_cache').doc(cacheKey).set({
           data: directionalData,
           timestamp: new Date(),
           location: {
@@ -812,55 +805,210 @@ async function cacheWeatherDataByUsers(users, uniqueCoordinates, allBatchResults
   console.log("💾 ユーザー別気象データキャッシュ保存完了");
 }
 
-// 1時間間隔で古いキャッシュデータを削除
-exports.cleanupWeatherCache = onSchedule({
-  schedule: "every 1 hours",
-  timeoutSeconds: 300,    // 5分タイムアウト
-  memory: "256MiB",
-  region: "asia-northeast1"
-}, async (event) => {
-  console.log("🧹 古いキャッシュデータクリーンアップ開始");
+// 定期的なキャッシュクリーンアップ（毎日午前3時に実行）
+exports.cleanupWeatherCache = onSchedule("0 3 * * *", async (event) => {
+  console.log("🧹 気象データキャッシュクリーンアップ開始");
 
   try {
     const now = new Date();
     const cutoffTime = new Date(now.getTime() - (CACHE_CLEANUP_RETENTION_HOURS * 60 * 60 * 1000));
 
-    console.log(`📅 削除対象: ${cutoffTime.toISOString()} より古いデータ`);
+    console.log(`📅 ${cutoffTime.toISOString()} より古いキャッシュを削除`);
 
-    // 古いキャッシュデータを検索
-    const oldCacheQuery = await firestoreAdmin
+    const snapshot = await firestore
       .collection('weather_cache')
       .where('timestamp', '<', cutoffTime)
       .limit(CACHE_CLEANUP_BATCH_SIZE)
       .get();
 
-    if (oldCacheQuery.empty) {
-      console.log("✅ 削除対象のキャッシュデータはありません");
+    if (snapshot.empty) {
+      console.log("✅ 削除対象のキャッシュなし");
       return;
     }
 
-    console.log(`🗑️ ${oldCacheQuery.size}件の古いキャッシュを削除中...`);
-
-    // バッチ削除
-    const batch = firestoreAdmin.batch();
+    const batch = firestore.batch();
     let deleteCount = 0;
 
-    oldCacheQuery.docs.forEach((doc) => {
+    snapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
       deleteCount++;
     });
 
     await batch.commit();
-
-    console.log(`✅ キャッシュクリーンアップ完了: ${deleteCount}件を削除`);
-
-    // まだ削除対象がある場合は次回実行時に継続
-    if (oldCacheQuery.size === CACHE_CLEANUP_BATCH_SIZE) {
-      console.log("📋 次回クリーンアップで残りのデータを削除予定");
-    }
+    console.log(`✅ キャッシュクリーンアップ完了: ${deleteCount}件削除`);
 
   } catch (error) {
     console.error("❌ キャッシュクリーンアップエラー:", error);
+  }
+});
+
+// 期限切れ写真の自動削除（毎日午前1時に実行）
+exports.cleanupExpiredPhotos = onSchedule("0 1 * * *", async (event) => {
+  console.log("🧹 期限切れ写真クリーンアップ開始");
+
+  try {
+    const now = new Date();
+    const batchSize = 100; // 一度に処理する写真数
+    let totalDeleted = 0;
+
+    console.log(`📅 ${now.toISOString()} 時点で期限切れの写真を削除`);
+
+    // 期限切れの写真を検索
+    const snapshot = await firestore
+      .collection('photos')
+      .where('expiresAt', '<=', now)
+      .limit(batchSize)
+      .get();
+
+    if (snapshot.empty) {
+      console.log("✅ 削除対象の期限切れ写真なし");
+      return;
+    }
+
+    console.log(`🗑️ ${snapshot.docs.length}件の期限切れ写真を削除中...`);
+
+    // 各写真を個別に削除（Storage + Firestore + 関連データ）
+    for (const doc of snapshot.docs) {
+      try {
+        const data = doc.data();
+        const photoId = doc.id;
+        const imageUrl = data.imageUrl;
+
+        // Firebase Storageから画像を削除
+        if (imageUrl) {
+          try {
+            const bucket = admin.storage().bucket();
+            const fileName = imageUrl.split('/').pop().split('?')[0]; // URLからファイル名を抽出
+            const file = bucket.file(`photos/${data.userId}/${fileName}`);
+            await file.delete();
+            console.log(`🗑️ Storage画像削除: ${photoId}`);
+          } catch (storageError) {
+            console.warn(`⚠️ Storage削除エラー（継続）: ${photoId} - ${storageError.message}`);
+          }
+        }
+
+        // 関連するいいねを削除
+        const likesSnapshot = await firestore
+          .collection('likes')
+          .where('photoId', '==', photoId)
+          .get();
+
+        const likeBatch = firestore.batch();
+        likesSnapshot.docs.forEach((likeDoc) => {
+          likeBatch.delete(likeDoc.ref);
+        });
+
+        if (likesSnapshot.docs.length > 0) {
+          await likeBatch.commit();
+          console.log(`🗑️ 関連いいね削除: ${photoId} (${likesSnapshot.docs.length}件)`);
+        }
+
+        // Firestoreから写真データを削除
+        await doc.ref.delete();
+        totalDeleted++;
+
+        console.log(`✅ 期限切れ写真削除完了: ${photoId}`);
+
+      } catch (photoError) {
+        console.error(`❌ 写真削除エラー: ${doc.id} - ${photoError.message}`);
+      }
+    }
+
+    console.log(`✅ 期限切れ写真クリーンアップ完了: ${totalDeleted}件削除`);
+
+    // 大量のデータがある場合の通知
+    if (snapshot.docs.length === batchSize) {
+      console.log("🔄 さらに期限切れ写真が存在する可能性があります");
+    }
+
+  } catch (error) {
+    console.error("❌ 期限切れ写真クリーンアップエラー:", error);
+  }
+});
+
+// 期限切れいいねの自動削除（毎日午前2時に実行）
+exports.cleanupExpiredLikes = onSchedule("0 2 * * *", async (event) => {
+  console.log("🧹 期限切れいいねクリーンアップ開始");
+
+  try {
+    const now = new Date();
+    const batchSize = 500; // いいねは軽量なので多めに処理
+    let totalDeleted = 0;
+
+    console.log(`📅 ${now.toISOString()} 時点で期限切れのいいねを削除`);
+
+    // 期限切れのいいねを検索
+    const snapshot = await firestore
+      .collection('likes')
+      .where('expiresAt', '<=', now)
+      .limit(batchSize)
+      .get();
+
+    if (snapshot.empty) {
+      console.log("✅ 削除対象の期限切れいいねなし");
+      return;
+    }
+
+    console.log(`🗑️ ${snapshot.docs.length}件の期限切れいいねを削除中...`);
+
+    // バッチ削除で効率化
+    const batch = firestore.batch();
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    totalDeleted = snapshot.docs.length;
+
+    console.log(`✅ 期限切れいいねクリーンアップ完了: ${totalDeleted}件削除`);
+
+    // 大量のデータがある場合の通知
+    if (snapshot.docs.length === batchSize) {
+      console.log("🔄 さらに期限切れいいねが存在する可能性があります");
+    }
+
+  } catch (error) {
+    console.error("❌ 期限切れいいねクリーンアップエラー:", error);
+  }
+});
+
+// 定期的な入道雲監視（5分間隔）
+exports.monitorThunderClouds = onSchedule("*/5 * * * *", async (event) => {
+  console.log("🌩️ 入道雲監視開始（5分間隔）");
+
+  try {
+    // アクティブユーザーを取得
+    const usersSnapshot = await firestore
+      .collection("users")
+      .where("isActive", "==", true)
+      .get();
+
+    console.log(`👥 アクティブユーザー数: ${usersSnapshot.size}`);
+
+    // ユーザーデータを収集
+    const users = [];
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      if (userData.lastUpdated) {
+        users.push(userData);
+      }
+    }
+
+    // lastUpdatedで降順ソート
+    users.sort((a, b) => {
+      const aTime = a.lastUpdated?.toDate?.() || new Date(0);
+      const bTime = b.lastUpdated?.toDate?.() || new Date(0);
+      return bTime.getTime() - aTime.getTime();
+    });
+
+    console.log(`📊 処理対象ユーザー数: ${users.length}`);
+
+    // キャッシュされた気象データを活用して入道雲チェック
+    await checkThunderCloudsWithCache(users);
+
+    console.log("✅ 入道雲監視完了");
+  } catch (error) {
+    console.error("❌ エラー:", error);
   }
 });
 
@@ -882,16 +1030,16 @@ exports.getCacheStats = onRequest(async (req, res) => {
     const twoHoursAgo = new Date(now.getTime() - (2 * 60 * 60 * 1000));
 
     // 全キャッシュ数
-    const totalCacheSnapshot = await firestoreAdmin.collection('weather_cache').get();
+    const totalCacheSnapshot = await firestore.collection('weather_cache').get();
 
     // 1時間以内のキャッシュ数
-    const recentCacheSnapshot = await firestoreAdmin
+    const recentCacheSnapshot = await firestore
       .collection('weather_cache')
       .where('timestamp', '>', oneHourAgo)
       .get();
 
     // 2時間より古いキャッシュ数（削除対象）
-    const oldCacheSnapshot = await firestoreAdmin
+    const oldCacheSnapshot = await firestore
       .collection('weather_cache')
       .where('timestamp', '<', twoHoursAgo)
       .get();

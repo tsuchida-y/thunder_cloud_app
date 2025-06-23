@@ -1,4 +1,4 @@
-// firestore.rules - 修正版
+// firestore.rules - 最適化版
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,8 +9,7 @@ service cloud.firestore {
 
     // users コレクション
     match /users/{userId} {
-      allow write: if true;
-      allow read: if true;  // ← 一時的に読み取りも許可
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // weather_cache コレクション（気象データキャッシュ）
@@ -21,20 +20,34 @@ service cloud.firestore {
 
     // photos コレクション（写真データ）
     match /photos/{photoId} {
-      allow read: if true;   // 誰でも読み取り可能
-      allow write: if true;  // 誰でも書き込み可能（開発用）
+      // 写真の読み取り: 公開かつ期限切れでない、または所有者
+      allow read: if (resource.data.isPublic == true &&
+                     resource.data.expiresAt > request.time) ||
+                     (request.auth != null && request.auth.uid == resource.data.userId);
+
+      // 写真の作成: 認証済みユーザーのみ（expiresAtフィールドが必須）
+      allow create: if request.auth != null &&
+                    request.auth.uid == request.resource.data.userId &&
+                    request.resource.data.expiresAt is timestamp;
+
+      // 写真の更新・削除: 所有者のみ
+      allow update, delete: if request.auth != null &&
+                           request.auth.uid == resource.data.userId;
     }
 
-    // likes コレクション（いいね）
+    // likes コレクション（いいね）- TTL付きで自動削除対応
     match /likes/{likeId} {
-      allow read: if true;
-      allow write: if true;
-    }
+      // いいねの読み取り: 期限切れでない場合のみ
+      allow read: if resource.data.expiresAt > request.time;
 
-    // comments コレクション（コメント）
-    match /comments/{commentId} {
-      allow read: if true;
-      allow write: if true;
+      // いいねの作成: 認証済みユーザーが自分のいいねを作成（expiresAtフィールドが必須）
+      allow create: if request.auth != null &&
+                    request.auth.uid == request.resource.data.userId &&
+                    request.resource.data.expiresAt is timestamp;
+
+      // いいねの削除: 自分のいいねのみ削除可能
+      allow delete: if request.auth != null &&
+                    request.auth.uid == resource.data.userId;
     }
 
     // downloads コレクション（ダウンロード済み写真）
