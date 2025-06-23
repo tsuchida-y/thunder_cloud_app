@@ -10,28 +10,54 @@
         h2 { color: #34495e; margin-top: 30px; }
         .contact { background: #e8f4f8; padding: 15px; border-radius: 5px; border-left: 4px solid #3498db; }
         .faq { background: #f0f7ff; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .privacy-highlight { background: #e8f6f3; padding: 10px; border-radius: 5px; border-left: 4px solid #27ae60; margin: 10px 0; }
     </style>
 </head>
 <body>
     <h1>入道雲サーチアプリ - プライバシーポリシー・サポート</h1>
 
     <h2>アプリについて</h2>
-    <p>入道雲サーチアプリは、気象データを活用して入道雲の発生を予測し、ユーザーに通知する観賞・撮影支援アプリです。</p>
+    <p>入道雲サーチアプリは、美しい入道雲の発生をリアルタイムで検出し、撮影した写真をコミュニティで共有できる総合プラットフォームです。入道雲愛好家が集まり、発見・撮影・共有を楽しむコミュニティアプリです。</p>
 
     <h2>主な機能</h2>
+    <h3>監視・通知機能</h3>
     <ul>
-        <li><strong>入道雲発生予測</strong>: 気象データ（CAPE値）を分析して入道雲の発生を予測</li>
-        <li><strong>位置情報連動</strong>: 現在地周辺の気象状況を監視</li>
-        <li><strong>プッシュ通知</strong>: 入道雲発生の可能性が高い時に通知</li>
-        <li><strong>地図表示</strong>: 現在地と入道雲発生方向を地図上に表示</li>
-        <li><strong>詳細データ表示</strong>: 設定画面で気象データの詳細を確認</li>
+        <li><strong>入道雲発生予測</strong>: 気象データ（CAPE値、リフティド指数等）を分析して入道雲の発生を予測</li>
+        <li><strong>位置情報連動</strong>: 現在地周辺12地点の気象状況を5分間隔で自動監視</li>
+        <li><strong>夜間モード</strong>: 20時〜8時は入道雲発生確率が極めて低いため監視を停止（省エネ設計）</li>
+        <li><strong>プッシュ通知</strong>: 入道雲発生の可能性が高い時にリアルタイム通知</li>
+        <li><strong>地図表示</strong>: Google Maps連携で現在地と入道雲発生方向を表示</li>
+        <li><strong>詳細データ表示</strong>: 設定画面で気象データの詳細を30秒間隔で自動更新</li>
     </ul>
+
+    <h3>写真・コミュニティ機能</h3>
+    <ul>
+        <li><strong>写真撮影・投稿</strong>: アプリ内カメラで入道雲を撮影し、コミュニティに投稿</li>
+        <li><strong>写真共有</strong>: 撮影した美しい入道雲写真をユーザー同士で共有</li>
+        <li><strong>いいね機能</strong>: 気に入った写真にいいねを付けて交流</li>
+        <li><strong>写真ダウンロード</strong>: 他のユーザーの写真をギャラリーに保存</li>
+        <li><strong>ギャラリー機能</strong>: マイフォトの管理・閲覧</li>
+        <li><strong>ローカル保存</strong>: 撮影写真をデバイス内に保存</li>
+    </ul>
+
+    <h3>プライバシー保護機能</h3>
+    <div class="privacy-highlight">
+        <ul>
+            <li><strong>自動削除システム</strong>: 投稿写真は30日後に自動削除</li>
+            <li><strong>位置情報保護</strong>: 座標は小数点2位（約1km精度）に制限</li>
+            <li><strong>いいねデータ削除</strong>: いいね情報も30日後に自動削除</li>
+            <li><strong>データ最小化</strong>: 必要最小限のデータのみ収集</li>
+        </ul>
+    </div>
 
     <h2>使い方</h2>
     <ol>
         <li><strong>位置情報許可</strong>: アプリ起動時に位置情報の利用を許可してください</li>
         <li><strong>通知許可</strong>: 入道雲発生時の通知を受け取るため、通知を許可してください</li>
+        <li><strong>自動監視開始</strong>: 設定完了後、自動で監視が開始されます（夜間は省エネモード）</li>
         <li><strong>地図確認</strong>: メイン画面で現在地と気象状況を確認できます</li>
+        <li><strong>写真撮影</strong>: カメラボタンで入道雲を撮影し、コミュニティに投稿</li>
+        <li><strong>コミュニティ参加</strong>: 他のユーザーの写真を閲覧、いいね、ダウンロード</li>
         <li><strong>設定画面</strong>: 右上のボタン「気象データ」をタップして詳細情報を表示</li>
         <li><strong>通知受信</strong>: 入道雲発生の可能性が高い時に自動で通知されます</li>
     </ol>
@@ -39,57 +65,98 @@
     <h2>よくある質問</h2>
     <div class="faq">
         <strong>Q: 通知が来ません</strong><br>
-        A: 通知設定が有効になっているか、位置情報の利用が許可されているか、インターネット接続が正常かご確認ください。
+        A: 通知設定が有効になっているか、位置情報の利用が許可されているか、インターネット接続が正常かご確認ください。夜間（20時〜8時）は省エネのため通知を停止しています。
     </div>
 
     <div class="faq">
         <strong>Q: 位置情報の精度について</strong><br>
-        A: アプリは位置情報を使用して最適な気象データを取得します。より正確な予測のため、位置情報の利用を許可することをお勧めします。
+        A: プライバシー保護のため、位置情報は約1km精度（小数点2位）に制限しています。入道雲監視には十分な精度を確保しつつ、詳細な住所特定を防いでいます。
+    </div>
+
+    <div class="faq">
+        <strong>Q: 写真はいつまで保存されますか？</strong><br>
+        A: 投稿された写真は30日後に自動削除されます。プライバシー保護とストレージ最適化のための仕組みです。
     </div>
 
     <div class="faq">
         <strong>Q: バッテリー消費について</strong><br>
-        A: アプリは効率的な位置情報取得を行い、バッテリー消費を最小限に抑えています。
+        A: 夜間モード（20時〜8時）搭載により、入道雲発生確率の低い時間帯は監視を停止し、バッテリー消費を大幅に削減しています。
+    </div>
+
+    <div class="faq">
+        <strong>Q: 他のユーザーの写真をダウンロードできますか？</strong><br>
+        A: はい。コミュニティで公開されている写真は、ダウンロードしてご自身のギャラリーに保存できます。
     </div>
 
     <h2>プライバシーポリシー</h2>
     <h3>収集する情報</h3>
     <ul>
-        <li><strong>位置情報</strong>: GPS座標（入道雲発生監視のため、24時間後自動削除）</li>
+        <li><strong>位置情報</strong>: GPS座標（入道雲発生監視・撮影地記録のため、約1km精度に制限）</li>
+        <li><strong>写真データ</strong>: 撮影・投稿された写真（Firebase Storageに保存、30日後自動削除）</li>
+        <li><strong>写真メタデータ</strong>: 撮影日時、位置情報（約1km精度）、キャプション、タグ</li>
+        <li><strong>コミュニティデータ</strong>: いいね情報、ユーザー投稿データ（30日後自動削除）</li>
         <li><strong>デバイス情報</strong>: プッシュ通知トークン（通知配信のため）</li>
+        <li><strong>ユーザー情報</strong>: ユーザー名、プロフィール情報（任意）</li>
     </ul>
 
     <h3>使用目的</h3>
     <ul>
         <li>美しい入道雲の発生検出と通知</li>
         <li>雲観測・撮影機会の提供</li>
+        <li>写真共有コミュニティの運営</li>
+        <li>ユーザー同士の交流促進</li>
         <li>アプリの機能向上とバグ修正</li>
+        <li>サービス品質の向上</li>
     </ul>
 
     <h3>第三者サービス</h3>
     <ul>
-        <li>Firebase (Google) - 技術的サービス提供</li>
-        <li>Google Maps - 地図表示</li>
-        <li>Open-Meteo - 気象データ提供</li>
+        <li><strong>Firebase (Google)</strong> - 技術的サービス提供（Cloud Functions, Firestore, Storage, FCM）</li>
+        <li><strong>Google Maps</strong> - 地図表示</li>
+        <li><strong>Open-Meteo</strong> - 気象データ提供</li>
     </ul>
 
     <h3>データ保護</h3>
+    <div class="privacy-highlight">
+        <ul>
+            <li><strong>位置情報保護</strong>: 約1km精度（小数点2位）に制限し、詳細な住所特定を防止</li>
+            <li><strong>自動削除システム</strong>: 投稿写真・いいねデータは30日後に自動削除</li>
+            <li><strong>暗号化処理</strong>: 位置情報は暗号化して処理</li>
+            <li><strong>データ最小化</strong>: 機能に必要な最小限のデータのみ収集</li>
+            <li><strong>アクセス制御</strong>: 適切なFirestoreセキュリティルールで不正アクセスを防止</li>
+            <li><strong>個人情報保護</strong>: 個人を特定可能な詳細情報は収集しない</li>
+            <li><strong>ストレージ最適化</strong>: 期限切れデータの自動クリーンアップでストレージを効率化</li>
+        </ul>
+    </div>
+
+    <h3>データ保存期間</h3>
     <ul>
-        <li>位置情報は暗号化して処理</li>
-        <li>個人を特定可能な情報は収集しない</li>
-        <li>データは最小限の期間のみ保存</li>
+        <li><strong>位置情報</strong>: 気象データキャッシュと連動（最大5分間）</li>
+        <li><strong>投稿写真</strong>: 投稿から30日後に自動削除</li>
+        <li><strong>いいねデータ</strong>: 30日後に自動削除</li>
+        <li><strong>ローカル写真</strong>: ユーザーが手動削除するまで端末内に保存</li>
+        <li><strong>プッシュ通知トークン</strong>: アプリアンインストールまで</li>
+    </ul>
+
+    <h3>ユーザーの権利</h3>
+    <ul>
+        <li><strong>写真削除</strong>: 投稿した写真はいつでも手動で削除可能</li>
+        <li><strong>データ確認</strong>: 設定画面で気象データの詳細を確認可能</li>
+        <li><strong>通知制御</strong>: 通知設定はいつでも変更可能</li>
+        <li><strong>位置情報制御</strong>: 位置情報の利用許可はいつでも変更可能</li>
     </ul>
 
     <h2>お問い合わせ</h2>
     <div class="contact">
-        <p>アプリのサポートが必要な場合は、以下までご連絡ください：</p>
+        <p>アプリのサポートやプライバシーに関するご質問は、以下までご連絡ください：</p>
         <ul>
             <li><strong>メール</strong>: <a href="mailto:yuto0419tsuchida@gmail.com">yuto0419tsuchida@gmail.com</a></li>
             <li><strong>開発者</strong>: Tsuchida Yuto</li>
+            <li><strong>GitHub Issues</strong>: <a href="https://github.com/tsuchida-y/thunder_cloud_app/issues" target="_blank">https://github.com/tsuchida-y/thunder_cloud_app/issues</a></li>
         </ul>
     </div>
 
     <hr>
-    <p><small>最終更新日: 2025年6月20日</small></p>
+    <p><small>最終更新日: 2025年1月15日</small></p>
 </body>
 </html>
