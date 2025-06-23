@@ -1,17 +1,17 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 import '../../constants/app_constants.dart';
 import '../../models/photo.dart';
 import '../../utils/logger.dart';
 import '../location/location_service.dart';
-import '../weather/weather_data_service.dart';
 
 class PhotoService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -26,8 +26,6 @@ class PhotoService {
     List<String>? tags,
   }) async {
     try {
-      AppLogger.info('写真アップロード開始', tag: 'PhotoService');
-
       // 現在の位置情報を取得
       final location = await LocationService.getCurrentLocationAsLatLng();
       if (location == null) {
@@ -35,13 +33,12 @@ class PhotoService {
         return false;
       }
 
-      // 現在の気象データを取得
-      final weatherDataService = WeatherDataService.instance;
-      await weatherDataService.fetchAndStoreWeatherData(location);
-      final weatherData = weatherDataService.lastWeatherData;
-
       // 地名を取得（簡易版）
       final locationName = await _getLocationName(location);
+
+      // 座標を小数点2位に丸める（プライバシー保護）
+      final roundedLatitude = AppConstants.roundCoordinate(location.latitude);
+      final roundedLongitude = AppConstants.roundCoordinate(location.longitude);
 
       // Firebase Storageに画像をアップロード
       final imageUrl = await _uploadImageToStorage(imageFile, userId);
@@ -53,25 +50,29 @@ class PhotoService {
       // サムネイル画像を作成・アップロード（同じ画像を使用、実際にはリサイズ版を作成）
       final thumbnailUrl = imageUrl; // 簡易版
 
-      // Firestoreに写真データを保存
+      // Firestoreに写真データを保存（30日間のTTL付き）
       final photoId = _firestore.collection('photos').doc().id;
+      final now = DateTime.now();
       final photo = Photo(
         id: photoId,
         userId: userId,
         userName: userName,
         imageUrl: imageUrl,
         thumbnailUrl: thumbnailUrl,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: roundedLatitude,
+        longitude: roundedLongitude,
         locationName: locationName,
-        timestamp: DateTime.now(),
-        weatherData: weatherData,
+        timestamp: now,
+        weatherData: {},
         tags: tags ?? [],
       );
 
-      await _firestore.collection('photos').doc(photoId).set(photo.toMap());
+      // 写真データにTTLを追加
+      final photoData = photo.toMap();
+      photoData['expiresAt'] = Timestamp.fromDate(now.add(const Duration(days: 30))); // 30日後に期限切れ
 
-      AppLogger.success('写真アップロード完了: $photoId', tag: 'PhotoService');
+      await _firestore.collection('photos').doc(photoId).set(photoData);
+
       return true;
     } catch (e) {
       AppLogger.error('写真アップロードエラー: $e', tag: 'PhotoService');
@@ -82,37 +83,15 @@ class PhotoService {
   /// Firebase Storageに画像をアップロード
   static Future<String?> _uploadImageToStorage(File imageFile, String userId) async {
     try {
-      AppLogger.info('Firebase Storage アップロード開始', tag: 'PhotoService');
-      AppLogger.info('ファイルパス: ${imageFile.path}', tag: 'PhotoService');
-      AppLogger.info('ファイルサイズ: ${await imageFile.length()} bytes', tag: 'PhotoService');
-
       final fileName = 'thunder_cloud_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = _storage.ref().child('photos').child(userId).child(fileName);
 
-      AppLogger.info('Storage参照パス: photos/$userId/$fileName', tag: 'PhotoService');
-
       final uploadTask = ref.putFile(imageFile);
-      AppLogger.info('アップロードタスク開始', tag: 'PhotoService');
-
       final snapshot = await uploadTask;
-      AppLogger.info('アップロード完了、ダウンロードURL取得中...', tag: 'PhotoService');
-
       final downloadUrl = await snapshot.ref.getDownloadURL();
-      AppLogger.success('画像アップロード完了: $downloadUrl', tag: 'PhotoService');
       return downloadUrl;
     } catch (e) {
       AppLogger.error('画像アップロードエラー: $e', tag: 'PhotoService');
-      AppLogger.error('エラータイプ: ${e.runtimeType}', tag: 'PhotoService');
-
-      // Firebase関連のエラーを詳細に出力
-      if (e.toString().contains('permission')) {
-        AppLogger.error('権限エラー: Firebase Storage の権限設定を確認してください', tag: 'PhotoService');
-      } else if (e.toString().contains('network')) {
-        AppLogger.error('ネットワークエラー: インターネット接続を確認してください', tag: 'PhotoService');
-      } else if (e.toString().contains('quota')) {
-        AppLogger.error('容量エラー: Firebase Storage の容量制限に達しています', tag: 'PhotoService');
-      }
-
       return null;
     }
   }
@@ -124,124 +103,121 @@ class PhotoService {
     return '撮影地点'; // 座標は非表示にして一般的な名前を使用
   }
 
-  /// 公開写真一覧を取得
+  /// 公開写真一覧を取得（期限切れ除外）
   static Future<List<Photo>> getPublicPhotos({
     int limit = 20,
     DocumentSnapshot? lastDocument,
   }) async {
     try {
-      AppLogger.info('📸 公開写真取得開始 - limit: $limit', tag: 'PhotoService');
-
+      // まず全ての公開写真を取得してからクライアントサイドで期限切れをフィルタリング
+      // （マイグレーション期間中は既存写真にexpiresAtが存在しないため）
       Query query = _firestore
           .collection('photos')
           .where('isPublic', isEqualTo: true)
           .orderBy('timestamp', descending: true)
-          .limit(limit);
+          .limit(limit * 2); // 期限切れフィルタリングのため多めに取得
 
       if (lastDocument != null) {
         query = query.startAfterDocument(lastDocument);
-        AppLogger.info('📄 ページネーション: 前のドキュメントから継続', tag: 'PhotoService');
       }
 
-      AppLogger.info('🔍 Firestoreクエリ実行中...', tag: 'PhotoService');
-      final snapshot = await query.get();
+      final snapshot = await query.get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          AppLogger.error('Firestoreクエリタイムアウト', tag: 'PhotoService');
+          throw TimeoutException('Firestore query timeout', const Duration(seconds: 10));
+        },
+      );
 
-      AppLogger.info('📊 クエリ結果: ${snapshot.docs.length}件のドキュメント取得', tag: 'PhotoService');
+      // クライアントサイドで期限切れフィルタリング
+      final now = DateTime.now();
+      final validPhotos = <DocumentSnapshot>[];
 
-      if (snapshot.docs.isEmpty) {
-        AppLogger.warning('⚠️ 公開写真が見つかりません', tag: 'PhotoService');
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final expiresAt = (data['expiresAt'] as Timestamp?)?.toDate();
 
-        // 全写真数を確認
-        final allPhotosSnapshot = await _firestore.collection('photos').get();
-        AppLogger.info('📈 全写真数: ${allPhotosSnapshot.docs.length}件', tag: 'PhotoService');
-
-        // isPublicフィールドの状況を確認
-        for (var doc in allPhotosSnapshot.docs.take(5)) {
-          final data = doc.data();
-          AppLogger.info('📋 写真データ例: ${doc.id} - isPublic: ${data['isPublic']}, timestamp: ${data['timestamp']}', tag: 'PhotoService');
-        }
-      } else {
-        AppLogger.success('✅ 公開写真取得成功: ${snapshot.docs.length}件', tag: 'PhotoService');
-        for (var doc in snapshot.docs.take(3)) {
-          final data = doc.data() as Map<String, dynamic>;
-          AppLogger.info('📸 写真: ${doc.id} - ユーザー: ${data['userName']}, 時刻: ${data['timestamp']}', tag: 'PhotoService');
+        // expiresAtが存在しない場合（マイグレーション前）またはまだ期限切れでない場合
+        if (expiresAt == null || now.isBefore(expiresAt)) {
+          validPhotos.add(doc);
+          if (validPhotos.length >= limit) break; // 必要な件数に達したら終了
         }
       }
 
-      final photos = snapshot.docs.map((doc) => Photo.fromDocument(doc)).toList();
+      if (validPhotos.isEmpty) {
+        // 期限切れ写真のクリーンアップを非同期で実行
+        _cleanupExpiredPhotosAsync();
+      }
+
+      final photos = validPhotos.map((doc) => Photo.fromDocument(doc)).toList();
       return photos;
     } catch (e) {
       AppLogger.error('公開写真取得エラー: $e', tag: 'PhotoService');
-      AppLogger.error('エラータイプ: ${e.runtimeType}', tag: 'PhotoService');
-      AppLogger.error('スタックトレース: ${StackTrace.current}', tag: 'PhotoService');
       return [];
+    }
+  }
+
+  /// 期限切れ写真の非同期クリーンアップ
+  static void _cleanupExpiredPhotosAsync() {
+    // バックグラウンドで期限切れ写真を削除
+    Future.delayed(Duration.zero, () async {
+      try {
+        final expiredSnapshot = await _firestore
+            .collection('photos')
+            .where('expiresAt', isLessThanOrEqualTo: Timestamp.now())
+            .limit(10) // 一度に最大10件
+            .get();
+
+        if (expiredSnapshot.docs.isNotEmpty) {
+          for (var doc in expiredSnapshot.docs) {
+            await _deleteExpiredPhoto(doc);
+          }
+        }
+      } catch (e) {
+        AppLogger.error('期限切れ写真クリーンアップエラー: $e', tag: 'PhotoService');
+      }
+    });
+  }
+
+  /// 期限切れ写真を削除（Storage + Firestore + 関連データ）
+  static Future<void> _deleteExpiredPhoto(DocumentSnapshot doc) async {
+    try {
+      final data = doc.data() as Map<String, dynamic>;
+      final imageUrl = data['imageUrl'] as String?;
+
+      // Firebase Storageから画像を削除
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        try {
+          final ref = _storage.refFromURL(imageUrl);
+          await ref.delete();
+        } catch (e) {
+          AppLogger.warning('Storage削除エラー: $e', tag: 'PhotoService');
+        }
+      }
+
+      // 関連するいいねを削除
+      await _deleteRelatedLikes(doc.id);
+
+      // Firestoreから写真データを削除
+      await doc.reference.delete();
+    } catch (e) {
+      AppLogger.error('期限切れ写真削除エラー: ${doc.id} - $e', tag: 'PhotoService');
     }
   }
 
   /// ユーザーの写真一覧を取得
   static Future<List<Photo>> getUserPhotos(String userId) async {
     try {
-      AppLogger.info('👤 ユーザー写真取得開始 - ユーザーID: $userId', tag: 'PhotoService');
-
       final snapshot = await _firestore
           .collection('photos')
           .where('userId', isEqualTo: userId)
           .orderBy('timestamp', descending: true)
           .get();
 
-      AppLogger.info('📊 ユーザー写真クエリ結果: ${snapshot.docs.length}件', tag: 'PhotoService');
-
-      if (snapshot.docs.isEmpty) {
-        // 全写真を確認してユーザーIDをチェック
-        final allPhotos = await _firestore.collection('photos').get();
-        AppLogger.info('🔍 全写真数: ${allPhotos.docs.length}件', tag: 'PhotoService');
-
-        for (var doc in allPhotos.docs.take(5)) {
-          final data = doc.data();
-          AppLogger.info('📋 写真例: ${doc.id} - userId: ${data['userId']}, userName: ${data['userName']}', tag: 'PhotoService');
-        }
-      }
-
       final photos = snapshot.docs.map((doc) => Photo.fromDocument(doc)).toList();
-      AppLogger.success('✅ ユーザー写真取得完了: ${photos.length}件', tag: 'PhotoService');
       return photos;
     } catch (e) {
       AppLogger.error('ユーザー写真取得エラー: $e', tag: 'PhotoService');
-      return [];
-    }
-  }
-
-  /// 近くの写真を取得
-  static Future<List<Photo>> getNearbyPhotos({
-    required LatLng center,
-    double radiusKm = 50.0,
-    int limit = 20,
-  }) async {
-    try {
-      // Firestoreの地理クエリは複雑なので、簡易版として全写真を取得してフィルタリング
-      final snapshot = await _firestore
-          .collection('photos')
-          .where('isPublic', isEqualTo: true)
-          .orderBy('timestamp', descending: true)
-          .limit(100) // 最大100件を取得してフィルタリング
-          .get();
-
-      final photos = snapshot.docs.map((doc) => Photo.fromDocument(doc)).toList();
-
-      // 距離でフィルタリング
-      final nearbyPhotos = photos.where((photo) {
-        final distance = _calculateDistance(
-          center.latitude,
-          center.longitude,
-          photo.latitude,
-          photo.longitude,
-        );
-        return distance <= radiusKm;
-      }).take(limit).toList();
-
-      return nearbyPhotos;
-    } catch (e) {
-      AppLogger.error('近くの写真取得エラー: $e', tag: 'PhotoService');
       return [];
     }
   }
@@ -256,15 +232,16 @@ class PhotoService {
         return false;
       }
 
+      // いいね情報を保存（TTL付きで30日後に自動削除）
       final likeId = '${photoId}_$userId';
-      final like = PhotoLike(
-        id: likeId,
-        photoId: photoId,
-        userId: userId,
-        timestamp: DateTime.now(),
-      );
+      final like = {
+        'photoId': photoId,
+        'userId': userId,
+        'timestamp': DateTime.now(),
+        'expiresAt': DateTime.now().add(const Duration(days: 30)), // 30日後に期限切れ
+      };
 
-      await _firestore.collection('likes').doc(likeId).set(like.toMap());
+      await _firestore.collection('likes').doc(likeId).set(like);
 
       // 写真のいいね数を更新
       await _firestore.collection('photos').doc(photoId).update({
@@ -310,14 +287,28 @@ class PhotoService {
     try {
       final likeId = '${photoId}_$userId';
       final doc = await _firestore.collection('likes').doc(likeId).get();
-      return doc.exists;
+
+      if (!doc.exists) {
+        return false;
+      }
+
+      // 期限切れチェック（クライアントサイドでも確認）
+      final data = doc.data() as Map<String, dynamic>;
+      final expiresAt = (data['expiresAt'] as Timestamp?)?.toDate();
+      if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+        // 期限切れの場合は削除
+        await doc.reference.delete();
+        return false;
+      }
+
+      return true;
     } catch (e) {
       AppLogger.error('いいね状態確認エラー: $e', tag: 'PhotoService');
       return false;
     }
   }
 
-  /// 写真のいいね状態を一括取得
+  /// 写真のいいね状態を一括取得（最適化版）
   static Future<Map<String, bool>> getPhotosLikeStatus(List<String> photoIds, String userId) async {
     try {
       final likeStatus = <String, bool>{};
@@ -331,18 +322,36 @@ class PhotoService {
         likeStatus[photoId] = false;
       }
 
-      // ユーザーのいいね一覧を取得
-      final likesSnapshot = await _firestore
-          .collection('likes')
-          .where('userId', isEqualTo: userId)
-          .get();
+      // バッチでいいね状態を確認（最大10件ずつ）
+      const batchSize = 10;
+      for (int i = 0; i < photoIds.length; i += batchSize) {
+        final batch = photoIds.skip(i).take(batchSize).toList();
+        final likeIds = batch.map((photoId) => '${photoId}_$userId').toList();
 
-      // いいねしている写真をtrueに設定
-      for (var doc in likesSnapshot.docs) {
-        final data = doc.data();
-        final photoId = data['photoId'] as String;
-        if (photoIds.contains(photoId)) {
-          likeStatus[photoId] = true;
+        // whereIn クエリを使用して効率的に取得
+        final likesSnapshot = await _firestore
+            .collection('likes')
+            .where(FieldPath.documentId, whereIn: likeIds)
+            .get();
+
+        final now = DateTime.now();
+        for (var doc in likesSnapshot.docs) {
+          final data = doc.data();
+          final photoId = data['photoId'] as String;
+
+          // 期限切れチェック
+          final expiresAt = (data['expiresAt'] as Timestamp?)?.toDate();
+          if (expiresAt != null && now.isAfter(expiresAt)) {
+            // 期限切れの場合は削除（バックグラウンドで）
+            doc.reference.delete().catchError((e) {
+              AppLogger.warning('期限切れいいね削除エラー: $e', tag: 'PhotoService');
+            });
+            continue;
+          }
+
+          if (batch.contains(photoId)) {
+            likeStatus[photoId] = true;
+          }
         }
       }
 
@@ -356,55 +365,6 @@ class PhotoService {
         likeStatus[photoId] = false;
       }
       return likeStatus;
-    }
-  }
-
-  /// 写真にコメントを追加
-  static Future<bool> addComment({
-    required String photoId,
-    required String userId,
-    required String userName,
-    required String text,
-  }) async {
-    try {
-      final commentId = _firestore.collection('comments').doc().id;
-      final comment = PhotoComment(
-        id: commentId,
-        photoId: photoId,
-        userId: userId,
-        userName: userName,
-        text: text,
-        timestamp: DateTime.now(),
-      );
-
-      await _firestore.collection('comments').doc(commentId).set(comment.toMap());
-
-      // 写真のコメント数を更新
-      await _firestore.collection('photos').doc(photoId).update({
-        'comments': FieldValue.increment(1),
-      });
-
-      AppLogger.info('コメント追加: $photoId', tag: 'PhotoService');
-      return true;
-    } catch (e) {
-      AppLogger.error('コメント追加エラー: $e', tag: 'PhotoService');
-      return false;
-    }
-  }
-
-  /// 写真のコメント一覧を取得
-  static Future<List<PhotoComment>> getPhotoComments(String photoId) async {
-    try {
-      final snapshot = await _firestore
-          .collection('comments')
-          .where('photoId', isEqualTo: photoId)
-          .orderBy('timestamp', descending: false)
-          .get();
-
-      return snapshot.docs.map((doc) => PhotoComment.fromDocument(doc)).toList();
-    } catch (e) {
-      AppLogger.error('コメント取得エラー: $e', tag: 'PhotoService');
-      return [];
     }
   }
 
@@ -435,8 +395,8 @@ class PhotoService {
       // Firestoreから写真データを削除
       await _firestore.collection('photos').doc(photoId).delete();
 
-      // 関連するいいねとコメントも削除
-      await _deleteRelatedData(photoId);
+      // 関連するいいねを削除
+      await _deleteRelatedLikes(photoId);
 
       AppLogger.success('写真削除完了: $photoId', tag: 'PhotoService');
       return true;
@@ -446,8 +406,8 @@ class PhotoService {
     }
   }
 
-  /// 関連データ（いいね・コメント）を削除
-  static Future<void> _deleteRelatedData(String photoId) async {
+  /// 関連するいいねを削除
+  static Future<void> _deleteRelatedLikes(String photoId) async {
     try {
       // いいねを削除
       final likesSnapshot = await _firestore
@@ -458,110 +418,41 @@ class PhotoService {
       for (final doc in likesSnapshot.docs) {
         await doc.reference.delete();
       }
-
-      // コメントを削除
-      final commentsSnapshot = await _firestore
-          .collection('comments')
-          .where('photoId', isEqualTo: photoId)
-          .get();
-
-      for (final doc in commentsSnapshot.docs) {
-        await doc.reference.delete();
-      }
     } catch (e) {
-      AppLogger.error('関連データ削除エラー: $e', tag: 'PhotoService');
+      AppLogger.error('関連いいね削除エラー: $e', tag: 'PhotoService');
     }
   }
 
-  /// 2点間の距離を計算（km）
-  static double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    final double dLat = _degreesToRadians(lat2 - lat1);
-    final double dLon = _degreesToRadians(lon2 - lon1);
-
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_degreesToRadians(lat1)) * math.cos(_degreesToRadians(lat2)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2);
-
-    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-
-    return AppConstants.earthRadiusKm * c;
-  }
-
-  /// 度をラジアンに変換
-  static double _degreesToRadians(double degrees) {
-    return degrees * (math.pi / 180);
-  }
-
-  /// 写真をダウンロードしてローカルに保存
+  /// 写真をダウンロードして端末ギャラリーに保存
   static Future<bool> downloadPhoto(Photo photo, String currentUserId) async {
     try {
       AppLogger.info('📥 写真ダウンロード開始: ${photo.id}', tag: 'PhotoService');
 
-      // ダウンロード済みかチェック
-      final isAlreadyDownloaded = await _isPhotoDownloaded(photo.id, currentUserId);
-      if (isAlreadyDownloaded) {
-        AppLogger.info('⚠️ 既にダウンロード済み: ${photo.id}', tag: 'PhotoService');
-        return true;
-      }
-
-      // アプリのドキュメントディレクトリを取得
-      final appDir = await getApplicationDocumentsDirectory();
-      final downloadDir = Directory('${appDir.path}/downloads');
-      if (!await downloadDir.exists()) {
-        await downloadDir.create(recursive: true);
-      }
-
-      // ファイル名を生成
-      final fileName = '${photo.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final localPath = '${downloadDir.path}/$fileName';
-
       // 画像をダウンロード
       final response = await http.get(Uri.parse(photo.imageUrl));
-      if (response.statusCode == 200) {
-        final file = File(localPath);
-        await file.writeAsBytes(response.bodyBytes);
+      if (response.statusCode != 200) {
+        AppLogger.error('❌ 画像ダウンロード失敗: ${response.statusCode}', tag: 'PhotoService');
+        return false;
+      }
 
-        // ダウンロード情報をFirestoreに保存
-        await _saveDownloadInfo(photo, currentUserId, localPath);
+      // 端末のギャラリーに保存
+      final Uint8List imageBytes = response.bodyBytes;
+      final result = await ImageGallerySaver.saveImage(
+        imageBytes,
+        name: 'thunder_cloud_${photo.id}_${DateTime.now().millisecondsSinceEpoch}',
+        quality: 100,
+      );
 
+      if (result['isSuccess'] == true) {
         AppLogger.success('✅ 写真ダウンロード完了: ${photo.id}', tag: 'PhotoService');
         return true;
       } else {
-        AppLogger.error('❌ 画像ダウンロード失敗: ${response.statusCode}', tag: 'PhotoService');
+        AppLogger.error('❌ 端末ギャラリーへの保存に失敗: ${photo.id}', tag: 'PhotoService');
         return false;
       }
     } catch (e) {
       AppLogger.error('写真ダウンロードエラー: $e', tag: 'PhotoService');
       return false;
-    }
-  }
-
-  /// ダウンロード情報をFirestoreに保存
-  static Future<void> _saveDownloadInfo(Photo photo, String userId, String localPath) async {
-    try {
-      final downloadInfo = {
-        'originalPhotoId': photo.id,
-        'originalUserId': photo.userId,
-        'originalUserName': photo.userName,
-        'downloadedBy': userId,
-        'downloadedAt': DateTime.now(),
-        'localPath': localPath,
-        'originalImageUrl': photo.imageUrl,
-        'originalTimestamp': photo.timestamp,
-        'latitude': photo.latitude,
-        'longitude': photo.longitude,
-        'locationName': photo.locationName,
-        'weatherData': photo.weatherData,
-        'tags': photo.tags,
-        'isDownloaded': true,
-      };
-
-      await _firestore
-          .collection('downloads')
-          .doc('${photo.id}_$userId')
-          .set(downloadInfo);
-    } catch (e) {
-      AppLogger.error('ダウンロード情報保存エラー: $e', tag: 'PhotoService');
     }
   }
 
@@ -652,6 +543,48 @@ class PhotoService {
     } catch (e) {
       AppLogger.error('ダウンロード済み写真削除エラー: $e', tag: 'PhotoService');
       return false;
+    }
+  }
+
+  /// 既存写真にexpiresAtフィールドを追加するマイグレーション
+  static Future<void> migrateExistingPhotos() async {
+    try {
+      AppLogger.info('🔄 既存写真のマイグレーション開始', tag: 'PhotoService');
+
+      // expiresAtフィールドが存在しない写真を検索
+      final snapshot = await _firestore
+          .collection('photos')
+          .get();
+
+      int migrated = 0;
+      final batch = _firestore.batch();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+
+        // expiresAtフィールドが存在しない場合のみ追加
+        if (!data.containsKey('expiresAt')) {
+          final timestamp = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final expiresAt = timestamp.add(const Duration(days: 30));
+
+          batch.update(doc.reference, {
+            'expiresAt': Timestamp.fromDate(expiresAt),
+          });
+
+          migrated++;
+          AppLogger.info('📝 マイグレーション対象: ${doc.id} - 期限: $expiresAt', tag: 'PhotoService');
+        }
+      }
+
+      if (migrated > 0) {
+        await batch.commit();
+        AppLogger.success('✅ 既存写真マイグレーション完了: $migrated件', tag: 'PhotoService');
+      } else {
+        AppLogger.info('ℹ️ マイグレーション対象の写真なし', tag: 'PhotoService');
+      }
+
+    } catch (e) {
+      AppLogger.error('既存写真マイグレーションエラー: $e', tag: 'PhotoService');
     }
   }
 }

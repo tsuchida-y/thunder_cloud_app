@@ -1,13 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../constants/app_constants.dart';
+import '../../main.dart';
 import '../../services/location/location_service.dart';
 import '../../services/photo/local_photo_service.dart';
 import '../../services/photo/photo_service.dart';
-import '../../services/weather/weather_data_service.dart';
 import '../../utils/logger.dart';
 
 /// 撮影した写真のプレビュー画面
@@ -94,18 +93,12 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
           _buildActionButton(
             icon: Icons.save_alt,
             label: 'ローカル保存',
-            onPressed: _isSaving ? null : _savePhotoLocally,
+            onPressed: _isSaving ? null : _saveLocally,
           ),
           _buildActionButton(
-            icon: Icons.share,
-            label: 'シェア',
-            onPressed: _isSaving ? null : _sharePhoto,
-          ),
-          _buildActionButton(
-            icon: Icons.close,
-            label: '戻る',
-            onPressed: () => Navigator.of(context).pop(),
-            color: Colors.grey,
+            icon: Icons.cloud_upload,
+            label: '投稿',
+            onPressed: _isSaving ? null : _postPhoto,
           ),
         ],
       ),
@@ -145,7 +138,7 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
   }
 
   /// 写真をローカルに保存
-  Future<void> _savePhotoLocally() async {
+  Future<void> _saveLocally() async {
     setState(() {
       _isSaving = true;
     });
@@ -157,21 +150,6 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       final location = await LocationService.getCurrentLocationAsLatLng();
       AppLogger.info('位置情報取得: $location', tag: 'PhotoPreviewScreen');
 
-      // 気象データを取得
-      Map<String, dynamic>? weatherData;
-      if (location != null) {
-        try {
-          await WeatherDataService.instance.fetchAndStoreWeatherData(location);
-          final lastWeatherData = WeatherDataService.instance.lastWeatherData;
-          if (lastWeatherData.isNotEmpty) {
-            weatherData = lastWeatherData;
-          }
-          AppLogger.info('気象データ取得成功', tag: 'PhotoPreviewScreen');
-        } catch (e) {
-          AppLogger.warning('気象データ取得失敗: $e', tag: 'PhotoPreviewScreen');
-        }
-      }
-
       // ローカルに保存
       await LocalPhotoService.savePhotoLocally(
         imageFile: widget.imageFile,
@@ -180,11 +158,10 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         latitude: location?.latitude,
         longitude: location?.longitude,
         locationName: '撮影地点',
-        weatherData: weatherData,
       );
 
       if (mounted) {
-        _showLocalSaveSuccessDialog();
+        _navigateToGallery();
       }
 
       AppLogger.success('ローカル保存完了', tag: 'PhotoPreviewScreen');
@@ -203,33 +180,18 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     }
   }
 
-  /// 写真をシェア
-  Future<void> _sharePhoto() async {
+  /// 写真を投稿（Firestoreとローカルの両方に保存）
+  Future<void> _postPhoto() async {
     setState(() {
       _isSaving = true;
     });
 
     try {
-      AppLogger.info('シェア処理開始', tag: 'PhotoPreviewScreen');
+      AppLogger.info('投稿処理開始', tag: 'PhotoPreviewScreen');
 
       // 位置情報を取得
       final location = await LocationService.getCurrentLocationAsLatLng();
       AppLogger.info('位置情報取得: $location', tag: 'PhotoPreviewScreen');
-
-      // 気象データを取得
-      Map<String, dynamic>? weatherData;
-      if (location != null) {
-        try {
-          await WeatherDataService.instance.fetchAndStoreWeatherData(location);
-          final lastWeatherData = WeatherDataService.instance.lastWeatherData;
-          if (lastWeatherData.isNotEmpty) {
-            weatherData = lastWeatherData;
-          }
-          AppLogger.info('気象データ取得成功', tag: 'PhotoPreviewScreen');
-        } catch (e) {
-          AppLogger.warning('気象データ取得失敗: $e', tag: 'PhotoPreviewScreen');
-        }
-      }
 
       // Firestoreに保存
       await PhotoService.uploadPhoto(
@@ -246,25 +208,18 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         latitude: location?.latitude,
         longitude: location?.longitude,
         locationName: '撮影地点',
-        weatherData: weatherData,
-      );
-
-      // システムのシェア機能を使用
-      await Share.shareXFiles(
-        [XFile(widget.imageFile.path)],
-        text: '入道雲の写真をシェアします！ #入道雲サーチ',
       );
 
       if (mounted) {
-        _showShareAndSaveSuccessDialog();
+        _navigateToCommunity();
       }
 
-      AppLogger.success('シェア処理完了', tag: 'PhotoPreviewScreen');
+      AppLogger.success('投稿処理完了', tag: 'PhotoPreviewScreen');
     } catch (e) {
-      AppLogger.error('シェア処理エラー', error: e, tag: 'PhotoPreviewScreen');
+      AppLogger.error('投稿処理エラー', error: e, tag: 'PhotoPreviewScreen');
 
       if (mounted) {
-        _showErrorDialog('シェアに失敗しました: $e');
+        _showErrorDialog('投稿に失敗しました: $e');
       }
     } finally {
       if (mounted) {
@@ -277,54 +232,32 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
 
   // ===== ダイアログ表示 =====
 
-  /// ローカル保存成功ダイアログを表示
-  void _showLocalSaveSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('保存完了'),
-          ],
+  /// ギャラリー画面に遷移
+  void _navigateToGallery() {
+    // プレビュー画面とカメラ画面の両方を閉じてMainScreenに戻る
+    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // MainScreenをギャラリータブで再作成
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const MainScreen(
+          initialTab: AppConstants.navigationIndexGallery,
         ),
-        content: const Text('写真をローカルに保存しました。'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // ダイアログを閉じる
-              Navigator.of(context).pop(); // プレビュー画面を閉じる
-            },
-            child: const Text('OK'),
-          ),
-        ],
       ),
     );
   }
 
-  /// シェア・保存成功ダイアログを表示
-  void _showShareAndSaveSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('シェア・保存完了'),
-          ],
+  /// コミュニティ画面に遷移
+  void _navigateToCommunity() {
+    // プレビュー画面とカメラ画面の両方を閉じてMainScreenに戻る
+    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // MainScreenをコミュニティタブで再作成
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const MainScreen(
+          initialTab: AppConstants.navigationIndexCommunity,
         ),
-        content: const Text('写真をシェアし、コミュニティとローカルに保存しました。'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // ダイアログを閉じる
-              Navigator.of(context).pop(); // プレビュー画面を閉じる
-            },
-            child: const Text('OK'),
-          ),
-        ],
       ),
     );
   }
