@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_dotenv: ^5.2.1
 
   cupertino_icons: ^1.0.8
   http: ^1.2.2
@@ -40,6 +39,8 @@ dependencies:
   cached_network_image: ^3.4.1
   photo_view: ^0.15.0
   share_plus: ^11.0.0
+  image_gallery_saver: ^2.0.3
+  photo_manager: ^3.5.0
 
   # ローカルキャッシュ機能
   shared_preferences: ^2.5.3
@@ -53,7 +54,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
     - image/transparent.jpg
     - image/direction.png
     - image/bluesky.jpg
