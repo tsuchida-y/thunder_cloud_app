@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -26,7 +28,7 @@ class WeatherDebugService {
     double longitude,
   ) async {
     AppLogger.info('気象データデバッグ開始', tag: 'WeatherDebugService');
-    AppLogger.info('座標: 緯度 ${latitude.toStringAsFixed(6)}, 経度 ${longitude.toStringAsFixed(6)}', tag: 'WeatherDebugService');
+    AppLogger.info('座標: 緯度 ${latitude.toStringAsFixed(2)}, 経度 ${longitude.toStringAsFixed(2)}', tag: 'WeatherDebugService');
 
     try {
       final cacheKey = _generateCacheKey(latitude, longitude);
@@ -75,7 +77,7 @@ class WeatherDebugService {
     LatLng currentLocation,
   ) async {
     AppLogger.info('複数方向気象データデバッグ開始', tag: 'WeatherDebugService');
-    AppLogger.info('現在地: 緯度 ${currentLocation.latitude}, 経度 ${currentLocation.longitude}', tag: 'WeatherDebugService');
+    AppLogger.info('現在地: 緯度 ${currentLocation.latitude.toStringAsFixed(2)}, 経度 ${currentLocation.longitude.toStringAsFixed(2)}', tag: 'WeatherDebugService');
 
     try {
       final cacheKey = _generateDirectionalCacheKey(currentLocation);

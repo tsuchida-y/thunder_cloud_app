@@ -9,7 +9,6 @@ class ThunderCloudAnalyzer {
     final double liftedIndex = weatherData['lifted_index']?.toDouble() ?? 0.0;
     final double cin = weatherData['convective_inhibition']?.toDouble() ?? 0.0;
     final double temperature = weatherData['temperature']?.toDouble() ?? 20.0;
-    final double cloudCover = weatherData['cloud_cover']?.toDouble() ?? 0.0;
     final double cloudCoverMid = weatherData['cloud_cover_mid']?.toDouble() ?? 0.0;
     final double cloudCoverHigh = weatherData['cloud_cover_high']?.toDouble() ?? 0.0;
 

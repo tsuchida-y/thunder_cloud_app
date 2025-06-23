@@ -40,7 +40,7 @@ class WeatherCacheService {
     final cacheKey = _generateCacheKey(latitude, longitude);
 
     AppLogger.info('Firestore気象データ取得開始', tag: 'WeatherCacheService');
-    AppLogger.info('位置情報: 緯度 $latitude, 経度 $longitude', tag: 'WeatherCacheService');
+    AppLogger.info('位置情報: 緯度 ${latitude.toStringAsFixed(2)}, 経度 ${longitude.toStringAsFixed(2)}', tag: 'WeatherCacheService');
     AppLogger.info('キャッシュキー: $cacheKey', tag: 'WeatherCacheService');
 
     try {
@@ -69,7 +69,6 @@ class WeatherCacheService {
 
       final weatherData = data['data'] as Map<String, dynamic>;
       AppLogger.success('有効な気象データを取得', tag: 'WeatherCacheService');
-      _logWeatherDataSummary(weatherData);
 
       return weatherData;
     } catch (e) {
@@ -91,7 +90,7 @@ class WeatherCacheService {
     final cacheKey = _generateCacheKey(latitude, longitude);
 
     AppLogger.info('リアルタイム監視開始', tag: 'WeatherCacheService');
-    AppLogger.info('監視位置: 緯度 $latitude, 経度 $longitude', tag: 'WeatherCacheService');
+    AppLogger.info('監視位置: 緯度 ${latitude.toStringAsFixed(2)}, 経度 ${longitude.toStringAsFixed(2)}', tag: 'WeatherCacheService');
     AppLogger.info('監視キー: $cacheKey', tag: 'WeatherCacheService');
 
     return _firestore
@@ -121,6 +120,31 @@ class WeatherCacheService {
     } catch (e) {
       AppLogger.error('キャッシュ統計取得エラー', error: e, tag: 'WeatherCacheService');
       return _createEmptyStats();
+    }
+  }
+
+  /// 特定位置のキャッシュをクリア
+  ///
+  /// [latitude] 緯度
+  /// [longitude] 経度
+  ///
+  /// Returns: クリアが成功したかどうか
+  Future<bool> clearCacheForLocation(double latitude, double longitude) async {
+    try {
+      final cacheKey = _generateCacheKey(latitude, longitude);
+      AppLogger.info('キャッシュクリア開始: $cacheKey', tag: 'WeatherCacheService');
+
+      await _firestore
+          .collection('weather_cache')
+          .doc(cacheKey)
+          .delete()
+          .timeout(AppConstants.weatherDataTimeout);
+
+      AppLogger.success('キャッシュクリア完了: $cacheKey', tag: 'WeatherCacheService');
+      return true;
+    } catch (e) {
+      AppLogger.error('キャッシュクリアエラー', error: e, tag: 'WeatherCacheService');
+      return false;
     }
   }
 
@@ -180,19 +204,7 @@ class WeatherCacheService {
     );
   }
 
-  /// 気象データのサマリーをログ出力
-  void _logWeatherDataSummary(Map<String, dynamic> weatherData) {
-    final keys = weatherData.keys.toList();
-    AppLogger.info('気象データキー: ${keys.join(', ')}', tag: 'WeatherCacheService');
 
-    // 主要な気象パラメータがあれば表示
-    if (weatherData.containsKey('cape')) {
-      AppLogger.info('CAPE: ${weatherData['cape']} J/kg', tag: 'WeatherCacheService');
-    }
-    if (weatherData.containsKey('temperature')) {
-      AppLogger.info('気温: ${weatherData['temperature']}°C', tag: 'WeatherCacheService');
-    }
-  }
 
   /// リアルタイムスナップショットを処理
   Map<String, dynamic>? _processRealtimeSnapshot(DocumentSnapshot snapshot) {
@@ -217,7 +229,6 @@ class WeatherCacheService {
 
     final weatherData = data['data'] as Map<String, dynamic>;
     AppLogger.success('リアルタイム: 有効な気象データを受信', tag: 'WeatherCacheService');
-    _logWeatherDataSummary(weatherData);
 
     return weatherData;
   }

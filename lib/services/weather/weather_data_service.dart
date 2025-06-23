@@ -50,7 +50,7 @@ class WeatherDataService extends ChangeNotifier {
       return;
     }
 
-    AppLogger.info('使用する位置情報: 緯度 ${currentLocation.latitude}, 経度 ${currentLocation.longitude}', tag: 'WeatherDataService');
+    AppLogger.info('使用する位置情報: 緯度 ${currentLocation.latitude.toStringAsFixed(2)}, 経度 ${currentLocation.longitude.toStringAsFixed(2)}', tag: 'WeatherDataService');
 
     try {
       // Firestoreのweather_cacheコレクションからデータを取得
@@ -127,7 +127,7 @@ class WeatherDataService extends ChangeNotifier {
           final longitude = userData['longitude']?.toDouble();
 
           if (latitude != null && longitude != null) {
-            AppLogger.success('Firestoreからユーザー位置取得成功: 緯度 $latitude, 経度 $longitude', tag: 'WeatherDataService');
+            AppLogger.success('Firestoreからユーザー位置取得成功: 緯度 ${latitude.toStringAsFixed(2)}, 経度 ${longitude.toStringAsFixed(2)}', tag: 'WeatherDataService');
             return LatLng(latitude, longitude);
           }
         }
