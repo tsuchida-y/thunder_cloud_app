@@ -1446,9 +1446,8 @@ async function sendNotification(fcmToken, directions) {
     },
     android: {
       notification: {
-        icon: "ic_launcher", // Androidのアプリアイコンを使用
         color: "#FF6B35", // 通知の色（オレンジ系）
-        channelId: "thunder_cloud_alerts",
+        channelId: "thunder_cloud_channel",
         priority: "high",
         defaultSound: true,
         defaultVibrateTimings: true,
@@ -1459,6 +1458,10 @@ async function sendNotification(fcmToken, directions) {
         aps: {
           sound: "default",
           badge: 1,
+          alert: {
+            title: "⛈️ 入道雲警報",
+            body: `${directions.join('、')}方向に入道雲が発生しています！`,
+          },
         },
       },
     },
