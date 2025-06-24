@@ -10,6 +10,7 @@ import 'package:thunder_cloud_app/widgets/cloud/cloud_status_overlay.dart';
 
 import '../constants/app_constants.dart';
 import '../services/location/location_service.dart';
+import '../services/weather/weather_cache_service.dart';
 import '../utils/logger.dart';
 import '../widgets/map/background.dart';
 
@@ -32,6 +33,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   // ===== タイマー管理 =====
   Timer? _locationWaitTimer;
+  Timer? _weatherDataTimer;
+
+  // ===== サービス =====
+  final WeatherCacheService _weatherService = WeatherCacheService();
 
   @override
   void initState() {
@@ -65,7 +70,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   void _handleAppResumed() {
     AppLogger.info('アプリが再開されました', tag: 'WeatherScreen');
-    // 必要に応じて位置情報を更新
+    // 気象データを更新
+    if (_currentLocation != null) {
+      _updateWeatherData();
+    }
   }
 
   void _handleAppPaused() {
@@ -101,6 +109,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     try {
       _setupCallbacks();
       await _initializeNotifications();
+      _startWeatherDataMonitoring();
     } catch (e) {
       AppLogger.error('サービス初期化エラー', error: e, tag: 'WeatherScreen');
     }
@@ -118,6 +127,125 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   void _setupCallbacks() {
     LocationService.onLocationChanged = _handleLocationUpdate;
     PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
+  }
+
+  // ===== 気象データ監視機能 =====
+
+  /// 気象データの定期監視を開始
+  void _startWeatherDataMonitoring() {
+    AppLogger.info('気象データ監視開始', tag: 'WeatherScreen');
+
+    // 30秒間隔で気象データをチェック
+    _weatherDataTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_currentLocation != null) {
+        _updateWeatherData();
+      }
+    });
+  }
+
+  /// 気象データを更新してマッチング都市を更新
+  Future<void> _updateWeatherData() async {
+    if (_currentLocation == null) return;
+
+    try {
+      final weatherData = await _weatherService.getWeatherDataWithCache(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+      );
+
+      if (weatherData != null) {
+        _updateMatchingCitiesFromWeatherData(weatherData);
+      }
+    } catch (e) {
+      AppLogger.error('気象データ更新エラー', error: e, tag: 'WeatherScreen');
+    }
+  }
+
+  /// 気象データからマッチング都市を更新
+  void _updateMatchingCitiesFromWeatherData(Map<String, dynamic> weatherData) {
+    final newMatchingCities = <String>[];
+
+    // 各方向をチェック
+    for (final direction in ['north', 'south', 'east', 'west']) {
+      if (weatherData.containsKey(direction)) {
+        final directionData = weatherData[direction] as Map<String, dynamic>?;
+
+        if (directionData != null) {
+          // 距離別データから最適なデータを選択
+          final bestData = _selectBestDistanceData(direction, directionData);
+
+          if (bestData != null && bestData.containsKey('analysis')) {
+            final analysis = bestData['analysis'] as Map<String, dynamic>?;
+
+            if (analysis != null && analysis['isLikely'] == true) {
+              // 英語のキーをそのまま使用（CloudStatusOverlayと一致させる）
+              newMatchingCities.add(direction);
+            }
+          }
+        }
+      }
+    }
+
+    // UIを更新（変更があった場合のみ）
+    if (_hasMatchingCitiesChanged(newMatchingCities)) {
+      if (mounted) {
+        setState(() {
+          _matchingCities.clear();
+          _matchingCities.addAll(newMatchingCities);
+        });
+      }
+    }
+  }
+
+  /// 各方向のデータから最適な距離のデータを選択
+  Map<String, dynamic>? _selectBestDistanceData(String direction, Map<String, dynamic> directionData) {
+    // 距離キー（50km、160km、250km）を探す
+    final distanceKeys = directionData.keys
+        .where((key) => key.contains('km'))
+        .toList();
+
+    if (distanceKeys.isEmpty) {
+      // 距離キーがない場合は、そのまま返す（既に正しい形式）
+      return directionData;
+    }
+
+    // 各距離のデータから最高スコアを選択
+    Map<String, dynamic>? bestData;
+    double bestScore = -1;
+
+    for (final distanceKey in distanceKeys) {
+      final distanceData = directionData[distanceKey] as Map<String, dynamic>?;
+      if (distanceData != null && distanceData.containsKey('analysis')) {
+        final analysis = distanceData['analysis'] as Map<String, dynamic>?;
+        if (analysis != null && analysis.containsKey('totalScore')) {
+          final score = (analysis['totalScore'] as num?)?.toDouble() ?? 0.0;
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestData = distanceData;
+          }
+        }
+      }
+    }
+
+    if (bestData != null) {
+      return bestData;
+    }
+
+    // フォールバック: 最初のデータを返す
+    final firstKey = distanceKeys.first;
+    return directionData[firstKey] as Map<String, dynamic>?;
+  }
+
+  /// マッチング都市が変更されたかチェック
+  bool _hasMatchingCitiesChanged(List<String> newMatchingCities) {
+    if (_matchingCities.length != newMatchingCities.length) return true;
+
+    for (final city in newMatchingCities) {
+      if (!_matchingCities.contains(city)) return true;
+    }
+
+    return false;
   }
 
   // ===== 位置情報管理 =====
@@ -140,6 +268,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
 
     _saveLocationAsync();
+    // 初期化時に気象データも取得
+    _updateWeatherData();
   }
 
   Future<void> _loadLocationFromFirestore() async {
@@ -255,12 +385,26 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   // ===== イベントハンドラー =====
 
   void _handleThunderCloudDetection(List<String> directions) {
-    AppLogger.info('入道雲検出: $directions', tag: 'WeatherScreen');
+    // 日本語から英語のキーに変換
+    final englishDirections = directions.map((direction) {
+      switch (direction) {
+        case '北':
+          return 'north';
+        case '南':
+          return 'south';
+        case '東':
+          return 'east';
+        case '西':
+          return 'west';
+        default:
+          return direction; // 既に英語の場合はそのまま
+      }
+    }).toList();
 
     if (mounted) {
       setState(() {
         _matchingCities.clear();
-        _matchingCities.addAll(directions);
+        _matchingCities.addAll(englishDirections);
       });
     }
   }
@@ -271,23 +415,20 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     if (mounted) {
       setState(() => _currentLocation = newLocation);
       _saveLocationAsync();
+      // 位置情報が更新されたら気象データも更新
+      _updateWeatherData();
     }
   }
 
   // ===== ユーティリティメソッド =====
 
-
-
-
-
   void _cleanupResources() {
     _locationWaitTimer?.cancel();
+    _weatherDataTimer?.cancel();
     LocationService.onLocationChanged = null;
     PushNotificationService.onThunderCloudDetected = null;
     AppLogger.info('WeatherScreen リソースクリーンアップ完了', tag: 'WeatherScreen');
   }
-
-  // ===== UI 構築メソッド =====
 
   /// MainScreen用に現在位置を提供
   LatLng? getCurrentLocationForAppBar() {
@@ -317,66 +458,22 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           BackgroundMapWidget(currentLocation: _currentLocation),
 
           // 雲状態オーバーレイ
-          if (_currentLocation != null)
+          if (_currentLocation != null) ...[
             CloudStatusOverlay(matchingCities: _matchingCities),
+          ],
 
-          // ローディングオーバーレイ
-          if (_isLoading)
-            _buildLoadingOverlay(),
-
-          // OpenMeteoクレジット
-          _buildOpenMeteoCredit(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingOverlay() {
-    return Container(
-      color: Colors.black.withValues(alpha: AppConstants.opacityLow),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(AppConstants.paddingLarge),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
-          ),
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: AppConstants.paddingMedium),
-              Text(
-                '処理中...',
-                style: TextStyle(fontSize: AppConstants.fontSizeMedium),
+          // ローディングインジケーター
+          if (_isLoading) ...[
+            Container(
+              color: Colors.black.withValues(alpha: 0.3),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOpenMeteoCredit() {
-    return Positioned(
-      bottom: AppConstants.paddingSmall,
-      left: AppConstants.paddingSmall,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.paddingSmall,
-          vertical: AppConstants.paddingXSmall,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: AppConstants.opacityMedium),
-          borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
-        ),
-        child: const Text(
-          'Weather data by Open-Meteo.com',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: AppConstants.fontSizeXXSmall,
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }
