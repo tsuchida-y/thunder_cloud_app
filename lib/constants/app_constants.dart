@@ -11,6 +11,9 @@ class AppConstants {
   static const String appVersion = "1.0.0";
   static const String defaultUserId = "user_001";
 
+  // デバッグモード設定
+  static const bool isDebugMode = true;
+
   // ===== 色定義 =====
   static const Color primarySkyBlue = Color.fromRGBO(135, 206, 250, 1.0);
   static const Color primarySkyBlueLight = Color.fromARGB(255, 135, 206, 250);
@@ -37,7 +40,7 @@ class AppConstants {
   static const double earthRadiusKm = 6371.0;
 
   // 位置監視設定
-  static const double locationUpdateDistanceFilter = 5000.0; // 5km移動で更新
+  static const double locationUpdateDistanceFilter = 1000.0; // 1km移動で更新（5kmから変更）
   static const int locationUpdateTimeInterval = 5; // 最低5分間隔
   static const LocationAccuracy locationAccuracy = LocationAccuracy.medium;
 
