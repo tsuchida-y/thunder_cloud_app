@@ -48,7 +48,7 @@ class CloudAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isCloudy ? Colors.red : Colors.blue,
+                  color: Colors.blue,
                   width: AppConstants.avatarBorderWidth,
                 ),
               ),

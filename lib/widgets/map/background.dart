@@ -22,9 +22,18 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
   bool _mapLoadError = false;
   String _errorMessage = "";
   GoogleMapController? _controller;
+  LatLng? _lastLocation; // 前回の位置を記録
 
   @override
   Widget build(BuildContext context) {
+    // 位置が変更された場合、地図の中心を更新
+    if (widget.currentLocation != null &&
+        _lastLocation != widget.currentLocation &&
+        _controller != null) {
+      _updateMapCenter(widget.currentLocation!);
+      _lastLocation = widget.currentLocation;
+    }
+
     if (widget.currentLocation == null) {
       // 位置情報取得中の表示（ローディングインジケーターなし）
       return Container(
@@ -121,6 +130,13 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
     _controller = controller;
     try {
       AppLogger.success('GoogleMap初期化完了', tag: 'BackgroundMapWidget');
+
+      // 初期位置を設定
+      if (widget.currentLocation != null) {
+        _updateMapCenter(widget.currentLocation!);
+        _lastLocation = widget.currentLocation;
+      }
+
       // コントローラーの設定も最適化
       // controller.setMapStyle(null); // デフォルトスタイル使用
     } catch (e) {
@@ -145,6 +161,20 @@ class _BackgroundMapWidgetState extends State<BackgroundMapWidget> {
       _mapLoadError = false;
       _errorMessage = "";
     });
+  }
+
+  /// 地図の中心を更新
+  void _updateMapCenter(LatLng newLocation) {
+    if (_controller != null) {
+      _controller!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: newLocation,
+            zoom: AppConstants.defaultMapZoom,
+          ),
+        ),
+      );
+    }
   }
 
   @override

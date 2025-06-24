@@ -26,8 +26,8 @@ class _CameraScreenState extends State<CameraScreen> {
   // ===== カメラ設定 =====
   FlashMode _flashMode = FlashMode.off;
   double _zoomLevel = 1.0;
-  final double _maxZoom = 1.0;
-  final double _minZoom = 1.0;
+  double _maxZoom = 1.0;
+  double _minZoom = 1.0;
 
   @override
   void initState() {
@@ -56,6 +56,9 @@ class _CameraScreenState extends State<CameraScreen> {
       final success = await CameraService.initialize();
 
       if (success) {
+        // ズーム範囲を取得
+        await _initializeZoomRange();
+
         setState(() {
           _isInitialized = true;
           _isLoading = false;
@@ -76,6 +79,22 @@ class _CameraScreenState extends State<CameraScreen> {
         _errorMessage = 'カメラの初期化中にエラーが発生しました：\n$e';
       });
       AppLogger.error('カメラ初期化エラー', error: e, tag: 'CameraScreen');
+    }
+  }
+
+  /// ズーム範囲を初期化
+  Future<void> _initializeZoomRange() async {
+    final controller = CameraService.controller;
+    if (controller != null && controller.value.isInitialized) {
+      try {
+        _maxZoom = await controller.getMaxZoomLevel();
+        _minZoom = await controller.getMinZoomLevel();
+        AppLogger.info('ズーム範囲: ${_minZoom.toStringAsFixed(1)}x - ${_maxZoom.toStringAsFixed(1)}x', tag: 'CameraScreen');
+      } catch (e) {
+        AppLogger.error('ズーム範囲取得エラー', error: e, tag: 'CameraScreen');
+        _maxZoom = 1.0;
+        _minZoom = 1.0;
+      }
     }
   }
 
@@ -284,7 +303,11 @@ class _CameraScreenState extends State<CameraScreen> {
 
     if (controller != null && controller.value.isInitialized) {
       return SizedBox.expand(
-        child: CameraPreview(controller),
+        child: GestureDetector(
+          onScaleStart: _onScaleStart,
+          onScaleUpdate: _onScaleUpdate,
+          child: CameraPreview(controller),
+        ),
       );
     }
 
@@ -300,6 +323,27 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
       ),
     );
+  }
+
+    // ピンチズーム用の変数
+  double _baseZoomLevel = 1.0;
+
+  /// ピンチズーム開始
+  void _onScaleStart(ScaleStartDetails details) {
+    _baseZoomLevel = _zoomLevel;
+  }
+
+  /// ピンチズーム更新
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (!_isInitialized || _maxZoom <= 1.0) return;
+
+    // スケール値からズームレベルを計算
+    final newZoomLevel = (_baseZoomLevel * details.scale).clamp(_minZoom, _maxZoom);
+
+    // ズームレベルが変更された場合のみ更新（スムーズな動作のため閾値を小さく）
+    if ((newZoomLevel - _zoomLevel).abs() > 0.05) {
+      _setZoomLevel(newZoomLevel);
+    }
   }
 
   /// オーバーレイコントロールを構築
@@ -323,7 +367,7 @@ class _CameraScreenState extends State<CameraScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildFlashButton(),
-          _buildZoomSlider(),
+          _buildZoomIndicator(),
         ],
       ),
     );
@@ -347,10 +391,18 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
-  /// ズームスライダーを構築
-  Widget _buildZoomSlider() {
+  /// ズームインジケーターを構築
+  Widget _buildZoomIndicator() {
+    // ズーム範囲が1.0のみの場合は表示しない
+    if (_maxZoom <= 1.0) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingMedium),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.paddingMedium,
+        vertical: AppConstants.paddingSmall,
+      ),
       decoration: BoxDecoration(
         color: Colors.black54,
         borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
@@ -358,14 +410,15 @@ class _CameraScreenState extends State<CameraScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.zoom_in, color: Colors.white),
-          Slider(
-            value: _zoomLevel,
-            min: _minZoom,
-            max: _maxZoom,
-            onChanged: _setZoomLevel,
-            activeColor: AppConstants.primarySkyBlue,
-            inactiveColor: Colors.white54,
+          const Icon(Icons.zoom_in, color: Colors.white, size: 16),
+          const SizedBox(width: AppConstants.paddingSmall),
+          Text(
+            '${_zoomLevel.toStringAsFixed(1)}x',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: AppConstants.fontSizeSmall,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -394,13 +447,28 @@ class _CameraScreenState extends State<CameraScreen> {
         color: Colors.black54,
         borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
       ),
-      child: const Text(
-        '入道雲を画面中央に配置して撮影してください',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: AppConstants.fontSizeMedium,
-        ),
-        textAlign: TextAlign.center,
+      child: Column(
+        children: [
+          const Text(
+            '入道雲を画面中央に配置して撮影してください',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: AppConstants.fontSizeMedium,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (_maxZoom > 1.0) ...[
+            const SizedBox(height: AppConstants.paddingSmall),
+            const Text(
+              '二本指でピンチしてズーム調整できます',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: AppConstants.fontSizeSmall,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       ),
     );
   }
