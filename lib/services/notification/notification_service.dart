@@ -17,6 +17,9 @@ class NotificationService {
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
     );
 
     const settings = InitializationSettings(
@@ -159,6 +162,8 @@ class NotificationService {
         categoryIdentifier: 'thunder_cloud_category',
         subtitle: '天気アラート',
         threadIdentifier: 'thunder_cloud_thread',
+        attachments: null,
+        badgeNumber: 1,
       );
 
       //各プラットフォームの通知設定を統合管理
