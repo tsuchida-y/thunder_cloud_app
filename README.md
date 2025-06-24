@@ -25,7 +25,7 @@
 - **プッシュ通知**: 入道雲発生時に即座に通知
 - **地図連携**: Google Maps上で方向を視覚的に表示
 - **自動更新**: 30秒間隔でのリアルタイムデータ更新
-- **夜間モード**: 20時〜8時は入道雲発生確率が極めて低いため監視を停止
+- **夜間モード**: 20時〜8時は入道雲発生確率が極めて低いため監視を停止（適切なメッセージ表示）
 
 ### 📸 写真機能
 - **カメラ撮影**: アプリ内カメラで入道雲を撮影
@@ -54,10 +54,11 @@
 ### 分析指標
 | 指標 | 重み | 説明 |
 |------|------|------|
-| CAPE | 50% | 対流有効位置エネルギー（積乱雲発生の主要指標） |
-| リフティド指数 | 35% | 大気の安定度 |
-| CIN | 5% | 対流抑制エネルギー |
+| CAPE | 40% | 対流有効位置エネルギー（積乱雲発生の主要指標） |
+| リフティド指数 | 30% | 大気の安定度 |
+| 雲量 | 15% | 総雲量（低層・中層・高層雲の最大値） |
 | 気温 | 10% | 基本的な気象要素 |
+| CIN | 5% | 対流抑制エネルギー |
 
 ### 判定基準
 - **50%以上**: 入道雲の可能性あり（通知送信）
@@ -65,6 +66,7 @@
 
 ### 夜間モード
 - **20時〜8時**: 入道雲発生確率が極めて低いため監視を停止
+- **適切な表示**: 夜間時は「夜間モード（20時〜8時）」として状況を説明
 - **省エネ設計**: 夜間はAPIリクエストを停止してリソースを節約
 
 ## 🛡️ プライバシー
@@ -79,94 +81,41 @@
 ## 📞 お問い合わせ
 
 - **開発者**: Tsuchida Yuto
+- **メール**: yuto0419tsuchida@gmail.com
 - **GitHub Issues**: https://github.com/tsuchida-y/thunder_cloud_app/issues
 
 ---
 
-## 🔧 技術情報（開発者向け）
+## 🔧 開発者向け情報
 
-### 技術スタック
-- **Frontend**: Flutter
-- **Backend**: Firebase (Cloud Functions, Firestore, FCM, Storage)
-- **地図**: Google Maps API
-- **気象データ**: Open-Meteo API
-
-### アーキテクチャ
-サービス指向アーキテクチャ（SOA）を採用し、以下のサービスで構成：
-
-**コアサービス**
-- `AppInitialization`: アプリ初期化（並列処理で高速化）
-- `FCMTokenManager`: プッシュ通知トークン管理
-- `LocationService`: 位置情報取得・管理
-- `WeatherDataService`: 気象データ管理
-- `WeatherCacheService`: 気象データキャッシュ管理
-
-**写真関連サービス**
-- `PhotoService`: 写真のアップロード・管理・削除
-- `LocalPhotoService`: ローカル写真管理
-- `CameraService`: カメラ機能
-- `UserService`: ユーザー情報管理
-
-**UI層**
-- `WeatherScreen`: メイン画面
-- `SettingsScreen`: 気象データ詳細画面
-- `CameraScreen`: カメラ撮影画面
-- `GalleryScreen`: ギャラリー画面
-- `CommunityScreen`: コミュニティ画面
-
-### 開発環境セットアップ
-
+### クイックスタート
 ```bash
+# リポジトリをクローン
+git clone https://github.com/tsuchida-y/thunder_cloud_app.git
+cd thunder_cloud_app
+
 # 依存関係のインストール
 flutter pub get
-
-# Firebase設定
-# 1. Firebase Consoleでプロジェクト作成
-# 2. iOS/Android アプリ登録
-# 3. 設定ファイル配置:
-#    - iOS: ios/Runner/GoogleService-Info.plist
-#    - Android: android/app/google-services.json
-
-# Cloud Functions デプロイ
-cd functions
-npm install
-firebase deploy --only functions
 
 # アプリ起動
 flutter run
 ```
 
-### パフォーマンス最適化
-- **並列初期化**: サービス初期化を並列実行し起動速度を大幅改善
-- **インテリジェントキャッシュ**: FCMトークン、位置情報、気象データのキャッシュで重複処理削減
-- **効率的なAPI利用**: 夜間モード・手動更新削除によりAPIリクエスト数を大幅削減
-- **自動クリーンアップ**: 期限切れデータの自動削除でストレージ最適化
+### 技術スタック
+- **Frontend**: Flutter 3.16.0+
+- **Backend**: Firebase (Cloud Functions, Firestore, FCM, Storage)
+- **地図**: Google Maps API
+- **気象データ**: Open-Meteo API
 
-### 通知システム
-- **サーバーサイド**: Cloud Functions による5分間隔の自動チェック
-- **クライアントサイド**: Firebase Cloud Messaging によるプッシュ通知
-- **ローカル通知**: アプリ起動中の即座通知
-- **夜間モード**: 20時〜8時は通知チェックを停止
+### 詳細な開発情報
+技術的な詳細情報、開発環境セットアップ、トラブルシューティングなどは [GitHub Wiki](https://github.com/tsuchida-y/thunder_cloud_app/wiki) をご覧ください。
 
-### 写真管理システム
-- **Firebase Storage**: 写真ファイルの安全な保存
-- **Firestore**: 写真メタデータとコミュニティ機能
-- **自動期限管理**: 30日後の自動削除でプライバシー保護
-- **ローカル同期**: デバイス内ギャラリーとの連携
-
-### APIリクエスト最適化
-- **夜間モード**: 20時〜8時は全APIリクエストを停止
-- **写真投稿最適化**: 投稿時の気象データ取得を削除
-- **手動更新削除**: 設定画面の手動更新機能を削除
-- **キャッシュ活用**: 5分間隔の自動更新データを効率活用
-
-**50人利用時の想定APIリクエスト数**
-- Firebase Functions自動実行: 288回/日
-- アプリ起動時の取得: 350回/日
-- 合計: 約638回/日（Open-Meteo無料枠10,000回/日の6.4%）
-
-### 今後の展望
-- **機能拡張**: 通知カスタマイズ、履歴機能、お気に入り地点
-- **UI/UX改善**: アニメーション、アクセシビリティ対応
-- **データ分析**: 入道雲出現パターンの分析・可視化
-- **マルチリージョン対応**: 世界各地での利用拡張
+- [開発メモ](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E9%96%8B%E7%99%BA%E3%83%A1%E3%83%A2) - セットアップ・コマンド・トラブルシューティング
+- [アーキテクチャ設計](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E3%82%A2%E3%83%BC%E3%82%AD%E3%83%86%E3%82%AF%E3%83%81%E3%83%A3%E8%A8%AD%E8%A8%88) - SOA設計の詳細
+- [ファイル構成](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB%E6%A7%8B%E6%88%90) - プロジェクト構造
+- [積乱雲判定ロジック](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E7%A9%8D%E4%B9%B1%E9%9B%B2%E5%88%A4%E5%AE%9A%E3%83%AD%E3%82%B8%E3%83%83%E3%82%AF) - 分析アルゴリズム
+- [Firebase Cloud Functions](https://github.com/tsuchida-y/thunder_cloud_app/wiki/Firebase-Cloud-Functions) - サーバーサイド機能
+- [写真管理システム](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E5%86%99%E7%9C%9F%E7%AE%A1%E7%90%86%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0) - 写真機能の実装
+- [コミュニティ機能](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E3%82%B3%E3%83%9F%E3%83%A5%E3%83%8B%E3%83%86%E3%82%A3%E6%A9%9F%E8%83%BD) - SNS機能
+- [夜間モード](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E5%A4%9C%E9%96%93%E3%83%A2%E3%83%BC%E3%83%89) - 省エネ機能
+- [APIリクエスト最適化](https://github.com/tsuchida-y/thunder_cloud_app/wiki/API%E3%83%AA%E3%82%AF%E3%82%A8%E3%82%B9%E3%83%88%E6%9C%80%E9%81%A9%E5%8C%96) - パフォーマンス改善
