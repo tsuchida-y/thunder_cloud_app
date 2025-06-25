@@ -1,6 +1,7 @@
 // lib/services/location_service.dart
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -20,6 +21,73 @@ class LocationService {
   static const Duration _locationValidityDuration = Duration(minutes: 10);
 
   // ===== 公開メソッド =====
+
+  /// 高速な位置情報取得（並列処理）
+  ///
+  /// FirestoreとGPSの取得を並列で実行し、最初に取得できた結果を返す
+  ///
+  /// [forceRefresh] 強制的に新しい位置情報を取得するかどうか
+  /// [userId] ユーザーID（Firestore検索用、未指定時はAppConstantsから取得）
+  ///
+  /// Returns: 現在位置のLatLng、取得失敗時はnull
+  static Future<LatLng?> getLocationFast({
+    bool forceRefresh = false,
+    String? userId,
+  }) async {
+    try {
+      AppLogger.info('高速位置情報取得開始 (forceRefresh: $forceRefresh)', tag: 'LocationService');
+
+      // キャッシュされた位置が有効で、強制更新でない場合はキャッシュを返す
+      if (!forceRefresh && _isLocationValid()) {
+        AppLogger.info('キャッシュされた位置情報を使用: $_cachedLocation', tag: 'LocationService');
+        return _cachedLocation;
+      }
+
+      // FirestoreとGPSを並列で実行
+      final results = await Future.wait([
+        _getLocationFromFirestore(userId),
+        _getCurrentPositionWithRetry(),
+      ], eagerError: false);
+
+      LatLng? firestoreLocation;
+      LatLng? gpsLocation;
+
+      // Firestoreの結果
+      if (results[0] != null) {
+        firestoreLocation = results[0] as LatLng;
+        AppLogger.info('Firestoreから位置情報取得成功: $firestoreLocation', tag: 'LocationService');
+      }
+
+      // GPSの結果
+      if (results[1] != null) {
+        final position = results[1] as Position;
+        gpsLocation = LatLng(position.latitude, position.longitude);
+        AppLogger.info('GPSから位置情報取得成功: $gpsLocation', tag: 'LocationService');
+      }
+
+      // より正確なGPS位置情報を優先、なければFirestore位置情報を使用
+      final selectedLocation = gpsLocation ?? firestoreLocation;
+
+      if (selectedLocation != null) {
+        _cacheLocation(selectedLocation);
+        AppLogger.success('高速位置情報取得完了: $selectedLocation', tag: 'LocationService');
+
+        // GPS位置情報が取得できた場合、Firestoreにも保存
+        if (gpsLocation != null) {
+          _saveLocationToFirestoreAsync(gpsLocation, userId);
+        }
+
+        return selectedLocation;
+      }
+
+      AppLogger.warning('並列位置情報取得失敗', tag: 'LocationService');
+      return _cachedLocation; // 全て失敗した場合はキャッシュされた位置を返す
+
+    } catch (e) {
+      AppLogger.error('高速位置情報取得エラー', error: e, tag: 'LocationService');
+      return _cachedLocation;
+    }
+  }
 
   /// 現在位置をLatLng形式で取得
   ///
@@ -110,6 +178,72 @@ class LocationService {
   }
 
   // ===== プライベートメソッド =====
+
+  /// Firestoreから位置情報を取得
+  static Future<LatLng?> _getLocationFromFirestore(String? userId) async {
+    try {
+      AppLogger.info('Firestoreから位置情報取得開始', tag: 'LocationService');
+
+      final actualUserId = userId ?? await AppConstants.getCurrentUserId();
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(actualUserId)
+          .get()
+          .timeout(const Duration(seconds: 5)); // 短いタイムアウト
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+
+        if (userData != null &&
+            userData.containsKey('latitude') &&
+            userData.containsKey('longitude')) {
+
+          final latitude = userData['latitude']?.toDouble();
+          final longitude = userData['longitude']?.toDouble();
+
+          if (latitude != null && longitude != null) {
+            final location = LatLng(latitude, longitude);
+            AppLogger.info('Firestoreから位置情報取得成功: $location', tag: 'LocationService');
+            return location;
+          }
+        }
+      }
+
+      AppLogger.info('Firestoreに位置情報が保存されていません', tag: 'LocationService');
+      return null;
+    } catch (e) {
+      AppLogger.warning('Firestoreからの位置情報取得エラー: $e', tag: 'LocationService');
+      return null;
+    }
+  }
+
+  /// Firestoreに位置情報を非同期で保存
+  static void _saveLocationToFirestoreAsync(LatLng location, String? userId) {
+    // 非同期で実行し、エラーが発生してもメイン処理をブロックしない
+    Future.microtask(() async {
+      try {
+        final actualUserId = userId ?? await AppConstants.getCurrentUserId();
+
+        // 緯度・経度を小数点第2位までに丸めて保存
+        final roundedLatitude = double.parse(location.latitude.toStringAsFixed(2));
+        final roundedLongitude = double.parse(location.longitude.toStringAsFixed(2));
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(actualUserId)
+            .set({
+          'latitude': roundedLatitude,
+          'longitude': roundedLongitude,
+          'lastLocationUpdate': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        AppLogger.info('位置情報をFirestoreに非同期保存完了', tag: 'LocationService');
+      } catch (e) {
+        AppLogger.error('Firestore非同期保存エラー', error: e, tag: 'LocationService');
+      }
+    });
+  }
 
   /// 現在の位置情報を取得（リトライ付き）
   static Future<Position> _getCurrentPositionWithRetry({

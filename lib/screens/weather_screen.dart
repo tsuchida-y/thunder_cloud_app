@@ -1,7 +1,6 @@
 // lib/screens/weather_screen.dart - リファクタリング版
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:thunder_cloud_app/services/notification/notification_service.dart';
@@ -251,7 +250,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     if (cachedLocation != null) {
       _useCachedLocation(cachedLocation);
     } else {
-      _loadLocationFromFirestore();
+      _loadLocationFast();
     }
   }
 
@@ -262,82 +261,31 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       setState(() => _currentLocation = location);
     }
 
-    _saveLocationAsync();
     // 初期化時に気象データも取得
     _updateWeatherData();
   }
 
-  Future<void> _loadLocationFromFirestore() async {
+  /// 高速な位置情報取得（並列処理）
+  Future<void> _loadLocationFast() async {
     try {
-      AppLogger.info('Firestoreからユーザー位置情報を取得中', tag: 'WeatherScreen');
+      AppLogger.info('高速位置情報取得開始', tag: 'WeatherScreen');
 
-      // 動的にユーザーIDを取得
-      final userId = await AppConstants.getCurrentUserId();
+      final location = await LocationService.getLocationFast();
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get()
-          .timeout(AppConstants.weatherDataTimeout);
-
-      if (userDoc.exists && mounted) {
-        final location = _extractLocationFromDoc(userDoc);
-        if (location != null) {
-          setState(() => _currentLocation = location);
-          AppLogger.success('Firestoreからユーザー位置取得成功: $location', tag: 'WeatherScreen');
-          _saveLocationAsync();
-          return;
-        }
-      }
-
-      _waitForLocationInBackground();
-    } catch (e) {
-      AppLogger.error('Firestoreからの位置取得エラー', error: e, tag: 'WeatherScreen');
-      _waitForLocationInBackground();
-    }
-  }
-
-  LatLng? _extractLocationFromDoc(DocumentSnapshot userDoc) {
-    final userData = userDoc.data() as Map<String, dynamic>?;
-
-    if (userData == null ||
-        !userData.containsKey('latitude') ||
-        !userData.containsKey('longitude')) {
-      return null;
-    }
-
-    final latitude = userData['latitude']?.toDouble();
-    final longitude = userData['longitude']?.toDouble();
-
-    if (latitude == null || longitude == null) {
-      return null;
-    }
-
-    return LatLng(latitude, longitude);
-  }
-
-  void _waitForLocationInBackground() {
-    AppLogger.info('バックグラウンドで位置情報取得を待機', tag: 'WeatherScreen');
-
-    int attempts = 0;
-    _locationWaitTimer = Timer.periodic(AppConstants.realtimeUpdateInterval, (timer) {
-      attempts++;
-
-      final location = LocationService.cachedLocation;
       if (location != null && mounted) {
         setState(() => _currentLocation = location);
-        AppLogger.info('バックグラウンドで位置情報取得完了: $location', tag: 'WeatherScreen');
-        _saveLocationAsync();
-        timer.cancel();
-        return;
-      }
+        AppLogger.success('高速位置情報取得成功: $location', tag: 'WeatherScreen');
 
-      if (attempts >= AppConstants.maxLocationAttempts) {
-        AppLogger.warning('位置情報取得タイムアウト', tag: 'WeatherScreen');
-        timer.cancel();
+        // 初期化時に気象データも取得
+        _updateWeatherData();
+      } else {
+        AppLogger.warning('高速位置情報取得失敗 - フォールバック実行', tag: 'WeatherScreen');
         _fallbackLocationRetrieval();
       }
-    });
+    } catch (e) {
+      AppLogger.error('高速位置情報取得エラー', error: e, tag: 'WeatherScreen');
+      _fallbackLocationRetrieval();
+    }
   }
 
   Future<void> _fallbackLocationRetrieval() async {
@@ -350,35 +298,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       if (location != null && mounted) {
         setState(() => _currentLocation = location);
         AppLogger.success('フォールバック位置情報取得成功: $location', tag: 'WeatherScreen');
-        _saveLocationAsync();
+
+        // 初期化時に気象データも取得
+        _updateWeatherData();
       }
     } catch (e) {
       AppLogger.error('フォールバック位置情報取得エラー', error: e, tag: 'WeatherScreen');
-    }
-  }
-
-  Future<void> _saveLocationAsync() async {
-    if (_currentLocation == null) return;
-
-    try {
-      // 動的にユーザーIDを取得
-      final userId = await AppConstants.getCurrentUserId();
-
-      // 緯度・経度を小数点第2位までに丸めて保存
-      final roundedLatitude = double.parse(_currentLocation!.latitude.toStringAsFixed(2));
-      final roundedLongitude = double.parse(_currentLocation!.longitude.toStringAsFixed(2));
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .set({
-        'latitude': roundedLatitude,
-        'longitude': roundedLongitude,
-        'lastLocationUpdate': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      AppLogger.info('位置情報をFirestoreに保存完了', tag: 'WeatherScreen');
-    } catch (e) {
-      AppLogger.error('位置情報保存エラー', error: e, tag: 'WeatherScreen');
     }
   }
 
@@ -414,7 +339,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
     if (mounted) {
       setState(() => _currentLocation = newLocation);
-      _saveLocationAsync();
       // 位置情報が更新されたら気象データも更新
       _updateWeatherData();
     }
