@@ -12,9 +12,6 @@ class UserService {
   static final FirebaseStorage _storage = FirebaseStorage.instance;
   static final ImagePicker _picker = ImagePicker();
 
-  /// 現在のユーザーID（固定）
-  static const String currentUserId = AppConstants.currentUserId;
-
   /// ユーザー情報を取得
   static Future<Map<String, dynamic>> getUserInfo(String userId) async {
     try {

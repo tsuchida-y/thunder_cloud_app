@@ -62,7 +62,8 @@ class LocalPhotoItem extends PhotoItem {
 
   @override
   Future<void> delete() async {
-    await LocalPhotoService.deleteLocalPhoto(photo.id, AppConstants.currentUserId);
+    final userId = await AppConstants.getCurrentUserId();
+    await LocalPhotoService.deleteLocalPhoto(photo.id, userId);
     onRefresh();
   }
 
@@ -143,7 +144,8 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
       AppLogger.info('マイフォト読み込み開始', tag: 'GalleryScreen');
       if (mounted) setState(() => _isLoading = true);
 
-      final List<Photo> photos = await LocalPhotoService.getUserLocalPhotos(AppConstants.currentUserId);
+      final userId = await AppConstants.getCurrentUserId();
+      final List<Photo> photos = await LocalPhotoService.getUserLocalPhotos(userId);
 
       if (mounted) {
         setState(() {
@@ -187,8 +189,9 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     try {
       AppLogger.info('選択アイテム削除開始: ${_selectedPhotos.length}件', tag: 'GalleryScreen');
 
+      final userId = await AppConstants.getCurrentUserId();
       for (final String photoId in _selectedPhotos) {
-        await LocalPhotoService.deleteLocalPhoto(photoId, AppConstants.currentUserId);
+        await LocalPhotoService.deleteLocalPhoto(photoId, userId);
       }
 
       if (mounted) {

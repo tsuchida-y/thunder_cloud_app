@@ -109,14 +109,18 @@ class SettingsService {
     AppLogger.info('ユーザー情報読み込み開始', tag: 'SettingsService');
 
     try {
+      // 動的にユーザーIDを取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // Firestoreからユーザー情報を取得
-      _userInfo = await UserService.getUserInfo(AppConstants.currentUserId);
+      _userInfo = await UserService.getUserInfo(userId);
       AppLogger.success('ユーザー情報読み込み完了（Firestore）', tag: 'SettingsService');
     } catch (e) {
       AppLogger.error('ユーザー情報読み込みエラー', error: e, tag: 'SettingsService');
       // エラー時はデフォルト情報を設定
+      final fallbackUserId = await AppConstants.getCurrentUserId();
       _userInfo = {
-        'userId': AppConstants.currentUserId,
+        'userId': fallbackUserId,
         'userName': 'ユーザー',
         'avatarUrl': '',
       };
@@ -129,9 +133,12 @@ class SettingsService {
     AppLogger.info('ユーザー情報更新開始', tag: 'SettingsService');
 
     try {
+      // 動的にユーザーIDを取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // Firestoreのユーザー情報を更新
       final success = await UserService.updateUserInfo(
-        AppConstants.currentUserId,
+        userId,
         userName: newUserInfo['userName'] as String?,
         avatarUrl: newUserInfo['avatarUrl'] as String?,
       );

@@ -271,9 +271,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     try {
       AppLogger.info('Firestoreからユーザー位置情報を取得中', tag: 'WeatherScreen');
 
+      // 動的にユーザーIDを取得
+      final userId = await AppConstants.getCurrentUserId();
+
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
-          .doc(AppConstants.currentUserId)
+          .doc(userId)
           .get()
           .timeout(AppConstants.weatherDataTimeout);
 
@@ -358,12 +361,15 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     if (_currentLocation == null) return;
 
     try {
+      // 動的にユーザーIDを取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // 緯度・経度を小数点第2位までに丸めて保存
       final roundedLatitude = double.parse(_currentLocation!.latitude.toStringAsFixed(2));
       final roundedLongitude = double.parse(_currentLocation!.longitude.toStringAsFixed(2));
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(AppConstants.currentUserId)
+          .doc(userId)
           .set({
         'latitude': roundedLatitude,
         'longitude': roundedLongitude,

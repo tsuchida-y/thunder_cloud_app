@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 import '../location/location_service.dart';
 import '../notification/notification_service.dart';
 import '../notification/push_notification_service.dart';
-import '../photo/photo_service.dart';
+import '../user/user_id_service.dart';
 
 /// アプリケーション全体の初期化を管理するサービス
 class AppInitializationService {
@@ -55,9 +55,6 @@ class AppInitializationService {
         // 通知サービスと位置情報サービスを並列初期化
         await _initializeServicesInParallel();
 
-        // 既存写真のマイグレーション（バックグラウンドで実行）
-        _migratePhotosInBackground();
-
         // デバッグ時のみFirestore接続テスト（軽量化）
         if (kDebugMode) {
           await _quickFirestoreTest();
@@ -70,26 +67,13 @@ class AppInitializationService {
     });
   }
 
-  /// 既存写真のマイグレーションをバックグラウンドで実行
-  static void _migratePhotosInBackground() {
-    Future.microtask(() async {
-      try {
-        dev.log("🔄 写真マイグレーション開始");
-        await PhotoService.migrateExistingPhotos();
-        dev.log("✅ 写真マイグレーション完了");
-      } catch (e) {
-        dev.log("❌ 写真マイグレーションエラー: $e");
-      }
-    });
-  }
-
   /// Firebase Coreのみの最小初期化
   static Future<void> _initializeFirebaseCore() async {
     try {
       dev.log("🔥 Firebase Core初期化開始");
 
       await Firebase.initializeApp(
-        // options: DefaultFirebaseOptions.currentPlatform, // 一時的にコメントアウト
+        //options: DefaultFirebaseOptions.currentPlatform, // 一時的にコメントアウト
       );
 
       dev.log("✅ Firebase Core初期化完了");
@@ -109,6 +93,7 @@ class AppInitializationService {
         NotificationService.initialize(),
         PushNotificationService.initialize(),
         _initializeLocationService(),
+        _initializeUserIdService(),
       ]);
 
       dev.log("✅ サービス初期化完了");
@@ -199,6 +184,20 @@ class AppInitializationService {
       dev.log("✅ Firestore接続確認完了");
     } catch (e) {
       dev.log("❌ Firestore接続確認エラー: $e");
+    }
+  }
+
+  /// ユーザーIDサービスの初期化
+  static Future<void> _initializeUserIdService() async {
+    try {
+      dev.log("👤 ユーザーIDサービス初期化開始");
+
+      // ユーザーIDを初期化（初回起動時はUUID生成）
+      final userId = await UserIdService.getUserId();
+      dev.log("✅ ユーザーID初期化完了: ${userId.substring(0, 8)}...");
+
+    } catch (e) {
+      dev.log("❌ ユーザーIDサービス初期化エラー: $e");
     }
   }
 

@@ -27,6 +27,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   List<Photo> _photos = [];
   bool _isLoading = true;
   bool _hasMore = true;
+  String? _currentUserId; // 現在のユーザーIDを保持
 
   // ===== サービス =====
   late final CommunityService _communityService;
@@ -53,6 +54,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   /// 画面の初期化
   Future<void> _initializeScreen() async {
     AppLogger.info('コミュニティ画面初期化開始', tag: 'CommunityScreen');
+
+    // ユーザーIDを取得
+    _currentUserId = await AppConstants.getCurrentUserId();
 
     // 写真を読み込み
     await _loadPhotos();
@@ -208,8 +212,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
-
-
   // ===== UI構築 =====
 
   @override
@@ -252,7 +254,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       padding: const EdgeInsets.only(bottom: AppConstants.paddingMedium),
       child: CommunityPhotoCard(
         photo: photo,
-        currentUserId: AppConstants.currentUserId,
+        currentUserId: _currentUserId ?? '',
         onLikeToggle: () => _onLikeToggle(photo),
         onDownload: () => _onPhotoDownload(photo),
         onDelete: () => _onPhotoDelete(photo),

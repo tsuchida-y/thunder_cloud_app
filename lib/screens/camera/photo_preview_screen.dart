@@ -150,10 +150,13 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       final location = await LocationService.getCurrentLocationAsLatLng();
       AppLogger.info('位置情報取得: $location', tag: 'PhotoPreviewScreen');
 
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // ローカルに保存
       await LocalPhotoService.savePhotoLocally(
         imageFile: widget.imageFile,
-        userId: AppConstants.currentUserId,
+        userId: userId,
         userName: 'ユーザー',
         latitude: location?.latitude,
         longitude: location?.longitude,
@@ -193,17 +196,20 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       final location = await LocationService.getCurrentLocationAsLatLng();
       AppLogger.info('位置情報取得: $location', tag: 'PhotoPreviewScreen');
 
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // Firestoreに保存
       await PhotoService.uploadPhoto(
         imageFile: widget.imageFile,
-        userId: AppConstants.currentUserId,
+        userId: userId,
         userName: 'ユーザー',
       );
 
       // ローカルにも保存
       await LocalPhotoService.savePhotoLocally(
         imageFile: widget.imageFile,
-        userId: AppConstants.currentUserId,
+        userId: userId,
         userName: 'ユーザー',
         latitude: location?.latitude,
         longitude: location?.longitude,

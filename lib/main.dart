@@ -81,8 +81,8 @@ class _MainScreenState extends State<MainScreen> {
     _initializeApp();
   }
 
-  /// アプリケーション初期化処理
-  /// Firebase、位置情報、プッシュ通知などの設定を実行
+  /// アプリケーション初期化処理メソッド
+  /// アプリ全体の初期化（Firebase、位置情報、通知、必要なサービスのセットアップなど）を実行
   Future<void> _initializeApp() async {
     try {
       AppLogger.info('アプリケーション初期化開始', tag: 'MainScreen');

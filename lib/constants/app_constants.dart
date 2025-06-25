@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../services/user/user_id_service.dart';
+
 /// アプリ全体で使用される定数を管理するクラス
 class AppConstants {
   // ===== アプリ基本情報 =====
@@ -155,7 +157,6 @@ class AppConstants {
   // ===== コミュニティ関連 =====
   static const int defaultPhotoLimit = 20;
   static const double nearbyPhotosRadiusKm = 50.0;
-  static const String currentUserId = 'user_001';
   static const double scrollThreshold = 200.0;
   static const int snackBarDurationSeconds = 3;
   static const double photoAspectRatio = 16.0 / 9.0;
@@ -291,4 +292,15 @@ class AppConstants {
     if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
+
+  // ===== ユーザーID関連 =====
+
+  /// 現在のユーザーIDを取得（UUID使用）
+  static Future<String> getCurrentUserId() async {
+    return await UserIdService.getUserId();
+  }
+
+  /// 現在のユーザーIDを同期的に取得（キャッシュのみ）
+  /// 注意: 初回起動時はnullの可能性があります
+  static String? get currentUserIdSync => UserIdService.currentUserId;
 }

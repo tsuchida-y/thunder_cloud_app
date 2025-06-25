@@ -30,7 +30,7 @@ class NotificationService {
     await _notifications.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        log("通知がタップされました: ${response.payload}");
+        //TODO: 通知がタップされた時に入道雲ページに遷移するようにする
       },
     );
 
@@ -64,7 +64,7 @@ class NotificationService {
 
 
 
-  /// 権限のリクエスト
+  /// プラットフォームごと権限のリクエスト
   static Future<bool> requestPermissions() async {
     log("🔔 通知権限をリクエスト中...");
 
@@ -119,7 +119,6 @@ class NotificationService {
           sound: true,
         );
 
-        log("🍎 iOS通知権限リクエスト結果: $result");
         return result ?? false;
       }
 

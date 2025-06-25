@@ -45,6 +45,9 @@ dependencies:
   # ローカルキャッシュ機能
   shared_preferences: ^2.5.3
 
+  # UUID生成
+  uuid: ^4.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

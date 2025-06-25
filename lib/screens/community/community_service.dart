@@ -100,14 +100,17 @@ class CommunityService {
       final newStatus = !currentStatus;
       final newCount = newStatus ? currentCount + 1 : currentCount - 1;
 
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // 楽観的更新（状態と数値の両方を更新）
       _likeStatusCache[photo.id] = newStatus;
       _likeCountCache[photo.id] = newCount;
 
       if (newStatus) {
-        await PhotoService.likePhoto(photo.id, AppConstants.currentUserId);
+        await PhotoService.likePhoto(photo.id, userId);
       } else {
-        await PhotoService.unlikePhoto(photo.id, AppConstants.currentUserId);
+        await PhotoService.unlikePhoto(photo.id, userId);
       }
 
       AppLogger.success('いいね切り替え完了: ${photo.id} -> $newStatus (count: $newCount)', tag: 'CommunityService');
@@ -135,6 +138,9 @@ class CommunityService {
         throw Exception('画像のダウンロードに失敗しました');
       }
 
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
       // 一時ファイルを作成
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/temp_download_${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -143,7 +149,7 @@ class CommunityService {
       // ローカルに保存
       final success = await LocalPhotoService.savePhotoLocally(
         imageFile: tempFile,
-        userId: AppConstants.currentUserId,
+        userId: userId,
         userName: 'ダウンロード',
         caption: '${photo.userName}さんの投稿をダウンロード',
         latitude: photo.latitude,
@@ -174,7 +180,10 @@ class CommunityService {
     AppLogger.info('写真削除開始: $photoId', tag: 'CommunityService');
 
     try {
-      await PhotoService.deletePhoto(photoId, AppConstants.currentUserId);
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
+      await PhotoService.deletePhoto(photoId, userId);
 
       // キャッシュからも削除
       _likeStatusCache.remove(photoId);
@@ -259,9 +268,12 @@ class CommunityService {
     AppLogger.info('いいね状態事前読み込み: ${uncachedPhotoIds.length}件', tag: 'CommunityService');
 
     try {
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
       final likeStatus = await PhotoService.getPhotosLikeStatus(
         uncachedPhotoIds,
-        AppConstants.currentUserId,
+        userId,
       );
 
       _likeStatusCache.addAll(likeStatus);

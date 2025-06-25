@@ -277,7 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   Text(
-                    'ユーザーID: ${AppConstants.currentUserId}',
+                    'ユーザーID: ${_userInfo['userId'] ?? 'loading...'}',
                     style: TextStyle(
                       fontSize: AppConstants.fontSizeSmall,
                       color: Colors.grey[600],

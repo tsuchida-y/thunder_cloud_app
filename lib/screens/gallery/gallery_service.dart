@@ -23,7 +23,10 @@ class GalleryService {
     AppLogger.info('ローカル写真読み込み開始', tag: 'GalleryService');
 
     try {
-      _photos = await LocalPhotoService.getUserLocalPhotos(AppConstants.currentUserId);
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
+      _photos = await LocalPhotoService.getUserLocalPhotos(userId);
       AppLogger.success('ローカル写真読み込み完了: ${_photos.length}件', tag: 'GalleryService');
       return _photos;
     } catch (e) {
@@ -39,7 +42,10 @@ class GalleryService {
     AppLogger.info('写真削除開始: $photoId', tag: 'GalleryService');
 
     try {
-      await LocalPhotoService.deleteLocalPhoto(photoId, AppConstants.currentUserId);
+      // ユーザーIDを動的に取得
+      final userId = await AppConstants.getCurrentUserId();
+
+      await LocalPhotoService.deleteLocalPhoto(photoId, userId);
       _photos.removeWhere((photo) => photo.id == photoId);
       AppLogger.success('写真削除完了: $photoId', tag: 'GalleryService');
     } catch (e) {

@@ -545,46 +545,4 @@ class PhotoService {
       return false;
     }
   }
-
-  /// 既存写真にexpiresAtフィールドを追加するマイグレーション
-  static Future<void> migrateExistingPhotos() async {
-    try {
-      AppLogger.info('🔄 既存写真のマイグレーション開始', tag: 'PhotoService');
-
-      // expiresAtフィールドが存在しない写真を検索
-      final snapshot = await _firestore
-          .collection('photos')
-          .get();
-
-      int migrated = 0;
-      final batch = _firestore.batch();
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-
-        // expiresAtフィールドが存在しない場合のみ追加
-        if (!data.containsKey('expiresAt')) {
-          final timestamp = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
-          final expiresAt = timestamp.add(const Duration(days: 30));
-
-          batch.update(doc.reference, {
-            'expiresAt': Timestamp.fromDate(expiresAt),
-          });
-
-          migrated++;
-          AppLogger.info('📝 マイグレーション対象: ${doc.id} - 期限: $expiresAt', tag: 'PhotoService');
-        }
-      }
-
-      if (migrated > 0) {
-        await batch.commit();
-        AppLogger.success('✅ 既存写真マイグレーション完了: $migrated件', tag: 'PhotoService');
-      } else {
-        AppLogger.info('ℹ️ マイグレーション対象の写真なし', tag: 'PhotoService');
-      }
-
-    } catch (e) {
-      AppLogger.error('既存写真マイグレーションエラー: $e', tag: 'PhotoService');
-    }
-  }
 }
