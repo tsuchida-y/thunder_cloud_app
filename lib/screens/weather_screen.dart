@@ -437,10 +437,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   @override
   Widget build(BuildContext context) {
-    return _buildBody();
-  }
-
-  Widget _buildBody() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -460,23 +456,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
           // 雲状態オーバーレイは位置情報取得後にのみ表示
           if (_currentLocation != null)
             CloudStatusOverlay(matchingCities: _matchingCities),
-
-          // 位置情報が未取得なら画面下部に小さくローディング表示
-          if (_currentLocation == null)
-            const Positioned(
-              bottom: 32,
-              left: 0, right: 0,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 8),
-                    Text('位置情報を取得中...', style: TextStyle(color: Colors.black54)),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );
