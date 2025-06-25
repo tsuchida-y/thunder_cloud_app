@@ -157,6 +157,55 @@ class LocationService {
   /// 現在のキャッシュされた位置情報
   static LatLng? get cachedLocation => _cachedLocation;
 
+  /// 画面遷移用の高速位置情報取得
+  ///
+  /// 画面遷移時に使用する軽量版。キャッシュを優先し、
+  /// 必要時のみバックグラウンドで更新
+  static LatLng? getLocationForScreenTransition() {
+    AppLogger.info('画面遷移用位置情報取得', tag: 'LocationService');
+
+    // キャッシュが存在する場合は即座に返す
+    if (_cachedLocation != null) {
+      AppLogger.info('キャッシュされた位置情報を即座に返却: $_cachedLocation', tag: 'LocationService');
+
+      // バックグラウンドで位置情報を更新（UIをブロックしない）
+      _updateLocationInBackground();
+
+      return _cachedLocation;
+    }
+
+    AppLogger.warning('キャッシュされた位置情報がありません', tag: 'LocationService');
+    return null;
+  }
+
+  /// バックグラウンドで位置情報を更新
+  static void _updateLocationInBackground() {
+    // 前回更新から5分以上経過している場合のみ更新
+    if (_lastLocationUpdate != null) {
+      final timeSinceUpdate = DateTime.now().difference(_lastLocationUpdate!);
+      if (timeSinceUpdate < const Duration(minutes: 5)) {
+        AppLogger.debug('位置情報は最新のためバックグラウンド更新をスキップ', tag: 'LocationService');
+        return;
+      }
+    }
+
+    Future.microtask(() async {
+      try {
+        AppLogger.info('バックグラウンドで位置情報を更新中', tag: 'LocationService');
+        final newLocation = await getLocationFast(forceRefresh: true);
+
+        if (newLocation != null) {
+          AppLogger.success('バックグラウンド位置情報更新完了: $newLocation', tag: 'LocationService');
+
+          // 位置変更コールバックがあれば実行
+          onLocationChanged?.call(newLocation);
+        }
+      } catch (e) {
+        AppLogger.error('バックグラウンド位置情報更新エラー', error: e, tag: 'LocationService');
+      }
+    });
+  }
+
   /// 位置情報サービスの状態を取得
   static LocationServiceStatus getLocationStatus() {
     return LocationServiceStatus(

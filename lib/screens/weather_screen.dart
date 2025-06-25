@@ -90,7 +90,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       AppLogger.info('WeatherScreen初期化開始', tag: 'WeatherScreen');
 
       await _initializeServices();
-      _loadLocationData();
+      _loadLocationDataOptimized();
 
       _isInitialized = true;
       AppLogger.success('WeatherScreen初期化完了', tag: 'WeatherScreen');
@@ -244,25 +244,53 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   // ===== 位置情報管理 =====
 
-  void _loadLocationData() {
-    final cachedLocation = LocationService.cachedLocation;
+  /// 最適化された位置情報取得（画面遷移用）
+  void _loadLocationDataOptimized() {
+    AppLogger.info('最適化された位置情報取得開始', tag: 'WeatherScreen');
 
-    if (cachedLocation != null) {
-      _useCachedLocation(cachedLocation);
-    } else {
-      _loadLocationFast();
+    // 1. まず画面遷移用の高速取得を試行
+    final fastLocation = LocationService.getLocationForScreenTransition();
+
+    if (fastLocation != null) {
+      // キャッシュされた位置情報が即座に取得できた場合
+      AppLogger.info('キャッシュされた位置情報を即座に使用: $fastLocation', tag: 'WeatherScreen');
+
+      if (mounted) {
+        setState(() => _currentLocation = fastLocation);
+      }
+
+      // 軽量な天気データ更新
+      _updateWeatherDataIfNeeded();
+      return;
     }
+
+    // 2. キャッシュがない場合は通常の位置情報取得を実行
+    AppLogger.info('キャッシュなし - 通常の位置情報取得を実行', tag: 'WeatherScreen');
+    _loadLocationFast();
   }
 
-  void _useCachedLocation(LatLng location) {
-    AppLogger.info('キャッシュされた位置情報を使用: $location', tag: 'WeatherScreen');
+  /// 天気データの更新が必要かチェック
+  void _updateWeatherDataIfNeeded() {
+    // WeatherServiceのキャッシュ状態を確認
+    if (_currentLocation != null) {
+      final latitude = _currentLocation!.latitude;
+      final longitude = _currentLocation!.longitude;
 
-    if (mounted) {
-      setState(() => _currentLocation = location);
+      // キャッシュされた天気データがあるかチェック
+      _weatherService.getWeatherDataWithCache(latitude, longitude).then((weatherData) {
+        if (weatherData != null) {
+          // キャッシュされた天気データがある場合
+          _updateMatchingCitiesFromWeatherData(weatherData);
+          AppLogger.info('キャッシュされた天気データを使用', tag: 'WeatherScreen');
+        } else {
+          // キャッシュがない場合は新規取得
+          _updateWeatherData();
+        }
+      }).catchError((e) {
+        AppLogger.error('天気データキャッシュチェックエラー', error: e, tag: 'WeatherScreen');
+        _updateWeatherData();
+      });
     }
-
-    // 初期化時に気象データも取得
-    _updateWeatherData();
   }
 
   /// 高速な位置情報取得（並列処理）
