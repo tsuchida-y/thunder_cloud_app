@@ -28,7 +28,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   // ===== 状態管理 =====
   LatLng? _currentLocation;
   final List<String> _matchingCities = [];
-  bool _isLoading = false;
   bool _isInitialized = false;
 
   // ===== タイマー管理 =====
@@ -42,7 +41,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeScreen();
+    Future.microtask(() => _initializeScreen());
   }
 
   @override
@@ -91,8 +90,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     try {
       AppLogger.info('WeatherScreen初期化開始', tag: 'WeatherScreen');
 
-      setState(() => _isLoading = true);
-
       await _initializeServices();
       _loadLocationData();
 
@@ -100,8 +97,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       AppLogger.success('WeatherScreen初期化完了', tag: 'WeatherScreen');
     } catch (e) {
       AppLogger.error('WeatherScreen初期化エラー', error: e, tag: 'WeatherScreen');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -346,8 +341,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     try {
       AppLogger.info('フォールバック位置情報取得開始', tag: 'WeatherScreen');
 
-      if (mounted) setState(() => _isLoading = true);
-
       final location = await LocationService.getCurrentLocationAsLatLng(forceRefresh: true)
           .timeout(AppConstants.locationTimeout);
 
@@ -358,8 +351,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       }
     } catch (e) {
       AppLogger.error('フォールバック位置情報取得エラー', error: e, tag: 'WeatherScreen');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -367,12 +358,15 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     if (_currentLocation == null) return;
 
     try {
+      // 緯度・経度を小数点第2位までに丸めて保存
+      final roundedLatitude = double.parse(_currentLocation!.latitude.toStringAsFixed(2));
+      final roundedLongitude = double.parse(_currentLocation!.longitude.toStringAsFixed(2));
       await FirebaseFirestore.instance
           .collection('users')
           .doc(AppConstants.currentUserId)
           .set({
-        'latitude': _currentLocation!.latitude,
-        'longitude': _currentLocation!.longitude,
+        'latitude': roundedLatitude,
+        'longitude': roundedLongitude,
         'lastLocationUpdate': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -454,25 +448,29 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       ),
       child: Stack(
         children: [
-          // 背景地図
+          // 地図は常に表示
           BackgroundMapWidget(currentLocation: _currentLocation),
 
-          // 雲状態オーバーレイ
-          if (_currentLocation != null) ...[
+          // 雲状態オーバーレイは位置情報取得後にのみ表示
+          if (_currentLocation != null)
             CloudStatusOverlay(matchingCities: _matchingCities),
-          ],
 
-          // ローディングインジケーター
-          if (_isLoading) ...[
-            Container(
-              color: Colors.black.withValues(alpha: 0.3),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          // 位置情報が未取得なら画面下部に小さくローディング表示
+          if (_currentLocation == null)
+            const Positioned(
+              bottom: 32,
+              left: 0, right: 0,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 8),
+                    Text('位置情報を取得中...', style: TextStyle(color: Colors.black54)),
+                  ],
                 ),
               ),
             ),
-          ],
         ],
       ),
     );
