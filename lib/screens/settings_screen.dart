@@ -186,8 +186,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildLocationSection(),
           const SizedBox(height: AppConstants.paddingLarge),
           _buildWeatherSection(),
-          const SizedBox(height: AppConstants.paddingLarge),
-          _buildSystemSection(),
         ],
       ),
     );
@@ -735,33 +733,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return value.toString();
   }
 
-  /// システムセクションを構築
-  Widget _buildSystemSection() {
-    return _buildSection(
-      title: 'システム情報',
-      icon: Icons.info,
-      children: [
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(AppConstants.paddingMedium),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'アプリ名: ${AppConstants.appTitle}',
-                  style: TextStyle(fontSize: AppConstants.fontSizeMedium),
-                ),
-                Text(
-                  'バージョン: ${AppConstants.appVersion}',
-                  style: TextStyle(fontSize: AppConstants.fontSizeMedium),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+
 
   /// セクションを構築
   Widget _buildSection({
