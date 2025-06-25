@@ -178,11 +178,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
   /// 写真のダウンロード
   Future<void> _onPhotoDownload(Photo photo) async {
     try {
+      AppLogger.info('写真ダウンロード開始: ${photo.id}', tag: 'CommunityScreen');
+
       await _communityService.downloadPhoto(photo);
+
       if (mounted) {
         _showSuccessSnackBar('写真をギャラリーに保存しました');
+
+        AppLogger.info('ギャラリー更新コールバック呼び出し', tag: 'CommunityScreen');
         widget.onPhotoDownloaded?.call();
       }
+
       AppLogger.success('写真ダウンロード完了: ${photo.id}', tag: 'CommunityScreen');
     } catch (e) {
       AppLogger.error('写真ダウンロードエラー', error: e, tag: 'CommunityScreen');

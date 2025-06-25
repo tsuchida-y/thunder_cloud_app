@@ -74,10 +74,27 @@ class _MainScreenState extends State<MainScreen> {
   GlobalKey galleryScreenKey = GlobalKey();
   GlobalKey communityScreenKey = GlobalKey();
 
+  // 画面インスタンスを保持（再構築を防ぐ）
+  late final Widget weatherScreen;
+  late final Widget galleryScreen;
+  late final Widget communityScreen;
+
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialTab;
+
+    // 画面インスタンスを一度だけ作成
+    weatherScreen = WeatherScreen(
+      key: weatherScreenKey,
+      onProfileUpdated: _refreshAllScreens,
+    );
+    galleryScreen = GalleryScreen(key: galleryScreenKey);
+    communityScreen = CommunityScreen(
+      key: communityScreenKey,
+      onPhotoDownloaded: _refreshGallery,
+    );
+
     _initializeApp();
   }
 
@@ -100,10 +117,19 @@ class _MainScreenState extends State<MainScreen> {
 
   /// ギャラリーを更新（ダウンロード後に呼び出される）
   void _refreshGallery() {
-    // ギャラリー画面を再構築
-    setState(() {
-      galleryScreenKey = GlobalKey();
-    });
+    AppLogger.info('ギャラリー更新要求: コミュニティからのダウンロード後', tag: 'MainScreen');
+
+    try {
+      // ギャラリー画面のrefreshDataメソッドを呼び出し
+      GalleryScreen.refreshGallery(galleryScreenKey);
+      AppLogger.success('ギャラリー更新完了', tag: 'MainScreen');
+    } catch (e) {
+      AppLogger.error('ギャラリー更新エラー', error: e, tag: 'MainScreen');
+      // エラーの場合は従来の方法（キー再生成）を使用
+      setState(() {
+        galleryScreenKey = GlobalKey();
+      });
+    }
   }
 
   /// 全画面を更新（プロフィール変更時に呼び出される）
@@ -157,7 +183,14 @@ class _MainScreenState extends State<MainScreen> {
         onProfileUpdated: _refreshAllScreens,
         title: _getCurrentScreenTitle(),
       ),
-      body: _buildCurrentScreen(),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          weatherScreen,
+          galleryScreen,
+          communityScreen,
+        ],
+      ),
       bottomNavigationBar: _buildBottomNavigationBar(),
       floatingActionButton: _buildFloatingActionButton(),
     );
@@ -217,26 +250,4 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  /// 現在選択されている画面を構築
-  Widget _buildCurrentScreen() {
-    switch (_currentIndex) {
-      case AppConstants.navigationIndexWeather:
-        return WeatherScreen(
-          key: weatherScreenKey,
-          onProfileUpdated: _refreshAllScreens,
-        );
-      case AppConstants.navigationIndexGallery:
-        return GalleryScreen(key: galleryScreenKey);
-      case AppConstants.navigationIndexCommunity:
-        return CommunityScreen(
-          key: communityScreenKey,
-          onPhotoDownloaded: _refreshGallery,
-        );
-      default:
-        return WeatherScreen(
-          key: weatherScreenKey,
-          onProfileUpdated: _refreshAllScreens,
-        );
-    }
-  }
 }

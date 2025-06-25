@@ -102,6 +102,22 @@ class GalleryScreen extends StatefulWidget {
 
   @override
   State<GalleryScreen> createState() => _GalleryScreenState();
+
+  /// 外部からギャラリーを更新するためのメソッド
+  /// MainScreenから呼び出されて、コミュニティからダウンロードした写真を反映する
+  static void refreshGallery(GlobalKey key) {
+    try {
+      final state = key.currentState as _GalleryScreenState?;
+      if (state != null && state.mounted) {
+        state.refreshData();
+        AppLogger.success('ギャラリーの静的メソッド経由更新成功', tag: 'GalleryScreen');
+      } else {
+        AppLogger.warning('ギャラリー状態が無効またはアンマウント状態', tag: 'GalleryScreen');
+      }
+    } catch (e) {
+      AppLogger.error('ギャラリー静的メソッド経由更新エラー', error: e, tag: 'GalleryScreen');
+    }
+  }
 }
 
 class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveClientMixin {
@@ -133,8 +149,12 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
 
   /// 外部から呼び出し可能なデータ再読み込みメソッド
   void refreshData() {
-    AppLogger.info('ギャラリーデータ再読み込み開始', tag: 'GalleryScreen');
-    _loadAllData();
+    AppLogger.info('ギャラリーデータ再読み込み開始: 外部からの要求', tag: 'GalleryScreen');
+    if (mounted) {
+      _loadAllData();
+    } else {
+      AppLogger.warning('ギャラリーがアンマウント状態のため更新をスキップ', tag: 'GalleryScreen');
+    }
   }
 
   // ===== データ読み込みメソッド =====

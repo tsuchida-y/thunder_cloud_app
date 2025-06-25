@@ -28,6 +28,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   LatLng? _currentLocation;
   final List<String> _matchingCities = [];
   bool _isInitialized = false;
+  bool _servicesInitialized = false;
 
   // ===== タイマー管理 =====
   Timer? _locationWaitTimer;
@@ -82,28 +83,44 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   Future<void> _initializeScreen() async {
     if (_isInitialized) {
-      AppLogger.info('WeatherScreen は既に初期化済み', tag: 'WeatherScreen');
+      AppLogger.info('WeatherScreen は既に初期化済み - 位置情報のみ確認', tag: 'WeatherScreen');
+      // 初期化済みの場合は位置情報の確認のみ
+      if (_currentLocation == null) {
+        await _loadLocationDataOptimized();
+      }
       return;
     }
 
     try {
       AppLogger.info('WeatherScreen初期化開始', tag: 'WeatherScreen');
+      final initStartTime = DateTime.now();
 
-      await _initializeServices();
-      _loadLocationDataOptimized();
+      // サービス初期化と位置情報取得を並列実行
+      await Future.wait([
+        _initializeServices(),
+        _loadLocationDataOptimized(),
+      ]);
 
       _isInitialized = true;
-      AppLogger.success('WeatherScreen初期化完了', tag: 'WeatherScreen');
+      final initDuration = DateTime.now().difference(initStartTime);
+      AppLogger.success('WeatherScreen初期化完了 (${initDuration.inMilliseconds}ms)', tag: 'WeatherScreen');
     } catch (e) {
       AppLogger.error('WeatherScreen初期化エラー', error: e, tag: 'WeatherScreen');
     }
   }
 
   Future<void> _initializeServices() async {
+    if (_servicesInitialized) {
+      AppLogger.info('サービスは既に初期化済み', tag: 'WeatherScreen');
+      return;
+    }
+
     try {
       _setupCallbacks();
       await _initializeNotifications();
       _startWeatherDataMonitoring();
+      _servicesInitialized = true;
+      AppLogger.success('サービス初期化完了', tag: 'WeatherScreen');
     } catch (e) {
       AppLogger.error('サービス初期化エラー', error: e, tag: 'WeatherScreen');
     }
@@ -127,6 +144,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   /// 気象データの定期監視を開始
   void _startWeatherDataMonitoring() {
+    // 既にタイマーが動作している場合はスキップ
+    if (_weatherDataTimer != null && _weatherDataTimer!.isActive) {
+      AppLogger.info('気象データ監視は既に実行中', tag: 'WeatherScreen');
+      return;
+    }
+
     AppLogger.info('気象データ監視開始', tag: 'WeatherScreen');
 
     // 30秒間隔で気象データをチェック
@@ -245,15 +268,17 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   // ===== 位置情報管理 =====
 
   /// 最適化された位置情報取得（画面遷移用）
-  void _loadLocationDataOptimized() {
+  Future<void> _loadLocationDataOptimized() async {
+    final startTime = DateTime.now();
     AppLogger.info('最適化された位置情報取得開始', tag: 'WeatherScreen');
 
     // 1. まず画面遷移用の高速取得を試行
     final fastLocation = LocationService.getLocationForScreenTransition();
 
     if (fastLocation != null) {
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
       // キャッシュされた位置情報が即座に取得できた場合
-      AppLogger.info('キャッシュされた位置情報を即座に使用: $fastLocation', tag: 'WeatherScreen');
+      AppLogger.success('キャッシュされた位置情報を即座に使用: $fastLocation (${elapsed}ms)', tag: 'WeatherScreen');
 
       if (mounted) {
         setState(() => _currentLocation = fastLocation);
@@ -265,8 +290,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
 
     // 2. キャッシュがない場合は通常の位置情報取得を実行
-    AppLogger.info('キャッシュなし - 通常の位置情報取得を実行', tag: 'WeatherScreen');
-    _loadLocationFast();
+    final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+    AppLogger.warning('キャッシュなし - 通常の位置情報取得を実行 (${elapsed}ms)', tag: 'WeatherScreen');
+    await _loadLocationFast();
   }
 
   /// 天気データの更新が必要かチェック
@@ -295,23 +321,26 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   /// 高速な位置情報取得（並列処理）
   Future<void> _loadLocationFast() async {
+    final startTime = DateTime.now();
     try {
       AppLogger.info('高速位置情報取得開始', tag: 'WeatherScreen');
 
       final location = await LocationService.getLocationFast();
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
 
       if (location != null && mounted) {
         setState(() => _currentLocation = location);
-        AppLogger.success('高速位置情報取得成功: $location', tag: 'WeatherScreen');
+        AppLogger.success('高速位置情報取得成功: $location (${elapsed}ms)', tag: 'WeatherScreen');
 
         // 初期化時に気象データも取得
         _updateWeatherData();
       } else {
-        AppLogger.warning('高速位置情報取得失敗 - フォールバック実行', tag: 'WeatherScreen');
+        AppLogger.warning('高速位置情報取得失敗 - フォールバック実行 (${elapsed}ms)', tag: 'WeatherScreen');
         _fallbackLocationRetrieval();
       }
     } catch (e) {
-      AppLogger.error('高速位置情報取得エラー', error: e, tag: 'WeatherScreen');
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      AppLogger.error('高速位置情報取得エラー (${elapsed}ms)', error: e, tag: 'WeatherScreen');
       _fallbackLocationRetrieval();
     }
   }
@@ -379,6 +408,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     _weatherDataTimer?.cancel();
     LocationService.onLocationChanged = null;
     PushNotificationService.onThunderCloudDetected = null;
+
+    // 状態をリセット
+    _servicesInitialized = false;
+
     AppLogger.info('WeatherScreen リソースクリーンアップ完了', tag: 'WeatherScreen');
   }
 

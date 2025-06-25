@@ -18,7 +18,7 @@ class LocationService {
   static Function(LatLng)? onLocationChanged;
 
   // ===== 設定値 =====
-  static const Duration _locationValidityDuration = Duration(minutes: 10);
+  static const Duration _locationValidityDuration = Duration(hours: 1); // 10分から1時間に延長
 
   // ===== 公開メソッド =====
 
@@ -164,6 +164,9 @@ class LocationService {
   static LatLng? getLocationForScreenTransition() {
     AppLogger.info('画面遷移用位置情報取得', tag: 'LocationService');
 
+    // デバッグ情報を出力
+    _logLocationServiceStatus();
+
     // キャッシュが存在する場合は即座に返す
     if (_cachedLocation != null) {
       AppLogger.info('キャッシュされた位置情報を即座に返却: $_cachedLocation', tag: 'LocationService');
@@ -178,13 +181,36 @@ class LocationService {
     return null;
   }
 
-  /// バックグラウンドで位置情報を更新
-  static void _updateLocationInBackground() {
-    // 前回更新から5分以上経過している場合のみ更新
+  /// LocationServiceの状態をログ出力（デバッグ用）
+  static void _logLocationServiceStatus() {
+    final status = getLocationStatus();
+    AppLogger.info('LocationService状態: '
+        'hasLocation=${status.hasLocation}, '
+        'isValid=${status.isValid}, '
+        'lastUpdate=${status.lastUpdate}, '
+        'isMonitoring=${status.isMonitoring}',
+        tag: 'LocationService');
+
+    if (_cachedLocation != null) {
+      AppLogger.info('キャッシュされた位置: $_cachedLocation', tag: 'LocationService');
+    } else {
+      AppLogger.warning('位置情報キャッシュが存在しません', tag: 'LocationService');
+    }
+
     if (_lastLocationUpdate != null) {
       final timeSinceUpdate = DateTime.now().difference(_lastLocationUpdate!);
-      if (timeSinceUpdate < const Duration(minutes: 5)) {
-        AppLogger.debug('位置情報は最新のためバックグラウンド更新をスキップ', tag: 'LocationService');
+      AppLogger.info('最終更新からの経過時間: ${timeSinceUpdate.inMinutes}分${timeSinceUpdate.inSeconds % 60}秒',
+          tag: 'LocationService');
+    }
+  }
+
+  /// バックグラウンドで位置情報を更新
+  static void _updateLocationInBackground() {
+    // 前回更新から30分以上経過している場合のみ更新（5分から30分に延長）
+    if (_lastLocationUpdate != null) {
+      final timeSinceUpdate = DateTime.now().difference(_lastLocationUpdate!);
+      if (timeSinceUpdate < const Duration(minutes: 30)) {
+        AppLogger.debug('位置情報は最新のためバックグラウンド更新をスキップ (経過時間: ${timeSinceUpdate.inMinutes}分)', tag: 'LocationService');
         return;
       }
     }
