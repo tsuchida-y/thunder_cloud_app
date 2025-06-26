@@ -26,9 +26,9 @@ class WeatherScreen extends StatefulWidget {
 class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserver {
   // ===== 状態管理 =====
   LatLng? _currentLocation;
-  final List<String> _matchingCities = [];
+  final List<String> _matchingCities = []; // 入道雲が検出された方向 ('north', 'south', 'east', 'west')
   bool _isInitialized = false;
-  bool _servicesInitialized = false;
+  bool _servicesInitialized = false; // 重複初期化防止フラグ
 
   // ===== タイマー管理 =====
   Timer? _locationWaitTimer;
@@ -37,13 +37,18 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   // ===== サービス =====
   final WeatherCacheService _weatherService = WeatherCacheService();
 
+  /// ウィジェット初期化処理
+  /// 画面ライフサイクル監視を開始し、非同期で画面初期化を実行
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // マイクロタスクで初期化を非同期実行（UIブロック防止）
     Future.microtask(() => _initializeScreen());
   }
 
+  /// ウィジェット破棄処理
+  /// 画面ライフサイクル監視を停止し、リソースをクリーンアップ
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -53,6 +58,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   // ===== ライフサイクル管理 =====
 
+  /// アプリケーションライフサイクル状態変更処理
+  /// フォアグラウンド復帰時の気象データ更新などを管理
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
@@ -67,20 +74,26 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// アプリ復帰時の処理
+  /// 気象データの鮮度確保のため再取得を実行
   void _handleAppResumed() {
     AppLogger.info('アプリが再開されました', tag: 'WeatherScreen');
-    // 気象データを更新
+    // アプリ復帰時に気象データを再取得（データの鮮度確保）
     if (_currentLocation != null) {
       _updateWeatherData();
     }
   }
 
+  /// アプリ一時停止時の処理
+  /// 現在は主にログ出力のみ
   void _handleAppPaused() {
     AppLogger.info('アプリが一時停止されました', tag: 'WeatherScreen');
   }
 
   // ===== 初期化メソッド =====
 
+  /// 画面の初期化処理
+  /// 既に初期化済みの場合は位置情報確認のみ、未初期化の場合は完全初期化を実行
   Future<void> _initializeScreen() async {
     if (_isInitialized) {
       AppLogger.info('WeatherScreen は既に初期化済み - 位置情報のみ確認', tag: 'WeatherScreen');
@@ -95,7 +108,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       AppLogger.info('WeatherScreen初期化開始', tag: 'WeatherScreen');
       final initStartTime = DateTime.now();
 
-      // サービス初期化と位置情報取得を並列実行
+      // パフォーマンス向上：サービス初期化と位置情報取得を並列実行
       await Future.wait([
         _initializeServices(),
         _loadLocationDataOptimized(),
@@ -109,6 +122,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// 必要なサービスの初期化
+  /// 一度初期化されたサービスは再初期化をスキップ
   Future<void> _initializeServices() async {
     if (_servicesInitialized) {
       AppLogger.info('サービスは既に初期化済み', tag: 'WeatherScreen');
@@ -126,6 +141,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// 通知サービスの初期化
+  /// 通知許可取得とプッシュ通知サービスの設定を実行
   Future<void> _initializeNotifications() async {
     try {
       await NotificationService.initialize();
@@ -135,14 +152,18 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// コールバック関数の設定
+  /// 位置変更と入道雲検出時の処理をリスナーとして登録
   void _setupCallbacks() {
+    // 位置変更とプッシュ通知のコールバックを設定
     LocationService.onLocationChanged = _handleLocationUpdate;
     PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
   }
 
   // ===== 気象データ監視機能 =====
 
-  /// 気象データの定期監視を開始
+  /// 気象データ監視の開始
+  /// 30秒間隔で気象データを取得し、入道雲発生条件を監視
   void _startWeatherDataMonitoring() {
     // 既にタイマーが動作している場合はスキップ
     if (_weatherDataTimer != null && _weatherDataTimer!.isActive) {
@@ -152,7 +173,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
     AppLogger.info('気象データ監視開始', tag: 'WeatherScreen');
 
-    // 30秒間隔で気象データをチェック
+    // 入道雲検知のため30秒間隔で気象データを監視
     _weatherDataTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (_currentLocation != null) {
         _updateWeatherData();
@@ -160,7 +181,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     });
   }
 
-  /// 気象データを更新してマッチング都市を更新
+  /// 気象データの更新とマッチング都市の更新
+  /// 現在位置の気象データを取得し、関連する都市を検索
   Future<void> _updateWeatherData() async {
     if (_currentLocation == null) return;
 
@@ -178,24 +200,25 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  /// 気象データからマッチング都市を更新
+  /// 気象データからマッチング都市の更新
+  /// 4方向の気象データを解析し、入道雲発生可能性をチェック
   void _updateMatchingCitiesFromWeatherData(Map<String, dynamic> weatherData) {
     final newMatchingCities = <String>[];
 
-    // 各方向をチェック
+    // 4方向（北・南・東・西）それぞれで入道雲の可能性をチェック
     for (final direction in ['north', 'south', 'east', 'west']) {
       if (weatherData.containsKey(direction)) {
         final directionData = weatherData[direction] as Map<String, dynamic>?;
 
         if (directionData != null) {
-          // 距離別データから最適なデータを選択
+          // 複数距離（50km, 160km, 250km）から最適なデータを選択
           final bestData = _selectBestDistanceData(direction, directionData);
 
           if (bestData != null && bestData.containsKey('analysis')) {
             final analysis = bestData['analysis'] as Map<String, dynamic>?;
 
+            // 気象データ解析で入道雲の可能性が高いと判定された場合
             if (analysis != null && analysis['isLikely'] == true) {
-              // 英語のキーをそのまま使用（CloudStatusOverlayと一致させる）
               newMatchingCities.add(direction);
             }
           }
@@ -215,6 +238,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   }
 
   /// 各方向のデータから最適な距離のデータを選択
+  /// 複数距離（50km, 160km, 250km）の解析結果から最高スコアを選ぶ
+  /// 最適な距離データの選択
+  /// 複数距離（50km, 160km, 250km）のデータから最高スコアのものを選択
   Map<String, dynamic>? _selectBestDistanceData(String direction, Map<String, dynamic> directionData) {
     // 距離キー（50km、160km、250km）を探す
     final distanceKeys = directionData.keys
@@ -254,7 +280,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     return directionData[firstKey] as Map<String, dynamic>?;
   }
 
-  /// マッチング都市が変更されたかチェック
+  /// マッチング都市変更の検知
+  /// 現在のマッチング都市リストと新しいリストを比較
   bool _hasMatchingCitiesChanged(List<String> newMatchingCities) {
     if (_matchingCities.length != newMatchingCities.length) return true;
 
@@ -268,16 +295,16 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   // ===== 位置情報管理 =====
 
   /// 最適化された位置情報取得（画面遷移用）
+  /// キャッシュ優先で高速表示を実現
   Future<void> _loadLocationDataOptimized() async {
     final startTime = DateTime.now();
     AppLogger.info('最適化された位置情報取得開始', tag: 'WeatherScreen');
 
-    // 1. まず画面遷移用の高速取得を試行
+    // 1. まず画面遷移用の高速取得を試行（キャッシュ利用）
     final fastLocation = LocationService.getLocationForScreenTransition();
 
     if (fastLocation != null) {
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      // キャッシュされた位置情報が即座に取得できた場合
       AppLogger.success('キャッシュされた位置情報を即座に使用: $fastLocation (${elapsed}ms)', tag: 'WeatherScreen');
 
       if (mounted) {
@@ -295,9 +322,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     await _loadLocationFast();
   }
 
-  /// 天気データの更新が必要かチェック
+  /// 気象データ更新の必要性チェック
+  /// キャッシュがあれば即座に利用、なければ新規取得
   void _updateWeatherDataIfNeeded() {
-    // WeatherServiceのキャッシュ状態を確認
     if (_currentLocation != null) {
       final latitude = _currentLocation!.latitude;
       final longitude = _currentLocation!.longitude;
@@ -319,7 +346,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  /// 高速な位置情報取得（並列処理）
+  /// 高速位置情報取得処理
+  /// LocationService.getLocationFast()を使用してキャッシュ優先で取得
   Future<void> _loadLocationFast() async {
     final startTime = DateTime.now();
     try {
@@ -332,7 +360,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         setState(() => _currentLocation = location);
         AppLogger.success('高速位置情報取得成功: $location (${elapsed}ms)', tag: 'WeatherScreen');
 
-        // 初期化時に気象データも取得
+        // 位置情報取得後、気象データも自動取得
         _updateWeatherData();
       } else {
         AppLogger.warning('高速位置情報取得失敗 - フォールバック実行 (${elapsed}ms)', tag: 'WeatherScreen');
@@ -345,6 +373,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// フォールバック位置情報取得処理
+  /// 高速取得に失敗した場合の通常のGPS取得
   Future<void> _fallbackLocationRetrieval() async {
     try {
       AppLogger.info('フォールバック位置情報取得開始', tag: 'WeatherScreen');
@@ -356,7 +386,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         setState(() => _currentLocation = location);
         AppLogger.success('フォールバック位置情報取得成功: $location', tag: 'WeatherScreen');
 
-        // 初期化時に気象データも取得
+        // 位置情報取得後、気象データも自動取得
         _updateWeatherData();
       }
     } catch (e) {
@@ -366,8 +396,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   // ===== イベントハンドラー =====
 
+  /// 入道雲検出通知の処理
+  /// プッシュ通知からの日本語方向を英語キーに変換してマッチング都市を更新
   void _handleThunderCloudDetection(List<String> directions) {
-    // 日本語から英語のキーに変換
+    // プッシュ通知からの日本語方向を英語キーに変換
     final englishDirections = directions.map((direction) {
       switch (direction) {
         case '北':
@@ -391,18 +423,22 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
+  /// 位置変更時の処理
+  /// 新しい位置で気象データを更新して最新の入道雲情報を取得
   void _handleLocationUpdate(LatLng newLocation) {
     AppLogger.info('位置情報更新: $newLocation', tag: 'WeatherScreen');
 
     if (mounted) {
       setState(() => _currentLocation = newLocation);
-      // 位置情報が更新されたら気象データも更新
+      // 位置変更時は気象データも更新（新しいエリアの入道雲情報取得）
       _updateWeatherData();
     }
   }
 
   // ===== ユーティリティメソッド =====
 
+  /// リソースクリーンアップ処理
+  /// タイマーとコールバックを解除し、状態をリセット
   void _cleanupResources() {
     _locationWaitTimer?.cancel();
     _weatherDataTimer?.cancel();
@@ -415,11 +451,14 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     AppLogger.info('WeatherScreen リソースクリーンアップ完了', tag: 'WeatherScreen');
   }
 
-  /// MainScreen用に現在位置を提供
+  /// MainScreen用の現在位置提供
+  /// AppBarで表示する位置情報を返す
   LatLng? getCurrentLocationForAppBar() {
     return _currentLocation;
   }
 
+  /// ウィジェット構築処理
+  /// グラデーション背景、地図、雲状態オーバーレイを組み合わせたUI
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -435,10 +474,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       ),
       child: Stack(
         children: [
-          // 地図は常に表示
+          // 背景地図（常時表示）
           BackgroundMapWidget(currentLocation: _currentLocation),
 
-          // 雲状態オーバーレイは位置情報取得後にのみ表示
+          // 雲状態オーバーレイ（位置情報取得後のみ表示）
           if (_currentLocation != null)
             CloudStatusOverlay(matchingCities: _matchingCities),
         ],
