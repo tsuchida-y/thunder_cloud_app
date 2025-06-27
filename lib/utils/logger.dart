@@ -1,16 +1,21 @@
 import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 
 /// アプリケーション全体で統一されたログ出力を提供するユーティリティ
 class AppLogger {
   static const String _prefix = "ThunderCloudApp";
 
+  /// ログレベル設定（本番環境では ERROR のみ）
+  static bool get _isDebugMode => kDebugMode;
+
   /// 情報ログ
   static void info(String message, {String? tag}) {
+    if (!_isDebugMode) return; // 本番環境では無効
     final logMessage = _formatMessage(message, tag, "INFO");
     dev.log(logMessage);
   }
 
-  /// エラーログ
+  /// エラーログ（本番環境でも出力）
   static void error(String message, {Object? error, StackTrace? stackTrace, String? tag}) {
     final logMessage = _formatMessage(message, tag, "ERROR");
     dev.log(
@@ -22,23 +27,26 @@ class AppLogger {
 
   /// 警告ログ
   static void warning(String message, {String? tag}) {
+    if (!_isDebugMode) return; // 本番環境では無効
     final logMessage = _formatMessage(message, tag, "WARN");
     dev.log(logMessage);
   }
 
   /// デバッグログ
   static void debug(String message, {String? tag}) {
+    if (!_isDebugMode) return; // 本番環境では無効
     final logMessage = _formatMessage(message, tag, "DEBUG");
     dev.log(logMessage);
   }
 
   /// 成功ログ
   static void success(String message, {String? tag}) {
+    if (!_isDebugMode) return; // 本番環境では無効
     final logMessage = _formatMessage("✅ $message", tag, "SUCCESS");
     dev.log(logMessage);
   }
 
-  /// 失敗ログ
+  /// 失敗ログ（本番環境でも出力）
   static void failure(String message, {Object? error, String? tag}) {
     final logMessage = _formatMessage("❌ $message", tag, "FAILURE");
     dev.log(logMessage, error: error);
@@ -46,6 +54,7 @@ class AppLogger {
 
   /// 進行中ログ
   static void progress(String message, {String? tag}) {
+    if (!_isDebugMode) return; // 本番環境では無効
     final logMessage = _formatMessage("🔄 $message", tag, "PROGRESS");
     dev.log(logMessage);
   }

@@ -13,8 +13,8 @@ class AppConstants {
   static const String appVersion = "1.0.0";
   static const String defaultUserId = "user_001";
 
-  // デバッグモード設定
-  static const bool isDebugMode = true;
+  // デバッグモード設定（本番では false に設定）
+  static const bool isDebugMode = false; // App Store 審査用にfalseに変更
 
   // ===== 色定義 =====
   static const Color primarySkyBlue = Color.fromRGBO(135, 206, 250, 1.0);

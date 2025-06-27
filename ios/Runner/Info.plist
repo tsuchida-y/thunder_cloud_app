@@ -35,7 +35,9 @@
 	<key>NSCameraUsageDescription</key>
 	<string>このアプリは入道雲の写真を撮影するためにカメラを使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>このアプリは撮影した入道雲の写真を保存するためにフォトライブラリにアクセスします。</string>
+	<string>このアプリは撮影した入道雲の写真を保存・表示するためにフォトライブラリにアクセスします。プロフィール画像の設定にも使用されます。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>このアプリは撮影した入道雲の写真をフォトライブラリに保存するために書き込み権限を必要とします。iPadでのプロフィール画像設定でも使用されます。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
