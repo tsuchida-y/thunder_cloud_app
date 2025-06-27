@@ -24,15 +24,28 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // ===== サービス =====
+  /*
+  ================================================================================
+                                    サービス
+                           設定機能で使用するサービスクラス
+  ================================================================================
+  */
   late final SettingsService _settingsService;
 
-  // ===== 状態管理 =====
-  bool _isLoading = false;
-  bool _isLoadingUserInfo = true;
-  Map<String, dynamic> _weatherData = {};
-  Map<String, dynamic> _userInfo = {};
-  DateTime? _lastUpdateTime;
+  /*
+  ================================================================================
+                                    状態管理
+                         設定画面の状態を管理する変数群
+  ================================================================================
+  */
+  // UI状態管理
+  bool _isLoading = false; // 全体的なローディング状態（位置情報更新等）
+  bool _isLoadingUserInfo = true; // ユーザー情報読み込み状態（初期化時）
+
+  // データ状態管理
+  Map<String, dynamic> _weatherData = {}; // 現在位置の気象データキャッシュ
+  Map<String, dynamic> _userInfo = {}; // ユーザープロフィール情報（名前・アバター等）
+  DateTime? _lastUpdateTime; // 最後のデータ更新時刻（鮮度表示用）
 
   @override
   void initState() {
@@ -47,10 +60,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  // ===== 初期化 =====
+  /*
+  ================================================================================
+                                    初期化
+                        サービス初期化とユーザー情報読み込み処理
+  ================================================================================
+  */
 
-  /// 画面を初期化
+  /// 設定画面の初期化処理
+  /// サービス初期化→コールバック設定→初期データ取得の順で実行
+  /// パフォーマンス：非同期処理でUIブロックを防止
   Future<void> _initializeScreen() async {
+    final startTime = DateTime.now();
+
     setState(() {
       _isLoading = true;
       _isLoadingUserInfo = true;
@@ -67,7 +89,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 初期データを取得
       _updateDataFromService();
 
-      AppLogger.success('設定画面初期化完了', tag: 'SettingsScreen');
+      final duration = DateTime.now().difference(startTime);
+      AppLogger.success('設定画面初期化完了 (${duration.inMilliseconds}ms)', tag: 'SettingsScreen');
     } catch (e) {
       AppLogger.error('設定画面初期化エラー', error: e, tag: 'SettingsScreen');
       _showErrorSnackBar('初期化に失敗しました: $e');
@@ -81,7 +104,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// サービスからデータを更新
+  /// サービスからUIデータを同期更新
+  /// SettingsServiceで管理されているデータを画面の状態に反映
+  /// 呼び出しタイミング：初期化後・データ更新後・ユーザー操作後
   void _updateDataFromService() {
     setState(() {
       _weatherData = _settingsService.weatherData;
@@ -90,7 +115,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  /// データ更新時のコールバック
+  /// SettingsServiceからのデータ更新通知処理
+  /// 気象データが自動更新された際にUIを即座に反映
+  /// 制約：mounted状態チェックでメモリリーク防止
   void _onDataUpdate(Map<String, dynamic> weatherData, DateTime? updateTime) {
     if (mounted) {
       setState(() {
@@ -100,10 +127,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // ===== イベントハンドラー =====
+  /*
+  ================================================================================
+                               イベントハンドラー
+                        ユーザー操作（プロフィール編集等）への応答処理
+  ================================================================================
+  */
 
-  /// 位置情報を更新
+  /// 位置情報の手動更新処理
+  /// GPS再取得→気象データ更新→UI反映の流れで実行
+  /// エラー時：フォールバック処理なし（ユーザー通知のみ）
   Future<void> _updateLocation() async {
+    final startTime = DateTime.now();
+
     setState(() {
       _isLoading = true;
     });
@@ -111,6 +147,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await _settingsService.updateLocation();
       _updateDataFromService();
+
+      final duration = DateTime.now().difference(startTime);
+      AppLogger.success('位置情報更新完了 (${duration.inMilliseconds}ms)', tag: 'SettingsScreen');
       _showSuccessSnackBar('位置情報を更新しました');
     } catch (e) {
       AppLogger.error('位置情報更新エラー', error: e, tag: 'SettingsScreen');
@@ -124,9 +163,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// プロフィール編集ダイアログを表示
+  /// プロフィール編集ダイアログの表示と結果処理
+  /// ダイアログ表示→ユーザー入力→サービス更新→UI反映の流れで実行
+  /// 最適化：ユーザー情報の再読み込みでデータ整合性を確保
   Future<void> _showProfileEditDialog() async {
-    // デバッグ用：ユーザー情報をログ出力
+    final startTime = DateTime.now();
+
+    // デバッグ用：現在のユーザー情報をログ出力
     AppLogger.info('プロフィール編集ダイアログ開始', tag: 'SettingsScreen');
     AppLogger.info('現在のユーザー情報: $_userInfo', tag: 'SettingsScreen');
 
@@ -139,10 +182,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (result != null) {
       try {
+        // 1. サービス経由でユーザー情報を更新
         await _settingsService.updateUserInfo(result);
-        // SettingsServiceのユーザー情報を再読み込み
+
+        // 2. データ整合性確保のため再読み込み実行
         await _settingsService.reloadUserInfo();
+
+        // 3. UI状態を最新データで更新
         _updateDataFromService();
+
+        final duration = DateTime.now().difference(startTime);
+        AppLogger.success('プロフィール更新完了 (${duration.inMilliseconds}ms)', tag: 'SettingsScreen');
         _showSuccessSnackBar('プロフィールを更新しました');
       } catch (e) {
         AppLogger.error('プロフィール更新エラー', error: e, tag: 'SettingsScreen');
@@ -151,7 +201,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // ===== UI構築 =====
+  /*
+  ================================================================================
+                                   UI構築
+                          画面レイアウトとウィジェット構築処理
+  ================================================================================
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +217,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// アプリバーを構築
+  /// 設定画面のアプリバー構築
+  /// シンプルなタイトル表示のみ（アクション不要）
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       title: const Text(
@@ -177,8 +233,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// メインボディを構築
+  /// メインボディの構築処理
+  /// 条件分岐：初回ローディング時は専用インジケーター表示
+  /// 通常時：スクロール可能な3セクション構成（ユーザー・位置・気象）
   Widget _buildBody() {
+    // 初回ローディング中かつデータが空の場合のみローディング表示
     if (_isLoading && _weatherData.isEmpty) {
       return _buildLoadingIndicator();
     }
@@ -198,7 +257,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// ローディングインジケーターを構築
+  /// 初期化時のローディングインジケーター構築
+  /// 中央配置のスピナー＋メッセージ表示
   Widget _buildLoadingIndicator() {
     return const Center(
       child: Column(
@@ -217,7 +277,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// ユーザーセクションを構築
+  /// ユーザー情報セクションの構築
+  /// プロフィール表示＋編集機能を提供
   Widget _buildUserSection() {
     return _buildSection(
       title: 'ユーザー情報',
@@ -228,8 +289,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// ユーザーカードを構築
+  /// ユーザープロフィールカードの構築
+  /// 状態管理：ローディング→プロフィール表示→編集可能状態
   Widget _buildUserCard() {
+    // ユーザー情報読み込み中の表示
     if (_isLoadingUserInfo) {
       return const Card(
         child: Padding(
@@ -768,7 +831,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ===== ヘルパーメソッド =====
+  /*
+  ================================================================================
+                               ヘルパーメソッド
+                         エラー表示・メッセージ表示等の補助処理
+  ================================================================================
+  */
 
   /// 日時をフォーマット
   String _formatDateTime(DateTime? dateTime) {

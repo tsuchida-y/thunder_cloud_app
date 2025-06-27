@@ -23,6 +23,12 @@ class PhotoPreviewScreen extends StatefulWidget {
 }
 
 class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
+  /*
+  ================================================================================
+                                    状態管理
+                          写真保存処理の進行状態を管理する変数
+  ================================================================================
+  */
   bool _isSaving = false;
 
   @override
@@ -137,8 +143,11 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     );
   }
 
-  /// 写真をローカルに保存
+  /// 写真のローカル保存処理
+  /// 位置情報取得→ローカル保存→ギャラリー画面遷移の流れで実行
+  /// 用途：個人的な記録保存（コミュニティ投稿なし）
   Future<void> _saveLocally() async {
+    final startTime = DateTime.now();
     setState(() {
       _isSaving = true;
     });
@@ -167,7 +176,8 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         _navigateToGallery();
       }
 
-      AppLogger.success('ローカル保存完了', tag: 'PhotoPreviewScreen');
+      final duration = DateTime.now().difference(startTime);
+      AppLogger.success('ローカル保存完了 (${duration.inMilliseconds}ms)', tag: 'PhotoPreviewScreen');
     } catch (e) {
       AppLogger.error('ローカル保存エラー', error: e, tag: 'PhotoPreviewScreen');
 
@@ -183,8 +193,11 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     }
   }
 
-  /// 写真を投稿（Firestoreとローカルの両方に保存）
+  /// 写真のコミュニティ投稿処理
+  /// Firestore投稿→ローカル保存→コミュニティ画面遷移の流れで実行
+  /// 用途：コミュニティ共有＋個人記録の両方を実現
   Future<void> _postPhoto() async {
+    final startTime = DateTime.now();
     setState(() {
       _isSaving = true;
     });
@@ -199,14 +212,14 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       // ユーザーIDを動的に取得
       final userId = await AppConstants.getCurrentUserId();
 
-      // Firestoreに保存
+      // 1. Firestoreにコミュニティ投稿として保存
       await PhotoService.uploadPhoto(
         imageFile: widget.imageFile,
         userId: userId,
         userName: 'ユーザー',
       );
 
-      // ローカルにも保存
+      // 2. 個人記録としてローカルにも保存
       await LocalPhotoService.savePhotoLocally(
         imageFile: widget.imageFile,
         userId: userId,
@@ -220,7 +233,8 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         _navigateToCommunity();
       }
 
-      AppLogger.success('投稿処理完了', tag: 'PhotoPreviewScreen');
+      final duration = DateTime.now().difference(startTime);
+      AppLogger.success('投稿処理完了 (${duration.inMilliseconds}ms)', tag: 'PhotoPreviewScreen');
     } catch (e) {
       AppLogger.error('投稿処理エラー', error: e, tag: 'PhotoPreviewScreen');
 
@@ -236,9 +250,15 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     }
   }
 
-  // ===== ダイアログ表示 =====
+  /*
+  ================================================================================
+                                ダイアログ表示
+                         エラー・成功メッセージのダイアログ表示処理
+  ================================================================================
+  */
 
-  /// ギャラリー画面に遷移
+  /// ローカル保存後のギャラリー画面遷移処理
+  /// 画面スタッククリア→MainScreenのギャラリータブで再作成
   void _navigateToGallery() {
     // プレビュー画面とカメラ画面の両方を閉じてMainScreenに戻る
     Navigator.of(context).popUntil((route) => route.isFirst);
@@ -253,7 +273,8 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     );
   }
 
-  /// コミュニティ画面に遷移
+  /// 投稿後のコミュニティ画面遷移処理
+  /// 画面スタッククリア→MainScreenのコミュニティタブで再作成
   void _navigateToCommunity() {
     // プレビュー画面とカメラ画面の両方を閉じてMainScreenに戻る
     Navigator.of(context).popUntil((route) => route.isFirst);
@@ -268,7 +289,8 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     );
   }
 
-  /// エラーダイアログを表示
+  /// エラーダイアログの表示処理
+  /// アイコン付きのユーザーフレンドリーなエラー表示
   void _showErrorDialog(String message) {
     showDialog(
       context: context,

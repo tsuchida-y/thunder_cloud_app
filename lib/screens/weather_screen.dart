@@ -24,39 +24,61 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserver {
-  // ===== 状態管理 =====
+  /*
+  ================================================================================
+                                    状態管理
+                          画面の状態を保持する変数群
+  ================================================================================
+  */
   LatLng? _currentLocation;
   final List<String> _matchingCities = []; // 入道雲が検出された方向 ('north', 'south', 'east', 'west')
   bool _isInitialized = false;
   bool _servicesInitialized = false; // 重複初期化防止フラグ
 
-  // ===== タイマー管理 =====
+  /*
+  ================================================================================
+                                   タイマー管理
+                          定期実行処理のタイマー制御
+  ================================================================================
+  */
   Timer? _locationWaitTimer;
   Timer? _weatherDataTimer;
 
-  // ===== サービス =====
-  final WeatherCacheService _weatherService = WeatherCacheService();
+  /*
+  ================================================================================
+                                    サービス
+                         外部処理を担当するサービスクラス
+  ================================================================================
+  */
+
 
   /// ウィジェット初期化処理
+  /// initState() : Widgetが生成されたときに呼ばれる
   /// 画面ライフサイクル監視を開始し、非同期で画面初期化を実行
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    // マイクロタスクで初期化を非同期実行（UIブロック防止）
+    WidgetsBinding.instance.addObserver(this);//監視の開始を登録
+    // マイクロタスクで初期化を後回しにして、UIを先に実行させる
     Future.microtask(() => _initializeScreen());
   }
 
   /// ウィジェット破棄処理
+  /// dispose() : Widgetが破棄されたときに呼ばれる
   /// 画面ライフサイクル監視を停止し、リソースをクリーンアップ
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cleanupResources();
-    super.dispose();
+    WidgetsBinding.instance.removeObserver(this);//監視の終了を登録
+    _cleanupResources();//タイマー停止、電話解除、フラグリセット
+    super.dispose();// Flutterフレームワークの後片付け
   }
 
-  // ===== ライフサイクル管理 =====
+  /*
+  ================================================================================
+                                ライフサイクル管理
+                       アプリの状態変化（起動・停止）への対応
+  ================================================================================
+  */
 
   /// アプリケーションライフサイクル状態変更処理
   /// フォアグラウンド復帰時の気象データ更新などを管理
@@ -90,7 +112,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     AppLogger.info('アプリが一時停止されました', tag: 'WeatherScreen');
   }
 
-  // ===== 初期化メソッド =====
+  /*
+  ================================================================================
+                                 初期化メソッド
+                          画面・サービス・通知の初期設定
+  ================================================================================
+  */
 
   /// 画面の初期化処理
   /// 既に初期化済みの場合は位置情報確認のみ、未初期化の場合は完全初期化を実行
@@ -160,7 +187,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     PushNotificationService.onThunderCloudDetected = _handleThunderCloudDetection;
   }
 
-  // ===== 気象データ監視機能 =====
+  /*
+  ================================================================================
+                              気象データ監視機能
+                       入道雲発生条件の監視とデータ更新処理
+  ================================================================================
+  */
 
   /// 気象データ監視の開始
   /// 30秒間隔で気象データを取得し、入道雲発生条件を監視
@@ -239,8 +271,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
   /// 各方向のデータから最適な距離のデータを選択
   /// 複数距離（50km, 160km, 250km）の解析結果から最高スコアを選ぶ
-  /// 最適な距離データの選択
-  /// 複数距離（50km, 160km, 250km）のデータから最高スコアのものを選択
   Map<String, dynamic>? _selectBestDistanceData(String direction, Map<String, dynamic> directionData) {
     // 距離キー（50km、160km、250km）を探す
     final distanceKeys = directionData.keys
@@ -270,11 +300,9 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
         }
       }
     }
-
     if (bestData != null) {
       return bestData;
     }
-
     // フォールバック: 最初のデータを返す
     final firstKey = distanceKeys.first;
     return directionData[firstKey] as Map<String, dynamic>?;
@@ -292,7 +320,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     return false;
   }
 
-  // ===== 位置情報管理 =====
+  /*
+  ================================================================================
+                                 位置情報管理
+                          GPS取得・キャッシュ・最適化処理
+  ================================================================================
+  */
 
   /// 最適化された位置情報取得（画面遷移用）
   /// キャッシュ優先で高速表示を実現
@@ -394,7 +427,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  // ===== イベントハンドラー =====
+  /*
+  ================================================================================
+                               イベントハンドラー
+                      ユーザー操作・通知・位置変更への応答処理
+  ================================================================================
+  */
 
   /// 入道雲検出通知の処理
   /// プッシュ通知からの日本語方向を英語キーに変換してマッチング都市を更新
@@ -435,7 +473,12 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     }
   }
 
-  // ===== ユーティリティメソッド =====
+  /*
+  ================================================================================
+                              ユーティリティメソッド
+                        補助的な処理・リソース管理・状態取得
+  ================================================================================
+  */
 
   /// リソースクリーンアップ処理
   /// タイマーとコールバックを解除し、状態をリセット

@@ -124,16 +124,22 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
   @override
   bool get wantKeepAlive => true;
 
+  /*
+  ================================================================================
+                                    状態管理
+                           ギャラリー画面の状態を管理する変数群
+  ================================================================================
+  */
   // データ管理
-  List<Photo> _photos = [];
+  List<Photo> _photos = []; // ローカル保存済み写真のリスト
 
   // UI状態管理
-  bool _isLoading = true;
-  bool _isGridView = true;
-  bool _isSelectionMode = false;
+  bool _isLoading = true; // データ読み込み中フラグ（初期化・更新時）
+  bool _isGridView = true; // 表示モード（true:グリッド, false:リスト）
+  bool _isSelectionMode = false; // 選択モードフラグ（削除機能用）
 
   // 選択状態管理
-  final Set<String> _selectedPhotos = {};
+  final Set<String> _selectedPhotos = {}; // 削除対象として選択された写真IDのセット
 
   @override
   void initState() {
@@ -141,13 +147,21 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     _loadAllData();
   }
 
-  // ===== 初期化メソッド =====
+  /*
+  ================================================================================
+                                 初期化メソッド
+                          画面初期化とデータ読み込みの開始処理
+  ================================================================================
+  */
 
+  /// 全データの読み込み開始処理
+  /// 現在は写真データのみだが、将来的に他のデータ追加時の拡張ポイント
   void _loadAllData() {
     _loadPhotos();
   }
 
   /// 外部から呼び出し可能なデータ再読み込みメソッド
+  /// MainScreenのコミュニティ機能から写真ダウンロード後に呼び出される
   void refreshData() {
     AppLogger.info('ギャラリーデータ再読み込み開始: 外部からの要求', tag: 'GalleryScreen');
     if (mounted) {
@@ -157,9 +171,19 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     }
   }
 
-  // ===== データ読み込みメソッド =====
+  /*
+  ================================================================================
+                               データ読み込みメソッド
+                          ローカル写真データの取得と状態更新処理
+  ================================================================================
+  */
 
+  /// ローカル写真データの読み込み処理
+  /// ユーザーID取得→LocalPhotoService経由でデータ取得→UI更新
+  /// パフォーマンス：mounted状態チェックでメモリリーク防止
   Future<void> _loadPhotos() async {
+    final startTime = DateTime.now();
+
     try {
       AppLogger.info('マイフォト読み込み開始', tag: 'GalleryScreen');
       if (mounted) setState(() => _isLoading = true);
@@ -174,20 +198,30 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
         });
       }
 
-      AppLogger.success('マイフォト読み込み完了: ${photos.length}件', tag: 'GalleryScreen');
+      final duration = DateTime.now().difference(startTime);
+      AppLogger.success('マイフォト読み込み完了: ${photos.length}件 (${duration.inMilliseconds}ms)', tag: 'GalleryScreen');
     } catch (e) {
       AppLogger.error('マイフォト読み込みエラー', error: e, tag: 'GalleryScreen');
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ===== イベントハンドラー =====
+  /*
+  ================================================================================
+                               イベントハンドラー
+                        ユーザー操作（選択・表示切替）への応答処理
+  ================================================================================
+  */
 
+  /// 選択モードのクリア処理
+  /// 削除処理完了時やキャンセル時に呼び出される
   void _clearSelectionMode() {
     _isSelectionMode = false;
     _selectedPhotos.clear();
   }
 
+  /// 選択モードの切り替え処理
+  /// 削除機能の有効/無効を制御
   void _toggleSelectionMode() {
     setState(() {
       _isSelectionMode = !_isSelectionMode;
@@ -197,11 +231,18 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     });
   }
 
+  /// 表示モードの切り替え処理
+  /// グリッド表示 ⇔ リスト表示の切り替え
   void _toggleViewMode() {
     setState(() => _isGridView = !_isGridView);
   }
 
-  // ===== 削除処理メソッド =====
+  /*
+  ================================================================================
+                                削除処理メソッド
+                         選択された写真の削除とデータ更新処理
+  ================================================================================
+  */
 
   Future<void> _deleteSelectedItems() async {
     if (_selectedPhotos.isEmpty) return;
@@ -229,7 +270,12 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     }
   }
 
-  // ===== 写真アイテム処理メソッド =====
+  /*
+  ================================================================================
+                              写真アイテム処理メソッド
+                        写真データをPhotoItemオブジェクトに変換する処理
+  ================================================================================
+  */
 
   List<PhotoItem> _getCurrentPhotoItems() {
     return _photos.map((Photo photo) => LocalPhotoItem(photo, () => setState(() {}))).toList();
@@ -253,7 +299,12 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     }
   }
 
-  // ===== 画像表示ヘルパーメソッド =====
+  /*
+  ================================================================================
+                             画像表示ヘルパーメソッド
+                        ローカル・ネットワーク画像の表示とエラー処理
+  ================================================================================
+  */
 
   Widget _buildItemImage(PhotoItem item) {
     final bool isLocalFile = item.imageUrl.startsWith('/');
@@ -319,7 +370,12 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     );
   }
 
-  // ===== UI構築メソッド =====
+  /*
+  ================================================================================
+                                 UI構築メソッド
+                          画面レイアウトとウィジェット構築処理
+  ================================================================================
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -603,7 +659,12 @@ class _GalleryScreenState extends State<GalleryScreen> with AutomaticKeepAliveCl
     );
   }
 
-  // ===== メッセージ表示 =====
+  /*
+  ================================================================================
+                                 メッセージ表示
+                          エラー・成功メッセージのスナックバー表示
+  ================================================================================
+  */
 
   void _showSuccessMessage(String message) {
     if (!mounted) return;

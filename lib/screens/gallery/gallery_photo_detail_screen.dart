@@ -15,6 +15,12 @@ class GalleryPhotoDetailScreen extends StatelessWidget {
     required this.photo,
   });
 
+  /*
+  ================================================================================
+                                   UI構築
+                          写真詳細画面のレイアウトとウィジェット構築処理
+  ================================================================================
+  */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,6 +94,12 @@ class GalleryPhotoDetailScreen extends StatelessWidget {
     );
   }
 
+  /*
+  ================================================================================
+                               ダイアログ・情報表示
+                         写真詳細情報と気象データの表示処理
+  ================================================================================
+  */
   /// 写真情報ダイアログを表示
   void _showPhotoInfo(BuildContext context) {
     showDialog(

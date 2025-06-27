@@ -17,17 +17,29 @@ class CameraScreen extends StatefulWidget {
 }
 
 class _CameraScreenState extends State<CameraScreen> {
-  // ===== 状態管理 =====
-  bool _isLoading = true;
-  bool _isInitialized = false;
-  bool _isTakingPhoto = false;
-  String? _errorMessage;
+  /*
+  ================================================================================
+                                    状態管理
+                          カメラ画面の状態を管理する変数群
+  ================================================================================
+  */
+  // カメラ状態管理
+  bool _isLoading = true; // カメラ初期化中のローディング状態
+  bool _isInitialized = false; // カメラ初期化完了フラグ（撮影可能判定用）
+  bool _isTakingPhoto = false; // 撮影処理中フラグ（重複撮影防止用）
+  String? _errorMessage; // エラーメッセージ（権限不足・初期化失敗等）
 
-  // ===== カメラ設定 =====
-  FlashMode _flashMode = FlashMode.off;
-  double _zoomLevel = 1.0;
-  double _maxZoom = 1.0;
-  double _minZoom = 1.0;
+  /*
+  ================================================================================
+                                   カメラ設定
+                         フラッシュ・ズーム等のカメラパラメータ
+  ================================================================================
+  */
+  // カメラパラメータ管理
+  FlashMode _flashMode = FlashMode.off; // フラッシュモード（off/auto切替）
+  double _zoomLevel = 1.0; // 現在のズームレベル（1.0が標準）
+  double _maxZoom = 1.0; // 最大ズーム倍率（デバイス依存）
+  double _minZoom = 1.0; // 最小ズーム倍率（通常1.0固定）
 
   @override
   void initState() {
@@ -41,10 +53,18 @@ class _CameraScreenState extends State<CameraScreen> {
     super.dispose();
   }
 
-  // ===== カメラ初期化 =====
+  /*
+  ================================================================================
+                                 カメラ初期化
+                        カメラサービスとズーム範囲の初期設定
+  ================================================================================
+  */
 
-  /// カメラを初期化
+  /// カメラサービスの初期化処理
+  /// 権限確認→カメラ起動→ズーム範囲取得の順で実行
+  /// エラー時：ユーザーフレンドリーなメッセージ表示
   Future<void> _initializeCamera() async {
+    final startTime = DateTime.now();
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -56,14 +76,16 @@ class _CameraScreenState extends State<CameraScreen> {
       final success = await CameraService.initialize();
 
       if (success) {
-        // ズーム範囲を取得
+        // ズーム範囲を並列取得（初期化時間短縮）
         await _initializeZoomRange();
 
         setState(() {
           _isInitialized = true;
           _isLoading = false;
         });
-        AppLogger.success('カメラ初期化成功', tag: 'CameraScreen');
+
+        final duration = DateTime.now().difference(startTime);
+        AppLogger.success('カメラ初期化成功 (${duration.inMilliseconds}ms)', tag: 'CameraScreen');
       } else {
         setState(() {
           _isInitialized = false;
@@ -82,7 +104,9 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  /// ズーム範囲を初期化
+  /// カメラのズーム範囲を取得・設定
+  /// デバイス固有のズーム制限を取得してUI制御に使用
+  /// フォールバック：取得失敗時は標準値（1.0）を使用
   Future<void> _initializeZoomRange() async {
     final controller = CameraService.controller;
     if (controller != null && controller.value.isInitialized) {
@@ -98,11 +122,21 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  // ===== カメラ操作 =====
+  /*
+  ================================================================================
+                                  カメラ操作
+                        撮影・フラッシュ・ズーム等の操作処理
+  ================================================================================
+  */
 
-  /// 写真を撮影
+  /// 写真撮影処理の実行
+  /// 事前チェック→撮影→プレビュー画面遷移の流れで実行
+  /// 制約：初期化完了＆撮影中でない場合のみ実行可能
   Future<void> _takePicture() async {
+    // 撮影可能状態チェック（重複防止・初期化確認）
     if (!_isInitialized || _isTakingPhoto) return;
+
+    final startTime = DateTime.now();
 
     setState(() {
       _isTakingPhoto = true;
@@ -114,9 +148,10 @@ class _CameraScreenState extends State<CameraScreen> {
       final File? imageFile = await CameraService.takePicture();
 
       if (imageFile != null) {
-        AppLogger.success('写真撮影成功: ${imageFile.path}', tag: 'CameraScreen');
+        final duration = DateTime.now().difference(startTime);
+        AppLogger.success('写真撮影成功: ${imageFile.path} (${duration.inMilliseconds}ms)', tag: 'CameraScreen');
 
-        // プレビュー画面に遷移
+        // プレビュー画面に遷移（撮影結果の確認・保存選択）
         if (mounted) {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -146,7 +181,8 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  /// フラッシュモードを切り替え
+  /// フラッシュモードの切り替え処理
+  /// off ⇔ auto の2段階切り替え（torch使用なし）
   void _toggleFlash() {
     CameraService.toggleFlash();
     setState(() {
@@ -154,7 +190,8 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  /// ズームレベルを設定
+  /// ズームレベルの設定処理
+  /// 指定値をデバイス制限内にクランプしてから適用
   void _setZoomLevel(double zoom) {
     final clampedZoom = zoom.clamp(_minZoom, _maxZoom);
     CameraService.setZoomLevel(clampedZoom);
@@ -163,7 +200,12 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  // ===== UI構築 =====
+  /*
+  ================================================================================
+                                    UI構築
+                          画面レイアウトとウィジェット構築処理
+  ================================================================================
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -501,7 +543,12 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
-  // ===== ヘルパーメソッド =====
+  /*
+  ================================================================================
+                               ヘルパーメソッド
+                         エラー表示等の補助的な処理メソッド
+  ================================================================================
+  */
 
   /// エラースナックバーを表示
   void _showErrorSnackBar(String message) {

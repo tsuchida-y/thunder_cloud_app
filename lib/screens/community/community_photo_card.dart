@@ -30,6 +30,12 @@ class CommunityPhotoCard extends StatefulWidget {
 }
 
 class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
+  /*
+  ================================================================================
+                                    状態管理
+                         写真カードの状態を管理する変数群
+  ================================================================================
+  */
   Map<String, dynamic>? _userInfo;
   bool _isLoadingUserInfo = true;
 
@@ -59,6 +65,12 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
     }
   }
 
+  /*
+  ================================================================================
+                                   UI構築
+                          写真カードのレイアウトとウィジェット構築処理
+  ================================================================================
+  */
   @override
   Widget build(BuildContext context) {
     return Card(
