@@ -114,7 +114,11 @@ class SettingsService {
 
       // Firestoreからユーザー情報を取得
       _userInfo = await UserService.getUserInfo(userId);
-      AppLogger.success('ユーザー情報読み込み完了（Firestore）', tag: 'SettingsService');
+
+      // userIdフィールドを確実に設定
+      _userInfo['userId'] = userId;
+
+      AppLogger.success('ユーザー情報読み込み完了（Firestore）: userId=$userId', tag: 'SettingsService');
     } catch (e) {
       AppLogger.error('ユーザー情報読み込みエラー', error: e, tag: 'SettingsService');
       // エラー時はデフォルト情報を設定
@@ -124,7 +128,7 @@ class SettingsService {
         'userName': 'ユーザー',
         'avatarUrl': '',
       };
-      AppLogger.info('デフォルトユーザー情報を設定', tag: 'SettingsService');
+      AppLogger.info('デフォルトユーザー情報を設定: userId=$fallbackUserId', tag: 'SettingsService');
     }
   }
 

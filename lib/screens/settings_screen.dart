@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../constants/app_constants.dart';
 import '../services/photo/user_service.dart';
@@ -123,6 +126,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// プロフィール編集ダイアログを表示
   Future<void> _showProfileEditDialog() async {
+    // デバッグ用：ユーザー情報をログ出力
+    AppLogger.info('プロフィール編集ダイアログ開始', tag: 'SettingsScreen');
+    AppLogger.info('現在のユーザー情報: $_userInfo', tag: 'SettingsScreen');
+
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _ProfileEditDialog(
@@ -733,8 +740,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return value.toString();
   }
 
-
-
   /// セクションを構築
   Widget _buildSection({
     required String title,
@@ -824,7 +829,9 @@ class _ProfileEditDialog extends StatefulWidget {
 class _ProfileEditDialogState extends State<_ProfileEditDialog> {
   late final TextEditingController _nameController;
   String? _newAvatarUrl;
+  File? _selectedImageFile; // 選択された画像ファイル（アップロード前）
   bool _isUpdatingAvatar = false;
+  bool _isSaving = false; // 保存中フラグ
 
   @override
   void initState() {
@@ -840,40 +847,178 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
     super.dispose();
   }
 
-  /// アバター画像を選択して更新
+  /// アバター画像を選択（アップロードはしない）
   Future<void> _selectAvatar() async {
     setState(() {
       _isUpdatingAvatar = true;
     });
 
     try {
-      final userId = widget.currentUserInfo['userId'] as String?;
-      if (userId == null || userId.isEmpty) {
-        _showErrorSnackBar('ユーザーIDが見つかりません');
+      AppLogger.info('アバター画像選択開始', tag: 'ProfileEditDialog');
+
+      // 画像選択
+      final XFile? image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: AppConstants.imageMaxWidth.toDouble(),
+        maxHeight: AppConstants.imageMaxHeight.toDouble(),
+        imageQuality: AppConstants.imageQuality,
+      );
+
+      if (image == null) {
+        AppLogger.info('画像選択がキャンセルされました', tag: 'ProfileEditDialog');
         return;
       }
 
-      final success = await UserService.updateUserAvatar(userId);
-      if (success) {
-        // 新しいユーザー情報を取得
-        final updatedUserInfo = await UserService.getUserInfo(userId);
-        setState(() {
-          _newAvatarUrl = updatedUserInfo['avatarUrl'] as String?;
-        });
-        _showSuccessSnackBar('アバター画像を更新しました');
-      } else {
-        _showErrorSnackBar('アバター画像の更新に失敗しました');
+      // 画像ファイルの存在確認
+      final File imageFile = File(image.path);
+      if (!await imageFile.exists()) {
+        AppLogger.error('選択された画像ファイルが存在しません: ${image.path}', tag: 'ProfileEditDialog');
+        _showErrorSnackBar('選択された画像ファイルが見つかりません');
+        return;
       }
+
+      // ファイルサイズチェック（5MB制限）
+      final int fileSize = await imageFile.length();
+      const int maxSize = 5 * 1024 * 1024; // 5MB
+      if (fileSize > maxSize) {
+        AppLogger.error('画像ファイルサイズが大きすぎます: $fileSize bytes', tag: 'ProfileEditDialog');
+        _showErrorSnackBar('画像ファイルサイズが大きすぎます（5MB以下にしてください）');
+        return;
+      }
+
+      // 選択された画像ファイルを保存（アップロードはしない）
+      setState(() {
+        _selectedImageFile = imageFile;
+      });
+
+      AppLogger.success('アバター画像選択完了: ${imageFile.path}', tag: 'ProfileEditDialog');
+
     } catch (e) {
-      AppLogger.error('アバター選択エラー: $e', tag: 'ProfileEditDialog');
-      _showErrorSnackBar('アバター画像の選択でエラーが発生しました');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdatingAvatar = false;
-        });
+      AppLogger.error('アバター画像選択エラー: $e', tag: 'ProfileEditDialog');
+
+      String errorMessage = e.toString().replaceFirst('Exception: ', '');
+
+      // iPadOS 18特有のエラーメッセージを改善
+      if (errorMessage.contains('プライバシーとセキュリティ') ||
+          errorMessage.contains('permission') ||
+          errorMessage.contains('権限')) {
+        errorMessage = '写真ライブラリへのアクセスを許可してください。\n設定 > プライバシーとセキュリティ > 写真 > 入道雲サーチ で「すべての写真」または「選択した写真」を選択してください。';
+      } else if (errorMessage.contains('デバイスを再起動') ||
+                 errorMessage.contains('network') ||
+                 errorMessage.contains('connection')) {
+        errorMessage = 'ネットワーク接続エラーです。インターネット接続を確認してください。\niPad の場合、まれに画像選択で問題が発生することがあります。デバイスを再起動するか、しばらく時間をおいてからお試しください。';
+      } else if (errorMessage.contains('ファイルサイズ')) {
+        errorMessage = '画像ファイルサイズが大きすぎます（5MB以下にしてください）';
+      } else if (errorMessage.contains('ファイルが見つかりません')) {
+        errorMessage = '選択された画像ファイルが見つかりません。別の画像を選択してください。';
+      } else if (errorMessage.contains('アップロード権限')) {
+        errorMessage = 'アップロード権限がありません。アプリの設定を確認してください。';
       }
+
+      _showErrorSnackBar(errorMessage);
+    } finally {
+      setState(() {
+        _isUpdatingAvatar = false;
+      });
     }
+  }
+
+  /// アバター画像をアップロード
+  Future<String?> _uploadAvatar() async {
+    if (_selectedImageFile == null) return null;
+
+    try {
+      AppLogger.info('アバター画像アップロード開始', tag: 'ProfileEditDialog');
+
+      // 直接ユーザーIDを取得
+      final userId = await AppConstants.getCurrentUserId();
+
+      // 新しいファイルベースのメソッドを使用
+      final newAvatarUrl = await UserService.updateUserAvatarWithFile(userId, _selectedImageFile!);
+
+      AppLogger.success('アバター画像アップロード完了: $newAvatarUrl', tag: 'ProfileEditDialog');
+      return newAvatarUrl;
+    } catch (e) {
+      AppLogger.error('アバター画像アップロードエラー: $e', tag: 'ProfileEditDialog');
+      rethrow;
+    }
+  }
+
+  /// エラーメッセージを表示
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
+      ),
+    );
+  }
+
+  /// 保存処理
+  Future<void> _save() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      String? finalAvatarUrl = widget.currentUserInfo['avatarUrl'] as String?;
+
+      // 新しい画像が選択されている場合はアップロード
+      if (_selectedImageFile != null) {
+        finalAvatarUrl = await _uploadAvatar();
+        finalAvatarUrl ??= widget.currentUserInfo['avatarUrl'] as String?;
+      }
+
+      final updatedInfo = {
+        'userName': _nameController.text.trim(),
+        'avatarUrl': finalAvatarUrl,
+      };
+
+      Navigator.of(context).pop(updatedInfo);
+    } catch (e) {
+      AppLogger.error('保存エラー: $e', tag: 'ProfileEditDialog');
+      _showErrorSnackBar('保存に失敗しました: $e');
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('プロフィール編集'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildAvatarSection(),
+            const SizedBox(height: AppConstants.paddingLarge),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'ユーザー名',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('キャンセル'),
+        ),
+        ElevatedButton(
+          onPressed: _isUpdatingAvatar ? null : _save,
+          child: const Text('保存'),
+        ),
+      ],
+    );
   }
 
   /// アバター画像を表示
@@ -897,10 +1042,12 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
             children: [
               CircleAvatar(
                 radius: 50,
-                backgroundImage: currentAvatarUrl != null && currentAvatarUrl.isNotEmpty
-                    ? CachedNetworkImageProvider(currentAvatarUrl)
-                    : null,
-                child: currentAvatarUrl == null || currentAvatarUrl.isEmpty
+                backgroundImage: _selectedImageFile != null
+                    ? FileImage(_selectedImageFile!) // 選択された画像ファイルを優先表示
+                    : (currentAvatarUrl != null && currentAvatarUrl.isNotEmpty
+                        ? CachedNetworkImageProvider(currentAvatarUrl)
+                        : null),
+                child: _selectedImageFile == null && (currentAvatarUrl == null || currentAvatarUrl.isEmpty)
                     ? const Icon(
                         Icons.person,
                         size: 50,
@@ -944,76 +1091,18 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
         ),
         const SizedBox(height: AppConstants.paddingSmall),
         Text(
-          'タップして画像を選択',
+          _selectedImageFile != null
+              ? '新しい画像を選択済み（保存ボタンで確定）'
+              : 'タップして画像を選択',
           style: TextStyle(
             fontSize: AppConstants.fontSizeSmall,
-            color: Colors.grey[600],
+            color: _selectedImageFile != null
+                ? AppConstants.primarySkyBlue
+                : Colors.grey[600],
+            fontWeight: _selectedImageFile != null
+                ? FontWeight.bold
+                : FontWeight.normal,
           ),
-        ),
-      ],
-    );
-  }
-
-  /// エラースナックバーを表示
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
-      ),
-    );
-  }
-
-  /// 成功スナックバーを表示
-  void _showSuccessSnackBar(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: AppConstants.snackBarDurationSeconds),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('プロフィール編集'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildAvatarSection(),
-            const SizedBox(height: AppConstants.paddingLarge),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'ユーザー名',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('キャンセル'),
-        ),
-        ElevatedButton(
-          onPressed: _isUpdatingAvatar ? null : () {
-            final updatedInfo = {
-              'userName': _nameController.text.trim(),
-              'avatarUrl': _newAvatarUrl ?? widget.currentUserInfo['avatarUrl'],
-            };
-            Navigator.of(context).pop(updatedInfo);
-          },
-          child: const Text('保存'),
         ),
       ],
     );

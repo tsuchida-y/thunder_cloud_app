@@ -127,13 +127,11 @@ class UserService {
   /// アバター画像を更新（古い画像を自動削除）
   static Future<bool> updateUserAvatar(String userId) async {
     try {
-
+      AppLogger.info('アバター画像更新開始', tag: 'UserService');
 
       // 現在のユーザー情報を取得（古いアバターURL取得のため）
       final currentUserInfo = await getUserInfo(userId);
       final oldAvatarUrl = currentUserInfo['avatarUrl'] as String? ?? '';
-
-
 
       // 画像選択
       final XFile? image = await _picker.pickImage(
@@ -148,12 +146,121 @@ class UserService {
         return false;
       }
 
-      // Firebase Storageに新しい画像をアップロード
+      // 画像ファイルの存在確認
       final File imageFile = File(image.path);
+      if (!await imageFile.exists()) {
+        AppLogger.error('選択された画像ファイルが存在しません: ${image.path}', tag: 'UserService');
+        throw Exception('選択された画像ファイルが見つかりません');
+      }
+
+      // ファイルサイズチェック（5MB制限）
+      final int fileSize = await imageFile.length();
+      const int maxSize = 5 * 1024 * 1024; // 5MB
+      if (fileSize > maxSize) {
+        AppLogger.error('画像ファイルサイズが大きすぎます: $fileSize bytes', tag: 'UserService');
+        throw Exception('画像ファイルサイズが大きすぎます（5MB以下にしてください）');
+      }
+
+      // Firebase Storageに新しい画像をアップロード
       final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = _storage.ref().child('avatars').child(fileName);
 
       AppLogger.info('新しいアバター画像アップロード開始: $fileName', tag: 'UserService');
+
+      try {
+        final uploadTask = ref.putFile(imageFile);
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+
+        AppLogger.info('新しいアバターURL: $downloadUrl', tag: 'UserService');
+
+        // Firestoreのユーザー情報を更新
+        await _firestore.collection('users').doc(userId).update({
+          'avatarUrl': downloadUrl,
+          'updatedAt': DateTime.now(),
+        });
+
+        AppLogger.success('Firestore更新完了', tag: 'UserService');
+
+        // 古いアバター画像を削除（非同期で実行、エラーは無視）
+        if (oldAvatarUrl.isNotEmpty) {
+          AppLogger.info('古いアバター削除を開始します: $oldAvatarUrl', tag: 'UserService');
+
+          // 非同期で削除を実行（エラーは無視）
+          _deleteOldAvatar(oldAvatarUrl).catchError((error) {
+            AppLogger.warning('古いアバター削除でエラー（無視）: $error', tag: 'UserService');
+          });
+        } else {
+          AppLogger.info('削除対象の古いアバターがありません', tag: 'UserService');
+        }
+
+        AppLogger.success('アバター画像更新完了', tag: 'UserService');
+        return true;
+
+      } catch (uploadError) {
+        AppLogger.error('Firebase Storageアップロードエラー: $uploadError', tag: 'UserService');
+
+        // ネットワークエラーの場合
+        if (uploadError.toString().contains('network') ||
+            uploadError.toString().contains('timeout') ||
+            uploadError.toString().contains('connection')) {
+          throw Exception('ネットワーク接続エラーです。インターネット接続を確認してください');
+        }
+
+        // 権限エラーの場合
+        if (uploadError.toString().contains('unauthorized') ||
+            uploadError.toString().contains('permission')) {
+          throw Exception('アップロード権限がありません');
+        }
+
+        // その他のエラー
+        throw Exception('画像のアップロードに失敗しました: $uploadError');
+      }
+
+    } catch (e) {
+      AppLogger.error('アバター画像更新エラー: $e', tag: 'UserService');
+
+      // エラーメッセージをユーザーフレンドリーに変換
+      String userMessage = '画像の更新に失敗しました';
+
+      if (e.toString().contains('network') || e.toString().contains('connection')) {
+        userMessage = 'ネットワーク接続エラーです。インターネット接続を確認してください';
+      } else if (e.toString().contains('permission') || e.toString().contains('unauthorized')) {
+        userMessage = '権限エラーが発生しました';
+      } else if (e.toString().contains('ファイルサイズ')) {
+        userMessage = '画像ファイルサイズが大きすぎます（5MB以下にしてください）';
+      } else if (e.toString().contains('ファイルが見つかりません')) {
+        userMessage = '選択された画像ファイルが見つかりません';
+      }
+
+      // エラーを再スロー（上位でユーザーフレンドリーなメッセージを表示）
+      throw Exception(userMessage);
+    }
+  }
+
+  /// 選択済みファイルでアバター画像を更新
+  static Future<String?> updateUserAvatarWithFile(String userId, File imageFile) async {
+    try {
+      AppLogger.info('ファイルベースアバター画像更新開始', tag: 'UserService');
+
+      // 現在のユーザー情報を取得（古いアバターURL取得のため）
+      final currentUserInfo = await getUserInfo(userId);
+      final oldAvatarUrl = currentUserInfo['avatarUrl'] as String? ?? '';
+
+      // ファイルサイズチェック（5MB制限）
+      final int fileSize = await imageFile.length();
+      const int maxSize = 5 * 1024 * 1024; // 5MB
+      if (fileSize > maxSize) {
+        AppLogger.error('画像ファイルサイズが大きすぎます: $fileSize bytes', tag: 'UserService');
+        throw Exception('画像ファイルサイズが大きすぎます（5MB以下にしてください）');
+      }
+
+      // Firebase Storageに新しい画像をアップロード
+      final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = _storage.ref().child('avatars').child(fileName);
+
+      AppLogger.info('新しいアバター画像アップロード開始: $fileName', tag: 'UserService');
+
       final uploadTask = ref.putFile(imageFile);
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
@@ -168,25 +275,37 @@ class UserService {
 
       AppLogger.success('Firestore更新完了', tag: 'UserService');
 
-      // 古いアバター画像を削除（非同期で実行）
+      // 古いアバター画像を削除（非同期で実行、エラーは無視）
       if (oldAvatarUrl.isNotEmpty) {
         AppLogger.info('古いアバター削除を開始します: $oldAvatarUrl', tag: 'UserService');
 
-        // 同期的に削除を実行してエラーを確認
-        try {
-          await _deleteOldAvatar(oldAvatarUrl);
-        } catch (error) {
-          AppLogger.error('古いアバター削除で重大なエラー: $error', tag: 'UserService');
-        }
+        // 非同期で削除を実行（エラーは無視）
+        _deleteOldAvatar(oldAvatarUrl).catchError((error) {
+          AppLogger.warning('古いアバター削除でエラー（無視）: $error', tag: 'UserService');
+        });
       } else {
         AppLogger.info('削除対象の古いアバターがありません', tag: 'UserService');
       }
 
+      AppLogger.success('ファイルベースアバター画像更新完了', tag: 'UserService');
+      return downloadUrl;
 
-      return true;
     } catch (e) {
-      AppLogger.error('アバター画像更新エラー: $e', tag: 'UserService');
-      return false;
+      AppLogger.error('ファイルベースアバター画像更新エラー: $e', tag: 'UserService');
+
+      // エラーメッセージをユーザーフレンドリーに変換
+      String userMessage = '画像の更新に失敗しました';
+
+      if (e.toString().contains('network') || e.toString().contains('connection')) {
+        userMessage = 'ネットワーク接続エラーです。インターネット接続を確認してください';
+      } else if (e.toString().contains('permission') || e.toString().contains('unauthorized')) {
+        userMessage = '権限エラーが発生しました';
+      } else if (e.toString().contains('ファイルサイズ')) {
+        userMessage = '画像ファイルサイズが大きすぎます（5MB以下にしてください）';
+      }
+
+      // エラーを再スロー（上位でユーザーフレンドリーなメッセージを表示）
+      throw Exception(userMessage);
     }
   }
 
