@@ -171,7 +171,7 @@ class GalleryPhotoDetailScreen extends StatelessWidget {
     final weatherWidgets = <Widget>[];
 
     // 各方向の気象データを表示
-    for (final direction in ['north', 'south', 'east', 'west']) {
+    for (final direction in AppConstants.checkDirections) {
       if (photo.weatherData.containsKey(direction)) {
         final directionData = photo.weatherData[direction] as Map<String, dynamic>?;
         if (directionData != null) {

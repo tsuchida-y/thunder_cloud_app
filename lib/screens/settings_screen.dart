@@ -502,7 +502,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 方角別の気象データカードを構築
   List<Widget> _buildDirectionalWeatherCards() {
-    final directions = ['north', 'south', 'east', 'west'];
+    const directions = AppConstants.checkDirections;
     final directionNames = {
       'north': '北',
       'south': '南',
@@ -1045,14 +1045,21 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
         'avatarUrl': finalAvatarUrl,
       };
 
-      Navigator.of(context).pop(updatedInfo);
+      // mountedチェックを追加してBuildContextの安全性を確保
+      if (mounted) {
+        Navigator.of(context).pop(updatedInfo);
+      }
     } catch (e) {
       AppLogger.error('保存エラー: $e', tag: 'ProfileEditDialog');
-      _showErrorSnackBar('保存に失敗しました: $e');
+      if (mounted) {
+        _showErrorSnackBar('保存に失敗しました: $e');
+      }
     } finally {
-      setState(() {
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -1082,8 +1089,14 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
           child: const Text('キャンセル'),
         ),
         ElevatedButton(
-          onPressed: _isUpdatingAvatar ? null : _save,
-          child: const Text('保存'),
+          onPressed: _isUpdatingAvatar || _isSaving ? null : _save,
+          child: _isSaving
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('保存'),
         ),
       ],
     );

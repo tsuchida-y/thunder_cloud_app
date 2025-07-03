@@ -10,8 +10,6 @@ import '../services/user/user_id_service.dart';
 class AppConstants {
   // ===== アプリ基本情報 =====
   static const String appTitle = "入道雲サーチ";
-  static const String appVersion = "1.0.0";
-  static const String defaultUserId = "user_001";
 
   // デバッグモード設定（本番では false に設定）
   static const bool isDebugMode = false; // App Store 審査用にfalseに変更

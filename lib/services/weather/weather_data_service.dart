@@ -7,21 +7,51 @@ import '../../utils/logger.dart';
 
 /// 気象データの管理と共有を行うサービスクラス
 /// Firestoreからの気象データ取得とリアルタイム監視を提供
+/// ChangeNotifierを継承して、データ変更時にUIに通知
 class WeatherDataService extends ChangeNotifier {
+  /*
+  ================================================================================
+                                    シングルトン
+                          アプリ全体で共有する単一インスタンス
+  ================================================================================
+  */
   static WeatherDataService? _instance;
   static WeatherDataService get instance => _instance ??= WeatherDataService._();
 
   WeatherDataService._();
 
-  // Firestore インスタンス
+  /*
+  ================================================================================
+                                    依存関係
+                         外部サービスとの接続とインスタンス
+  ================================================================================
+  */
+  /// Firestoreデータベースインスタンス
+  /// 気象データのキャッシュ保存・取得に使用
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 最後に取得した気象データ
+  /*
+  ================================================================================
+                                    状態管理
+                          データの保持と状態の管理
+  ================================================================================
+  */
+  /// 最後に取得した気象データ（4方向のデータを保持）
   Map<String, Map<String, dynamic>> _lastWeatherData = {};
+
+  /// 最終更新時刻（データの鮮度管理用）
   DateTime? _lastUpdateTime;
+
+  /// 最終更新位置（データの位置情報管理用）
   LatLng? _lastLocation;
 
-  /// 最後に取得した気象データを取得
+  /*
+  ================================================================================
+                                    ゲッター
+                          外部からの安全なデータアクセス
+  ================================================================================
+  */
+  /// 最後に取得した気象データを取得（不変コピーを返す）
   Map<String, Map<String, dynamic>> get lastWeatherData => Map.from(_lastWeatherData);
 
   /// 最終更新時刻を取得
@@ -33,10 +63,21 @@ class WeatherDataService extends ChangeNotifier {
   /// 気象データが利用可能かどうか
   bool get hasData => _lastWeatherData.isNotEmpty;
 
+  /*
+  ================================================================================
+                                データ取得機能
+                        Firestoreからの気象データ取得処理
+  ================================================================================
+  */
+
   /// Firestoreから気象データを取得・保存
+  /// 位置情報の取得、キャッシュデータの検証、状態更新を統合
+  ///
+  /// [providedLocation] 提供された位置情報（nullの場合はFirestoreから取得）
   Future<void> fetchAndStoreWeatherData(LatLng? providedLocation) async {
     AppLogger.info('Firestoreから気象データ取得開始', tag: 'WeatherDataService');
 
+    // ステップ1: 位置情報の決定
     LatLng? currentLocation = providedLocation;
 
     // 位置情報が提供されていない場合は、Firestoreから最新のユーザー位置を取得
@@ -53,10 +94,11 @@ class WeatherDataService extends ChangeNotifier {
     AppLogger.info('使用する位置情報: 緯度 ${currentLocation.latitude.toStringAsFixed(2)}, 経度 ${currentLocation.longitude.toStringAsFixed(2)}', tag: 'WeatherDataService');
 
     try {
-      // Firestoreのweather_cacheコレクションからデータを取得
+      // ステップ2: Firestoreからキャッシュデータを取得
       final cacheKey = _generateCacheKey(currentLocation);
       final cacheDoc = await _firestore.collection('weather_cache').doc(cacheKey).get();
 
+      // ステップ3: キャッシュデータの存在確認と処理
       if (cacheDoc.exists) {
         final cachedData = cacheDoc.data();
         if (cachedData != null && cachedData.containsKey('data')) {
@@ -64,13 +106,13 @@ class WeatherDataService extends ChangeNotifier {
             cachedData['data'].cast<String, Map<String, dynamic>>()
           );
 
-          // データを保存
+          // ステップ4: データの保存と状態更新
           _lastWeatherData = weatherData;
           _lastUpdateTime = (cachedData['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
           _lastLocation = currentLocation;
 
-          // ログ出力
-          for (String direction in ['north', 'south', 'east', 'west']) {
+          // ステップ5: 詳細ログの出力
+          for (String direction in AppConstants.checkDirections) {
             if (weatherData.containsKey(direction)) {
               _logWeatherData(weatherData[direction]!, direction);
               if (weatherData[direction]!.containsKey('analysis')) {
@@ -79,7 +121,7 @@ class WeatherDataService extends ChangeNotifier {
             }
           }
 
-          // リスナーに変更を通知
+          // ステップ6: UIへの変更通知
           notifyListeners();
 
           AppLogger.success('Firestoreから気象データ取得完了: ${weatherData.length}方向', tag: 'WeatherDataService');
@@ -87,6 +129,7 @@ class WeatherDataService extends ChangeNotifier {
         }
       }
 
+      // ステップ7: キャッシュがない場合の処理
       AppLogger.warning('Firestoreにキャッシュデータが見つかりません。Firebase Functionsによる自動更新を待機中...', tag: 'WeatherDataService');
 
       // キャッシュがない場合は空のデータで初期化
@@ -96,6 +139,7 @@ class WeatherDataService extends ChangeNotifier {
       notifyListeners();
 
     } catch (e) {
+      // ステップ8: エラーハンドリング
       AppLogger.error('Firestore気象データ取得エラー', error: e, tag: 'WeatherDataService');
 
       // エラー時は空のデータで初期化
@@ -109,14 +153,16 @@ class WeatherDataService extends ChangeNotifier {
   }
 
   /// Firestoreからユーザーの最新位置情報を取得
+  /// 固定ユーザーIDを使用して位置情報を取得（開発・テスト用）
   Future<LatLng?> _getUserLocationFromFirestore() async {
     try {
       AppLogger.info('Firestoreからユーザー位置情報を取得中...', tag: 'WeatherDataService');
 
-      // 固定ユーザーIDから位置情報を取得
+      // ステップ1: 固定ユーザーIDから位置情報を取得
       const userId = 'user_001';
       final userDoc = await _firestore.collection('users').doc(userId).get();
 
+      // ステップ2: ドキュメントの存在確認とデータ抽出
       if (userDoc.exists) {
         final userData = userDoc.data();
         if (userData != null &&
@@ -126,6 +172,7 @@ class WeatherDataService extends ChangeNotifier {
           final latitude = userData['latitude']?.toDouble();
           final longitude = userData['longitude']?.toDouble();
 
+          // ステップ3: 座標の妥当性チェック
           if (latitude != null && longitude != null) {
             AppLogger.success('Firestoreからユーザー位置取得成功: 緯度 ${latitude.toStringAsFixed(2)}, 経度 ${longitude.toStringAsFixed(2)}', tag: 'WeatherDataService');
             return LatLng(latitude, longitude);
@@ -137,50 +184,85 @@ class WeatherDataService extends ChangeNotifier {
       return null;
 
     } catch (e) {
+      // エラーハンドリング
       AppLogger.error('Firestoreからのユーザー位置取得エラー', error: e, tag: 'WeatherDataService');
       return null;
     }
   }
 
+  /*
+  ================================================================================
+                                リアルタイム監視機能
+                        Firestoreリアルタイムリスナーの管理
+  ================================================================================
+  */
+
   /// Firestoreの気象データをリアルタイム監視
+  /// データ変更時に自動的に状態を更新してUIに通知
+  ///
+  /// [currentLocation] 監視対象の位置情報
   void startRealtimeWeatherDataListener(LatLng currentLocation) {
     AppLogger.info('気象データのリアルタイム監視を開始', tag: 'WeatherDataService');
 
     final cacheKey = _generateCacheKey(currentLocation);
 
+    // Firestoreのリアルタイムリスナーを設定
+    // データ変更時に自動的に新しいデータを取得
     _firestore.collection('weather_cache').doc(cacheKey).snapshots().listen(
       (snapshot) {
+        // ステップ1: スナップショットの存在確認
         if (snapshot.exists) {
           final data = snapshot.data();
           if (data != null && data.containsKey('data')) {
+            // ステップ2: データの変換と更新
             final weatherData = Map<String, Map<String, dynamic>>.from(
               data['data'].cast<String, Map<String, dynamic>>()
             );
 
-            // データを更新
+            // ステップ3: 状態の更新
             _lastWeatherData = weatherData;
             _lastUpdateTime = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
             _lastLocation = currentLocation;
 
             AppLogger.info('リアルタイム更新: ${weatherData.length}方向のデータを受信', tag: 'WeatherDataService');
 
-            // リスナーに変更を通知
+            // ステップ4: UIへの変更通知
             notifyListeners();
           }
         }
       },
       onError: (error) {
+        // エラーハンドリング
         AppLogger.error('リアルタイム監視エラー', error: error, tag: 'WeatherDataService');
       }
     );
   }
 
+  /*
+  ================================================================================
+                                ユーティリティメソッド
+                        補助的な処理・データ検証・キー生成
+  ================================================================================
+  */
+
   /// キャッシュキーを生成
+  /// 位置情報から一意のキャッシュキーを生成
   String _generateCacheKey(LatLng location) {
     return AppConstants.generateCacheKey(location.latitude, location.longitude);
   }
 
+  /*
+  ================================================================================
+                                ログ出力機能
+                        データの可視化とデバッグ支援
+  ================================================================================
+  */
+
   /// 気象データをログ出力
+  /// 受信した気象データを見やすい形式でログに出力
+  ///
+  /// [weatherData] 気象データのマップ
+  /// [direction] 方向（north, south, east, west）
   void _logWeatherData(Map<String, dynamic> weatherData, String direction) {
     final logData = {
       '方向': direction,
@@ -197,6 +279,10 @@ class WeatherDataService extends ChangeNotifier {
   }
 
   /// 分析結果をログ出力
+  /// 入道雲分析結果を見やすい形式でログに出力
+  ///
+  /// [analysis] 分析結果のマップ
+  /// [direction] 方向（north, south, east, west）
   void _logAnalysisResults(Map<String, dynamic> analysis, String direction) {
     final analysisData = {
       '方向': direction,
@@ -213,7 +299,15 @@ class WeatherDataService extends ChangeNotifier {
     AppLogger.debug('入道雲分析結果: $analysisData', tag: 'WeatherDataService');
   }
 
+  /*
+  ================================================================================
+                                リソース管理
+                        データのクリアと監視の停止
+  ================================================================================
+  */
+
   /// データをクリア
+  /// 保持している気象データと状態をリセット
   void clearData() {
     _lastWeatherData.clear();
     _lastUpdateTime = null;
@@ -222,6 +316,7 @@ class WeatherDataService extends ChangeNotifier {
   }
 
   /// リアルタイム監視を停止
+  /// 監視の停止処理（実際の監視停止処理は呼び出し元で管理）
   void stopRealtimeWeatherDataListener() {
     AppLogger.info('リアルタイム監視を停止', tag: 'WeatherDataService');
     // 実際の監視停止処理は呼び出し元で管理

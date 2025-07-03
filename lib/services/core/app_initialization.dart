@@ -90,7 +90,7 @@ class AppInitializationService {
 
       // 並列で通知サービスと位置情報サービスを初期化
       await Future.wait([
-        NotificationService.initialize(),
+        NotificationService().initialize(),
         PushNotificationService.initialize(),
         _initializeLocationService(),
         _initializeUserIdService(),

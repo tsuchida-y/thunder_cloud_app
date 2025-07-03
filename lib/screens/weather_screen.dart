@@ -51,7 +51,6 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   ================================================================================
   */
 
-
   /// ウィジェット初期化処理
   /// initState() : Widgetが生成されたときに呼ばれる
   /// 画面ライフサイクル監視を開始し、非同期で画面初期化を実行
@@ -85,10 +84,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
-      case AppLifecycleState.resumed:
+      case AppLifecycleState.resumed://アプリ復帰時
         _handleAppResumed();
         break;
-      case AppLifecycleState.paused:
+      case AppLifecycleState.paused://アプリ一時停止時の処理
         _handleAppPaused();
         break;
       default:
@@ -172,7 +171,8 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   /// 通知許可取得とプッシュ通知サービスの設定を実行
   Future<void> _initializeNotifications() async {
     try {
-      await NotificationService.initialize();
+      final notificationService = NotificationService();
+      await notificationService.initialize();
       await PushNotificationService.initialize();
     } catch (e) {
       AppLogger.error('通知初期化エラー', error: e, tag: 'WeatherScreen');
@@ -193,6 +193,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
                        入道雲発生条件の監視とデータ更新処理
   ================================================================================
   */
+  final WeatherCacheService _weatherService = WeatherCacheService();
 
   /// 気象データ監視の開始
   /// 30秒間隔で気象データを取得し、入道雲発生条件を監視
@@ -219,6 +220,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     if (_currentLocation == null) return;
 
     try {
+      //現在地の天気データをFirestoreのキャッシュから取得している
       final weatherData = await _weatherService.getWeatherDataWithCache(
         _currentLocation!.latitude,
         _currentLocation!.longitude,
@@ -237,26 +239,22 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
   void _updateMatchingCitiesFromWeatherData(Map<String, dynamic> weatherData) {
     final newMatchingCities = <String>[];
 
-    // 4方向（北・南・東・西）それぞれで入道雲の可能性をチェック
-    for (final direction in ['north', 'south', 'east', 'west']) {
-      if (weatherData.containsKey(direction)) {
-        final directionData = weatherData[direction] as Map<String, dynamic>?;
+    // 4方向（北・南・東・西）で入道雲の可能性が高い方向を抽出
+    for (final direction in AppConstants.checkDirections) {
+      if (!weatherData.containsKey(direction)) continue;
 
-        if (directionData != null) {
-          // 複数距離（50km, 160km, 250km）から最適なデータを選択
-          final bestData = _selectBestDistanceData(direction, directionData);
+      final directionData = weatherData[direction] as Map<String, dynamic>?;
+      if (directionData == null) continue;
 
-          if (bestData != null && bestData.containsKey('analysis')) {
-            final analysis = bestData['analysis'] as Map<String, dynamic>?;
+      final bestData = _selectBestDistanceData(direction, directionData);
+      if (bestData == null || !bestData.containsKey('analysis')) continue;
 
-            // 気象データ解析で入道雲の可能性が高いと判定された場合
-            if (analysis != null && analysis['isLikely'] == true) {
-              newMatchingCities.add(direction);
-            }
-          }
-        }
+      final analysis = bestData['analysis'] as Map<String, dynamic>?;
+      if (analysis != null && analysis['isLikely'] == true) {
+        newMatchingCities.add(direction);
       }
     }
+
 
     // UIを更新（変更があった場合のみ）
     if (_hasMatchingCitiesChanged(newMatchingCities)) {
