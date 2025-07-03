@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../constants/app_constants.dart';
 import '../../utils/logger.dart';
+import '../notification/fcm_token_manager.dart';
 
 /// 位置情報サービス
 /// GPS位置情報の取得、監視、キャッシュ管理を行う
@@ -337,21 +338,25 @@ class LocationService {
   */
 
   /// Firestoreから位置情報を取得
-  /// ユーザーIDに基づいて保存された位置情報を取得
+  /// FCMトークンベースの統合構造から位置情報を取得
   ///
-  /// [userId] ユーザーID（nullの場合はAppConstantsから取得）
+  /// [userId] ユーザーID（後方互換性のため残存、実際はFCMトークンを使用）
   /// Returns: 位置情報のLatLng、見つからない場合はnull
   static Future<LatLng?> _getLocationFromFirestore(String? userId) async {
     try {
       AppLogger.info('Firestoreから位置情報取得開始', tag: 'LocationService');
 
-      // ステップ1: ユーザーIDの決定
-      final actualUserId = userId ?? await AppConstants.getCurrentUserId();
+      // ステップ1: FCMトークンを取得
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken == null) {
+        AppLogger.warning('FCMトークンが取得できません', tag: 'LocationService');
+        return null;
+      }
 
-      // ステップ2: Firestoreからユーザードキュメントを取得
+      // ステップ2: FCMトークンベースでユーザードキュメントを取得
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
-          .doc(actualUserId)
+          .doc(fcmToken)
           .get()
           .timeout(const Duration(seconds: 5)); // 短いタイムアウト
 
@@ -384,31 +389,37 @@ class LocationService {
   }
 
   /// Firestoreに位置情報を非同期で保存
-  /// メイン処理をブロックしない非同期保存処理
+  /// メイン処理をブロックしない非同期保存処理（統合構造対応）
   ///
   /// [location] 保存する位置情報
-  /// [userId] ユーザーID（nullの場合はAppConstantsから取得）
+  /// [userId] ユーザーID（後方互換性のため残存、実際はFCMトークンを使用）
   static void _saveLocationToFirestoreAsync(LatLng location, String? userId) {
     // ステップ1: 非同期で実行し、エラーが発生してもメイン処理をブロックしない
     Future.microtask(() async {
       try {
-        final actualUserId = userId ?? await AppConstants.getCurrentUserId();
+        // ステップ2: FCMトークンを取得
+        final fcmToken = FCMTokenManager.currentToken;
+        if (fcmToken == null) {
+          AppLogger.warning('FCMトークンが取得できません', tag: 'LocationService');
+          return;
+        }
 
-        // ステップ2: 緯度・経度を小数点第2位までに丸めて保存（精度の最適化）
+        // ステップ3: 緯度・経度を小数点第2位までに丸めて保存（精度の最適化）
         final roundedLatitude = double.parse(location.latitude.toStringAsFixed(2));
         final roundedLongitude = double.parse(location.longitude.toStringAsFixed(2));
 
-        // ステップ3: Firestoreにデータを保存
+        // ステップ4: FCMトークンベースでFirestoreにデータを保存（統合構造）
         await FirebaseFirestore.instance
             .collection('users')
-            .doc(actualUserId)
+            .doc(fcmToken)
             .set({
           'latitude': roundedLatitude,
           'longitude': roundedLongitude,
-          'lastLocationUpdate': FieldValue.serverTimestamp(),
+          'lastUpdated': FieldValue.serverTimestamp(),
+          'isActive': true,
         }, SetOptions(merge: true));
 
-        AppLogger.info('位置情報をFirestoreに非同期保存完了', tag: 'LocationService');
+        AppLogger.info('位置情報をFirestoreに非同期保存完了（統合構造）', tag: 'LocationService');
       } catch (e) {
         AppLogger.error('Firestore非同期保存エラー', error: e, tag: 'LocationService');
       }

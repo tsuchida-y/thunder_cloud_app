@@ -1,6 +1,5 @@
 import 'dart:developer' as dev;
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -70,44 +69,23 @@ class FCMTokenManager {
   /// [forceRefresh] 強制的に新規取得するかどうか
   /// Returns: FCMトークン、取得できない場合はnull
   static Future<String?> getToken({bool forceRefresh = false}) async {
-    // ステップ1: 有効なキャッシュがある場合はそれを返す
     if (!forceRefresh && isTokenValid && _cachedToken != null) {
       dev.log("✅ キャッシュされたFCMトークンを使用: ${_cachedToken!.substring(0, 20)}...");
       return _cachedToken;
     }
-
     dev.log("🔄 FCMトークンを新規取得中...");
-
     try {
       final messaging = FirebaseMessaging.instance;
-
-      // ステップ2: シミュレーター検出
-      if (Platform.isIOS && await _isSimulator()) {
-        return await _generateDevelopmentToken();
-      }
-
-      // ステップ3: 実機での取得を試行
+      // シミュレーターや開発用トークン生成は削除
       final token = await _acquireRealToken(messaging);
-
       if (token != null) {
         _cacheToken(token);
         return token;
       }
-
-      // ステップ4: 開発環境では代替トークンを生成
-      if (kDebugMode) {
-        return await _generateDevelopmentToken();
-      }
-
+      dev.log("❌ FCMトークンの取得に失敗しました");
       return null;
-
     } catch (e) {
       dev.log("❌ FCMトークン取得エラー: $e");
-
-      if (kDebugMode) {
-        return await _generateDevelopmentToken();
-      }
-
       return null;
     }
   }
@@ -170,65 +148,47 @@ class FCMTokenManager {
   /// [attempt] 現在の試行回数
   static Future<void> _ensureAPNSToken(FirebaseMessaging messaging, int attempt) async {
     try {
-      // ステップ1: APNSトークンの取得
-      final apnsToken = await messaging.getAPNSToken();
+      // ステップ1: 通知権限の確認と要求
+      final settings = await messaging.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        dev.log("⚠️ 通知権限が許可されていません (試行 $attempt)");
+        // 権限を再要求
+        final permission = await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        if (permission.authorizationStatus != AuthorizationStatus.authorized) {
+          dev.log("❌ 通知権限の要求に失敗しました");
+          return;
+        }
+      }
 
-      if (apnsToken != null) {
-        dev.log("✅ APNSトークン確認済み");
-      } else {
-        dev.log("⚠️ APNSトークン未取得 (試行 $attempt)");
-        // ステップ2: 短時間待機してAPNSの準備を待つ
-        await Future.delayed(Duration(seconds: 2 * attempt));
+      // ステップ2: APNSトークンの取得（複数回試行）
+      String? apnsToken;
+      for (int i = 0; i < 3; i++) {
+        apnsToken = await messaging.getAPNSToken();
+        if (apnsToken != null) {
+          dev.log("✅ APNSトークン確認済み: ${apnsToken.substring(0, 20)}...");
+          break;
+        } else {
+          dev.log("⚠️ APNSトークン未取得 (試行 $attempt-${i + 1})");
+          // 待機時間を段階的に増加
+          await Future.delayed(Duration(seconds: 2 * (i + 1)));
+        }
+      }
+
+      // ステップ3: APNSトークンが取得できない場合の処理
+      if (apnsToken == null) {
+        dev.log("❌ APNSトークンの取得に失敗しました");
+        // 開発環境では続行を許可
+        if (kDebugMode) {
+          dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
+        }
       }
 
     } catch (e) {
       dev.log("❌ APNSトークン確認エラー: $e");
-    }
-  }
-
-  /*
-  ================================================================================
-                                開発環境対応
-                        シミュレーター・開発環境での代替トークン生成
-  ================================================================================
-  */
-
-  /// 開発用トークンの生成
-  /// シミュレーターや開発環境で使用する代替トークンを生成
-  ///
-  /// Returns: 生成された開発用トークン
-  static Future<String?> _generateDevelopmentToken() async {
-    // ステップ1: 環境の判定
-    final isSimulator = Platform.isIOS && await _isSimulator();
-    final tokenType = isSimulator ? "シミュレーター" : "開発";
-
-    dev.log("🎭 $tokenType用トークンを生成");
-
-    // ステップ2: ランダムトークンの生成
-    final random = math.Random();
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final token = 'dev_token_${List.generate(40, (index) => chars[random.nextInt(chars.length)]).join()}';
-
-    // ステップ3: トークンのキャッシュ
-    _cacheToken(token);
-    dev.log("✅ 開発用トークン生成完了: ${token.substring(0, 20)}...");
-
-    return token;
-  }
-
-  /// シミュレーター判定
-  /// iOSシミュレーター環境かどうかを判定
-  ///
-  /// Returns: シミュレーター環境の場合はtrue
-  static Future<bool> _isSimulator() async {
-    if (!Platform.isIOS) return false;
-
-    try {
-      // ステップ1: 環境変数によるシミュレーター検出
-      return Platform.environment['SIMULATOR_DEVICE_NAME'] != null ||
-             Platform.environment['SIMULATOR_VERSION_INFO'] != null;
-    } catch (e) {
-      return false;
     }
   }
 
@@ -274,7 +234,6 @@ class FCMTokenManager {
       'isValid': isTokenValid,
       'lastUpdate': _lastTokenUpdate?.toIso8601String(),
       'tokenPreview': _cachedToken?.substring(0, 20),
-      'isDevelopmentToken': _cachedToken?.startsWith('dev_token_') ?? false,
     };
   }
 }

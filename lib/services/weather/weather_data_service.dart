@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../constants/app_constants.dart';
 import '../../utils/logger.dart';
+import '../notification/fcm_token_manager.dart';
 
 /// 気象データの管理と共有を行うサービスクラス
 /// Firestoreからの気象データ取得とリアルタイム監視を提供
@@ -153,16 +154,22 @@ class WeatherDataService extends ChangeNotifier {
   }
 
   /// Firestoreからユーザーの最新位置情報を取得
-  /// 固定ユーザーIDを使用して位置情報を取得（開発・テスト用）
+  /// FCMトークンベースの統合構造からユーザー位置情報を取得
   Future<LatLng?> _getUserLocationFromFirestore() async {
     try {
       AppLogger.info('Firestoreからユーザー位置情報を取得中...', tag: 'WeatherDataService');
 
-      // ステップ1: 固定ユーザーIDから位置情報を取得
-      const userId = 'user_001';
-      final userDoc = await _firestore.collection('users').doc(userId).get();
+      // ステップ1: FCMトークンを取得
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken == null) {
+        AppLogger.warning('FCMトークンが取得できません', tag: 'WeatherDataService');
+        return null;
+      }
 
-      // ステップ2: ドキュメントの存在確認とデータ抽出
+      // ステップ2: FCMトークンベースでユーザードキュメントを取得
+      final userDoc = await _firestore.collection('users').doc(fcmToken).get();
+
+      // ステップ3: ドキュメントの存在確認とデータ抽出
       if (userDoc.exists) {
         final userData = userDoc.data();
         if (userData != null &&
@@ -172,7 +179,7 @@ class WeatherDataService extends ChangeNotifier {
           final latitude = userData['latitude']?.toDouble();
           final longitude = userData['longitude']?.toDouble();
 
-          // ステップ3: 座標の妥当性チェック
+          // ステップ4: 座標の妥当性チェック
           if (latitude != null && longitude != null) {
             AppLogger.success('Firestoreからユーザー位置取得成功: 緯度 ${latitude.toStringAsFixed(2)}, 経度 ${longitude.toStringAsFixed(2)}', tag: 'WeatherDataService');
             return LatLng(latitude, longitude);

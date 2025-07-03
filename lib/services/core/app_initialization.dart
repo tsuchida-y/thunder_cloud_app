@@ -88,10 +88,11 @@ class AppInitializationService {
     try {
       dev.log("🔔 サービス並列初期化開始");
 
-      // 並列で通知サービスと位置情報サービスを初期化
+      // ステップ1: 通知サービスを最初に初期化（FCMトークン取得のため）
+      await NotificationService().initialize();
+
+      // ステップ2: その他のサービスを並列初期化
       await Future.wait([
-        NotificationService().initialize(),
-        PushNotificationService.initialize(),
         _initializeLocationService(),
         _initializeUserIdService(),
       ]);

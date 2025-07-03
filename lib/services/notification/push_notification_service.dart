@@ -31,7 +31,8 @@ class PushNotificationService {
   static Function(List<String>)? onThunderCloudDetected;
 
   /// サービスが初期化されているかどうか
-  static bool get isInitialized => _messaging != null;
+  static bool _isInitialized = false;
+  static bool get isInitialized => _isInitialized;
 
   /*
   ================================================================================
@@ -45,6 +46,12 @@ class PushNotificationService {
   ///
   /// Returns: 初期化の成功/失敗
   static Future<void> initialize() async {
+    // 重複初期化を防ぐ
+    if (_isInitialized) {
+      AppLogger.info('プッシュ通知サービスは既に初期化済みです', tag: 'PushNotificationService');
+      return;
+    }
+
     AppLogger.info('プッシュ通知サービス初期化開始', tag: 'PushNotificationService');
 
     try {
@@ -64,6 +71,9 @@ class PushNotificationService {
         AppLogger.warning('通知権限が拒否されました: ${settings.authorizationStatus}', tag: 'PushNotificationService');
         await _initializeWithoutPermission();
       }
+
+      // 初期化完了をマーク
+      _isInitialized = true;
     } catch (e) {
       AppLogger.error('プッシュ通知サービス初期化エラー', error: e, tag: 'PushNotificationService');
     }
@@ -256,7 +266,8 @@ class PushNotificationService {
 
       AppLogger.info('ユーザー位置情報保存開始: 緯度=$latitude → $roundedLatitude, 経度=$longitude → $roundedLongitude', tag: 'PushNotificationService');
 
-      // ステップ3: FCMトークンを含むユーザーデータを作成
+      // ステップ3: 統合構造のユーザーデータを作成
+      // 既存のプロフィール情報を保持しながら位置情報を更新
       final userData = {
         'fcmToken': fcmToken,
         'latitude': roundedLatitude,

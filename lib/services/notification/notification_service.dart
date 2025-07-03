@@ -49,10 +49,10 @@ class NotificationService {
     AppLogger.info('通知サービス初期化開始', tag: 'NotificationService');
 
     try {
-      // ステップ1: 通知権限の要求
-      final permissionGranted = await _requestNotificationPermission();
+      // ステップ1: 通知権限の要求（適切なタイミングで実行）
+      final permissionGranted = await _requestNotificationPermissionWithRetry();
       if (!permissionGranted) {
-        AppLogger.warning('通知権限が拒否されました', tag: 'NotificationService');
+        AppLogger.error('通知権限の取得に失敗しました。FCMトークンの取得はできません', tag: 'NotificationService');
         return false;
       }
 
@@ -62,7 +62,7 @@ class NotificationService {
       // ステップ3: FCMハンドラーの設定
       await _setupFCMHandlers();
 
-      // ステップ4: FCMトークンの取得と保存
+      // ステップ4: FCMトークンの取得と保存（権限が許可された後に実行）
       await _setupFCMToken();
 
       AppLogger.success('通知サービス初期化完了', tag: 'NotificationService');
@@ -73,14 +73,15 @@ class NotificationService {
     }
   }
 
-  /// 通知権限を要求
-  /// ユーザーに通知の許可を求める
+  /// 通知権限を要求（リトライ機能付き）
+  /// ユーザーに通知の許可を求める（適切なタイミングで実行）
   ///
   /// Returns: 権限が許可されたかどうか
-  Future<bool> _requestNotificationPermission() async {
+  Future<bool> _requestNotificationPermissionWithRetry() async {
     try {
       // ステップ1: 現在の権限状態を確認
       final settings = await _firebaseMessaging.getNotificationSettings();
+      AppLogger.info('現在の通知権限状態: ${settings.authorizationStatus}', tag: 'NotificationService');
 
       // ステップ2: 権限が既に許可されている場合はtrueを返す
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
@@ -89,6 +90,7 @@ class NotificationService {
       }
 
       // ステップ3: 権限を要求
+      AppLogger.info('通知権限を要求中...', tag: 'NotificationService');
       final permission = await _firebaseMessaging.requestPermission(
         alert: true,
         announcement: false,
@@ -102,6 +104,29 @@ class NotificationService {
       // ステップ4: 権限の結果を確認
       final isGranted = permission.authorizationStatus == AuthorizationStatus.authorized;
       AppLogger.info('通知権限要求結果: ${isGranted ? '許可' : '拒否'}', tag: 'NotificationService');
+
+      // ステップ5: 権限が拒否された場合の再試行
+      if (!isGranted) {
+        AppLogger.warning('通知権限が拒否されました。5秒後に再試行します', tag: 'NotificationService');
+        await Future.delayed(const Duration(seconds: 5));
+
+        // 再試行
+        AppLogger.info('通知権限の再要求中...', tag: 'NotificationService');
+        final retryPermission = await _firebaseMessaging.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          sound: true,
+        );
+
+        final retryGranted = retryPermission.authorizationStatus == AuthorizationStatus.authorized;
+        AppLogger.info('通知権限再要求結果: ${retryGranted ? '許可' : '拒否'}', tag: 'NotificationService');
+
+        return retryGranted;
+      }
 
       return isGranted;
     } catch (e) {
@@ -201,17 +226,30 @@ class NotificationService {
   /// トークンの取得と保存を実行
   Future<void> _setupFCMToken() async {
     try {
-      // ステップ1: FCMトークンの取得
+      AppLogger.info('FCMトークン取得開始', tag: 'NotificationService');
+
+      // ステップ1: 通知権限の最終確認
+      final settings = await _firebaseMessaging.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        AppLogger.error('通知権限が許可されていないため、FCMトークンの取得を中止します', tag: 'NotificationService');
+        return;
+      }
+
+      // ステップ2: 少し待機してからFCMトークンを取得（APNSトークンの設定を待つ）
+      AppLogger.info('APNSトークンの設定を待機中...', tag: 'NotificationService');
+      await Future.delayed(const Duration(seconds: 2));
+
+      // ステップ3: FCMトークンの取得
       final token = await FCMTokenManager.getToken();
 
       if (token != null) {
-        // ステップ2: トークンの保存（キャッシュは自動的に行われる）
-        AppLogger.info('FCMトークン取得完了: ${token.substring(0, 20)}...', tag: 'NotificationService');
+        // ステップ4: トークンの保存（キャッシュは自動的に行われる）
+        AppLogger.success('FCMトークン取得完了: ${token.substring(0, 20)}...', tag: 'NotificationService');
       } else {
-        AppLogger.warning('FCMトークンの取得に失敗しました', tag: 'NotificationService');
+        AppLogger.error('FCMトークンの取得に失敗しました', tag: 'NotificationService');
       }
 
-      // ステップ3: トークン更新リスナーの設定
+      // ステップ5: トークン更新リスナーの設定
       _firebaseMessaging.onTokenRefresh.listen(_handleTokenRefresh);
     } catch (e) {
       AppLogger.error('FCMトークン設定エラー', error: e, tag: 'NotificationService');
