@@ -5,7 +5,7 @@
  */
 const WEATHER_CONSTANTS = {
   // 監視方向と距離
-  CHECK_DIRECTIONS: ["north", "south", "east", "west"],
+  CHECK_DIRECTIONS: ['north', 'south', 'east', 'west'],
   CHECK_DISTANCES: [50.0, 160.0, 250.0],
 
   // 座標計算
@@ -132,16 +132,16 @@ const HTTP_STATUS = {
  * メモリ設定
  */
 const MEMORY_SETTINGS = {
-  DEFAULT: "256MiB",
-  HIGH: "512MiB",
+  DEFAULT: '256MiB',
+  HIGH: '512MiB',
 };
 
 /**
  * リージョン設定
  */
 const REGIONS = {
-  ASIA_NORTHEAST: "asia-northeast1",
-  US_CENTRAL: "us-central1",
+  ASIA_NORTHEAST: 'asia-northeast1',
+  US_CENTRAL: 'us-central1',
 };
 
 /**
@@ -193,7 +193,9 @@ const HelperFunctions = {
    * 高精度キャッシュキーを生成（API用）
    */
   generateHighPrecisionKey: (latitude, longitude) => {
-    return `${HelperFunctions.formatCoordinate(latitude, WEATHER_CONSTANTS.API_COORDINATE_PRECISION)}_${HelperFunctions.formatCoordinate(longitude, WEATHER_CONSTANTS.API_COORDINATE_PRECISION)}`;
+    const latFormatted = HelperFunctions.formatCoordinate(latitude, WEATHER_CONSTANTS.API_COORDINATE_PRECISION);
+    const lonFormatted = HelperFunctions.formatCoordinate(longitude, WEATHER_CONSTANTS.API_COORDINATE_PRECISION);
+    return `${latFormatted}_${lonFormatted}`;
   },
 
   /**
@@ -211,12 +213,18 @@ const HelperFunctions = {
   /**
    * 夜間モード用のレスポンスを作成
    */
-  createNightModeResponse: () => ({
-    north: { analysis: { isLikely: false, totalScore: 0, riskLevel: "極めて低い" }, temperature: WEATHER_CONSTANTS.DEFAULT_TEMPERATURE },
-    south: { analysis: { isLikely: false, totalScore: 0, riskLevel: "極めて低い" }, temperature: WEATHER_CONSTANTS.DEFAULT_TEMPERATURE },
-    east: { analysis: { isLikely: false, totalScore: 0, riskLevel: "極めて低い" }, temperature: WEATHER_CONSTANTS.DEFAULT_TEMPERATURE },
-    west: { analysis: { isLikely: false, totalScore: 0, riskLevel: "極めて低い" }, temperature: WEATHER_CONSTANTS.DEFAULT_TEMPERATURE }
-  }),
+  createNightModeResponse: () => {
+    const nightResponse = {
+      analysis: { isLikely: false, totalScore: 0, riskLevel: '極めて低い' },
+      temperature: WEATHER_CONSTANTS.DEFAULT_TEMPERATURE
+    };
+    return {
+      north: nightResponse,
+      south: nightResponse,
+      east: nightResponse,
+      west: nightResponse
+    };
+  },
 
   /**
    * FCMトークンを短縮表示用にフォーマット

@@ -1,30 +1,31 @@
-const js = require("@eslint/js");
-const googleConfig = require("eslint-config-google");
+const js = require('@eslint/js');
 
 module.exports = [
   js.configs.recommended,
-  googleConfig,
   {
     languageOptions: {
       ecmaVersion: 2020,
-      sourceType: "module",
+      sourceType: 'commonjs',
       globals: {
-        console: "readonly",
-        process: "readonly",
-        Buffer: "readonly",
-        __dirname: "readonly",
-        __filename: "readonly",
-        module: "readonly",
-        require: "readonly",
-        exports: "readonly",
-        global: "readonly",
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        global: 'readonly',
+        setTimeout: 'readonly',
+        Promise: 'readonly',
       },
     },
     rules: {
-      "quotes": ["error", "double"],
-      "indent": ["error", 2],
-      "max-len": ["error", {"code": 120}],
-      "no-undef": "error",
+      'quotes': ['error', 'single'],
+      'indent': ['error', 2],
+      'max-len': ['error', {'code': 120}],
+      'no-undef': 'error',
+      'no-unused-vars': 'warn',
     },
   },
 ];

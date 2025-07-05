@@ -96,9 +96,9 @@ class ThunderCloudAnalyzer {
 
     // 入道雲の可能性を判定
     const isThunderCloudLikely = totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_HIGH;
-    const riskLevel = totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_HIGH ? "高い" :
-                     totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_MEDIUM ? "中程度" :
-                     totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_LOW ? "低い" : "極めて低い";
+    const riskLevel = totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_HIGH ? '高い' :
+      totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_MEDIUM ? '中程度' :
+        totalScore >= ANALYSIS_THRESHOLDS.TOTAL_SCORE_LOW ? '低い' : '極めて低い';
 
     return {
       isThunderCloudLikely,

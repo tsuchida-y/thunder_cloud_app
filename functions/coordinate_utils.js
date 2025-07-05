@@ -13,20 +13,20 @@ function calculateDirectionCoordinates(direction, currentLatitude, currentLongit
   let longitudeOffset = WEATHER_CONSTANTS.DEFAULT_WEATHER_VALUE;
 
   switch (direction) {
-    case 'north':
-      latitudeOffset = distanceKm / latitudePerDegreeKm;
-      break;
-    case 'south':
-      latitudeOffset = -distanceKm / latitudePerDegreeKm;
-      break;
-    case 'east':
-      longitudeOffset = distanceKm / (latitudePerDegreeKm * Math.cos(currentLatitude * Math.PI / 180.0));
-      break;
-    case 'west':
-      longitudeOffset = -distanceKm / (latitudePerDegreeKm * Math.cos(currentLatitude * Math.PI / 180.0));
-      break;
-    default:
-      throw new Error(`未知の方向: ${direction}`);
+  case 'north':
+    latitudeOffset = distanceKm / latitudePerDegreeKm;
+    break;
+  case 'south':
+    latitudeOffset = -distanceKm / latitudePerDegreeKm;
+    break;
+  case 'east':
+    longitudeOffset = distanceKm / (latitudePerDegreeKm * Math.cos(currentLatitude * Math.PI / 180.0));
+    break;
+  case 'west':
+    longitudeOffset = -distanceKm / (latitudePerDegreeKm * Math.cos(currentLatitude * Math.PI / 180.0));
+    break;
+  default:
+    throw new Error(`未知の方向: ${direction}`);
   }
 
   return {
