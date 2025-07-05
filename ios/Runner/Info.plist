@@ -43,6 +43,8 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>background-fetch</string>
+		<string>background-processing</string>
 	</array>
 	<key>CFBundleIcons</key>
 	<dict>
