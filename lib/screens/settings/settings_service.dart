@@ -142,7 +142,7 @@ class SettingsService {
 
       // Firestoreのユーザー情報を更新
       final success = await UserService.updateUserInfo(
-        userId,
+        userId: userId,
         userName: newUserInfo['userName'] as String?,
         avatarUrl: newUserInfo['avatarUrl'] as String?,
       );

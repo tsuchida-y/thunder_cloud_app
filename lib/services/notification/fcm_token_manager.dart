@@ -164,31 +164,36 @@ class FCMTokenManager {
         }
       }
 
-      // ステップ2: APNSトークンの取得（複数回試行）
+      // ステップ2: APNSトークンの取得（より長い待機時間で試行）
       String? apnsToken;
-      for (int i = 0; i < 3; i++) {
+      const int maxAttempts = 10; // 試行回数を増加
+      const int waitTimeMs = 2000; // 待機時間を2秒に延長
+
+      for (int i = 0; i < maxAttempts; i++) {
+        dev.log("⚠️ APNSトークン未取得 (試行 $attempt-${i + 1})");
+
+        // APNSトークンを取得
         apnsToken = await messaging.getAPNSToken();
-        if (apnsToken != null) {
-          dev.log("✅ APNSトークン確認済み: ${apnsToken.substring(0, 20)}...");
-          break;
-        } else {
-          dev.log("⚠️ APNSトークン未取得 (試行 $attempt-${i + 1})");
-          // 待機時間を段階的に増加
-          await Future.delayed(Duration(seconds: 2 * (i + 1)));
+
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          dev.log("✅ APNSトークン確認済み: ${apnsToken.substring(0, 10)}...");
+          return;
         }
+
+        // 待機時間を延長（iOSシステムがAPNSトークンを設定する時間を確保）
+        await Future.delayed(const Duration(milliseconds: waitTimeMs));
       }
 
-      // ステップ3: APNSトークンが取得できない場合の処理
-      if (apnsToken == null) {
-        dev.log("❌ APNSトークンの取得に失敗しました");
-        // 開発環境では続行を許可
-        if (kDebugMode) {
-          dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
-        }
+      dev.log("❌ APNSトークンの取得に失敗しました");
+
+      // 開発環境での回避策
+      if (kDebugMode) {
+        dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
+        return;
       }
 
     } catch (e) {
-      dev.log("❌ APNSトークン確認エラー: $e");
+      dev.log("❌ APNSトークン取得エラー: $e");
     }
   }
 

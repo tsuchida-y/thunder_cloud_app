@@ -1,14 +1,14 @@
 import 'dart:developer' as dev;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 // import '../firebase_options.dart'; // ファイルが見つからないためコメントアウト
 import '../location/location_service.dart';
 import '../notification/notification_service.dart';
 import '../notification/push_notification_service.dart';
+import '../photo/user_service.dart';
 import '../user/user_id_service.dart';
 
 /// アプリケーション全体の初期化を管理するサービス
@@ -35,7 +35,7 @@ class AppInitializationService {
       dev.log("✅ Firebase Core初期化完了");
 
       // 他のサービスはバックグラウンドで初期化
-      _initializeOtherServicesInBackground();
+      _initializeBackgroundServices();
 
     } catch (e) {
       dev.log("❌ 初期化エラー: $e");
@@ -43,28 +43,76 @@ class AppInitializationService {
     }
   }
 
-  /// その他のサービスをバックグラウンドで初期化
-  static void _initializeOtherServicesInBackground() {
-    Future.microtask(() async {
-      try {
-        dev.log("🔄 バックグラウンドサービス初期化開始");
+  /// バックグラウンドサービスの初期化
+  /// 通知、位置情報、ユーザーIDサービスの並列初期化
+  static Future<void> _initializeBackgroundServices() async {
+    dev.log("🔄 バックグラウンドサービス初期化開始");
 
-        // バックグラウンド通知ハンドラーを設定
-        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    try {
+      // ステップ1: サービス並列初期化
+      dev.log("🔔 サービス並列初期化開始");
+      await Future.wait([
+        _initializeNotificationService(),
+        _initializeLocationService(),
+        _initializeUserIdService(),
+      ]);
 
-        // 通知サービスと位置情報サービスを並列初期化
-        await _initializeServicesInParallel();
+      // ステップ2: 初回アクセス時のユーザー作成（FCMトークン取得を待つ）
+      dev.log("👤 初回アクセス時のユーザー作成開始");
+      final userId = await UserIdService.getUserId();
+      dev.log("👤 ユーザーID取得: ${userId.substring(0, 8)}...");
 
-        // デバッグ時のみFirestore接続テスト（軽量化）
-        if (kDebugMode) {
-          await _quickFirestoreTest();
+      // FCMトークンの取得を待つ（最大60秒）
+      bool userCreated = false;
+      for (int i = 0; i < 12; i++) {
+        try {
+          await UserService.createUserOnFirstAccess(userId);
+          userCreated = true;
+          dev.log("✅ 初回アクセス時のユーザー作成完了");
+          break;
+        } catch (e) {
+          dev.log("⚠️ 初回アクセス時のユーザー作成失敗 (試行 ${i + 1}/12): $e");
+          if (i < 11) {
+            dev.log("⏳ 5秒後に再試行します...");
+            await Future.delayed(const Duration(seconds: 5));
+          }
         }
-
-        dev.log("✅ バックグラウンドサービス初期化完了");
-      } catch (e) {
-        dev.log("❌ バックグラウンドサービス初期化エラー: $e");
       }
-    });
+
+      if (!userCreated) {
+        dev.log("❌ 初回アクセス時のユーザー作成に失敗しました");
+      }
+
+      // ステップ3: バックグラウンド位置情報取得
+      dev.log("🔄 バックグラウンド位置情報取得開始");
+      try {
+        final location = await LocationService.getLocationFast(forceRefresh: false);
+        if (location != null) {
+          dev.log("✅ バックグラウンド位置情報取得成功: $location");
+
+          // 位置情報をFirestoreに保存
+          dev.log("📍 アプリ起動時の位置情報をFirestoreに保存開始...");
+          await _saveLocationToFirestore(location);
+          dev.log("📍 ✅ アプリ起動時の位置情報をFirestoreに自動保存完了");
+          dev.log("📍 保存された座標: 緯度=${location.latitude.toStringAsFixed(2)}, 経度=${location.longitude.toStringAsFixed(2)}");
+        }
+      } catch (e) {
+        dev.log("❌ バックグラウンド位置情報取得エラー: $e");
+      }
+
+      dev.log("✅ サービス初期化完了");
+    } catch (e) {
+      dev.log("❌ バックグラウンドサービス初期化エラー: $e");
+    }
+  }
+
+  /// 位置情報をFirestoreに保存
+  static Future<void> _saveLocationToFirestore(LatLng location) async {
+    try {
+      await PushNotificationService.saveUserLocation(location.latitude, location.longitude);
+    } catch (e) {
+      dev.log("❌ 位置情報のFirestore保存エラー: $e");
+    }
   }
 
   /// Firebase Coreのみの最小初期化
@@ -83,23 +131,14 @@ class AppInitializationService {
     }
   }
 
-  /// 通知サービスと位置情報サービスの並列初期化
-  static Future<void> _initializeServicesInParallel() async {
+  /// 通知サービスの初期化
+  static Future<void> _initializeNotificationService() async {
     try {
-      dev.log("🔔 サービス並列初期化開始");
-
-      // ステップ1: 通知サービスを最初に初期化（FCMトークン取得のため）
+      dev.log("🔔 通知サービス初期化開始");
       await NotificationService().initialize();
-
-      // ステップ2: その他のサービスを並列初期化
-      await Future.wait([
-        _initializeLocationService(),
-        _initializeUserIdService(),
-      ]);
-
-      dev.log("✅ サービス初期化完了");
+      dev.log("✅ 通知サービス初期化完了");
     } catch (e) {
-      dev.log("❌ サービス初期化エラー: $e");
+      dev.log("❌ 通知サービス初期化エラー: $e");
     }
   }
 
@@ -171,23 +210,6 @@ class AppInitializationService {
     });
   }
 
-  /// 軽量なFirestore接続確認
-  static Future<void> _quickFirestoreTest() async {
-    try {
-      dev.log("🔍 軽量Firestore接続確認");
-
-      // 単純なinstance取得のみで接続確認
-      FirebaseFirestore.instance.settings = const Settings(
-        persistenceEnabled: true,
-        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-      );
-
-      dev.log("✅ Firestore接続確認完了");
-    } catch (e) {
-      dev.log("❌ Firestore接続確認エラー: $e");
-    }
-  }
-
   /// ユーザーIDサービスの初期化
   static Future<void> _initializeUserIdService() async {
     try {
@@ -209,6 +231,11 @@ class AppInitializationService {
 
     dev.log("📝 FCMトークン状態: ${token.substring(0, 20)}...");
     return token;
+  }
+
+  /// ユーザー統計情報を取得（外部公開用）
+  static Future<Map<String, dynamic>> getUserStatistics() async {
+    return await UserService.getUserStatistics();
   }
 }
 

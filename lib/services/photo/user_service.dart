@@ -24,6 +24,7 @@ class UserService {
 
   /// ユーザー情報を取得（統合構造）
   /// FCMトークンをドキュメントIDとして使用し、存在しない場合は作成
+  /// 重複ドキュメントの検出・削除も実行
   ///
   /// [userId] ユーザーID（プロフィール情報用）
   /// Returns: ユーザー情報マップ
@@ -36,13 +37,16 @@ class UserService {
         return _createFallbackUserInfo(userId);
       }
 
-      // ステップ2: FCMトークンベースでドキュメントを取得
+      // ステップ2: 重複ドキュメントの検出・削除
+      await _cleanupDuplicateDocuments(userId);
+
+      // ステップ3: FCMトークンベースでドキュメントを取得
       final doc = await _firestore.collection('users').doc(fcmToken).get();
 
       if (doc.exists) {
         final data = doc.data() ?? {};
 
-        // ステップ3: プロフィール情報が不足している場合は補完
+        // ステップ4: プロフィール情報が不足している場合は補完
         if (!data.containsKey('userId') || !data.containsKey('userName')) {
           await _updateProfileInfo(fcmToken, userId, data);
           // 更新後のデータを再取得
@@ -52,14 +56,151 @@ class UserService {
 
         return data;
       } else {
-        // ステップ4: ドキュメントが存在しない場合は統合構造で作成
+        // ステップ5: ドキュメントが存在しない場合は統合構造で作成
         final defaultUserInfo = _createDefaultUserInfo(fcmToken, userId);
         await _firestore.collection('users').doc(fcmToken).set(defaultUserInfo);
+
+        AppLogger.success('新しいユーザードキュメントを作成: ${fcmToken.substring(0, 20)}...', tag: 'UserService');
         return defaultUserInfo;
       }
     } catch (e) {
       AppLogger.error('ユーザー情報取得エラー: $e', tag: 'UserService');
       return _createFallbackUserInfo(userId);
+    }
+  }
+
+  /// 重複ドキュメントの検出・削除
+  /// 同じuserIdを持つ古いドキュメントを削除してデータの整合性を保つ
+  ///
+  /// [userId] ユーザーID
+  static Future<void> _cleanupDuplicateDocuments(String userId) async {
+    try {
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken == null) return;
+
+      // ステップ1: 同じuserIdを持つドキュメントを検索
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // ステップ2: 現在のFCMトークン以外のドキュメントを削除
+      final documentsToDelete = <DocumentSnapshot>[];
+
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        final docFcmToken = data['fcmToken'] as String?;
+
+        // 現在のFCMトークンと異なるドキュメントを削除対象に追加
+        if (docFcmToken != null && docFcmToken != fcmToken) {
+          documentsToDelete.add(doc);
+        }
+      }
+
+      // ステップ3: 重複ドキュメントを削除
+      if (documentsToDelete.isNotEmpty) {
+        AppLogger.info('重複ドキュメントを削除中: ${documentsToDelete.length}件', tag: 'UserService');
+
+        final batch = _firestore.batch();
+        for (final doc in documentsToDelete) {
+          batch.delete(doc.reference);
+          AppLogger.info('削除対象: ${doc.id.substring(0, 20)}...', tag: 'UserService');
+        }
+
+        await batch.commit();
+        AppLogger.success('重複ドキュメント削除完了', tag: 'UserService');
+      }
+    } catch (e) {
+      AppLogger.error('重複ドキュメント削除エラー: $e', tag: 'UserService');
+    }
+  }
+
+  /// 初回アクセス時のユーザー作成
+  /// アプリ起動時に確実にユーザードキュメントを作成
+  ///
+  /// [userId] ユーザーID
+  /// Returns: 作成成功時はtrue
+  static Future<bool> createUserOnFirstAccess(String userId) async {
+    try {
+      AppLogger.info('初回アクセス時のユーザー作成開始', tag: 'UserService');
+
+      // ステップ1: FCMトークンを取得
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken == null) {
+        AppLogger.warning('FCMトークンが取得できません。後で再試行します', tag: 'UserService');
+        return false;
+      }
+
+      // ステップ2: 既存ドキュメントの確認
+      final existingDoc = await _firestore.collection('users').doc(fcmToken).get();
+
+      if (existingDoc.exists) {
+        AppLogger.info('ユーザードキュメントは既に存在します', tag: 'UserService');
+        return true;
+      }
+
+      // ステップ3: 新しいユーザードキュメントを作成
+      final defaultUserInfo = _createDefaultUserInfo(fcmToken, userId);
+      await _firestore.collection('users').doc(fcmToken).set(defaultUserInfo);
+
+      AppLogger.success('初回アクセス時のユーザー作成完了', tag: 'UserService');
+      return true;
+    } catch (e) {
+      AppLogger.error('初回アクセス時のユーザー作成エラー: $e', tag: 'UserService');
+      return false;
+    }
+  }
+
+  /// ユーザー統計情報を取得
+  /// usersコレクションの状況を確認
+  ///
+  /// Returns: 統計情報マップ
+  static Future<Map<String, dynamic>> getUserStatistics() async {
+    try {
+      final querySnapshot = await _firestore.collection('users').get();
+      final documents = querySnapshot.docs;
+
+      // ステップ1: 基本統計
+      final totalDocuments = documents.length;
+      int activeUsers = 0;
+      int inactiveUsers = 0;
+      final List<String> fcmTokens = [];
+
+      // ステップ2: 各ドキュメントの分析
+      for (final doc in documents) {
+        final data = doc.data();
+        final isActive = data['isActive'] as bool? ?? false;
+        final fcmToken = data['fcmToken'] as String?;
+
+        if (isActive) {
+          activeUsers++;
+        } else {
+          inactiveUsers++;
+        }
+
+        if (fcmToken != null) {
+          fcmTokens.add(fcmToken);
+        }
+      }
+
+      // ステップ3: 重複チェック
+      final uniqueFcmTokens = fcmTokens.toSet();
+      final duplicateCount = fcmTokens.length - uniqueFcmTokens.length;
+
+      return {
+        'totalDocuments': totalDocuments,
+        'activeUsers': activeUsers,
+        'inactiveUsers': inactiveUsers,
+        'uniqueFcmTokens': uniqueFcmTokens.length,
+        'duplicateFcmTokens': duplicateCount,
+        'lastUpdated': DateTime.now(),
+      };
+    } catch (e) {
+      AppLogger.error('ユーザー統計情報取得エラー: $e', tag: 'UserService');
+      return {
+        'error': e.toString(),
+        'lastUpdated': DateTime.now(),
+      };
     }
   }
 
@@ -386,13 +527,22 @@ class UserService {
 
       AppLogger.info('新しいアバターURL: $downloadUrl', tag: 'UserService');
 
-      // Firestoreのユーザー情報を更新
-      await _firestore.collection('users').doc(userId).update({
-        'avatarUrl': downloadUrl,
-        'updatedAt': DateTime.now(),
-      });
-
-      AppLogger.success('Firestore更新完了', tag: 'UserService');
+      // FCMトークンベースでFirestoreのユーザー情報を更新
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken != null) {
+        await _firestore.collection('users').doc(fcmToken).update({
+          'avatarUrl': downloadUrl,
+          'updatedAt': DateTime.now(),
+        });
+        AppLogger.success('FCMトークンベースでFirestore更新完了', tag: 'UserService');
+      } else {
+        // フォールバック: userIdをドキュメントIDとして使用
+        await _firestore.collection('users').doc(userId).update({
+          'avatarUrl': downloadUrl,
+          'updatedAt': DateTime.now(),
+        });
+        AppLogger.warning('フォールバック: userIdベースでFirestore更新完了', tag: 'UserService');
+      }
 
       // 古いアバター画像を削除（非同期で実行、エラーは無視）
       if (oldAvatarUrl.isNotEmpty) {
@@ -406,30 +556,23 @@ class UserService {
         AppLogger.info('削除対象の古いアバターがありません', tag: 'UserService');
       }
 
-      AppLogger.success('ファイルベースアバター画像更新完了', tag: 'UserService');
+      AppLogger.success('アバター画像更新完了', tag: 'UserService');
       return downloadUrl;
-
     } catch (e) {
-      AppLogger.error('ファイルベースアバター画像更新エラー: $e', tag: 'UserService');
-
-      // エラーメッセージをユーザーフレンドリーに変換
-      String userMessage = '画像の更新に失敗しました';
-
-      if (e.toString().contains('network') || e.toString().contains('connection')) {
-        userMessage = 'ネットワーク接続エラーです。インターネット接続を確認してください';
-      } else if (e.toString().contains('permission') || e.toString().contains('unauthorized')) {
-        userMessage = '権限エラーが発生しました';
-      } else if (e.toString().contains('ファイルサイズ')) {
-        userMessage = '画像ファイルサイズが大きすぎます（5MB以下にしてください）';
-      }
-
-      // エラーを再スロー（上位でユーザーフレンドリーなメッセージを表示）
-      throw Exception(userMessage);
+      AppLogger.error('アバター画像更新エラー: $e', tag: 'UserService');
+      return null;
     }
   }
 
-  /// ユーザー情報を一括更新
-  static Future<bool> updateUserInfo(String userId, {
+  /// ユーザー情報を更新（統合版）
+  /// FCMトークンベースのドキュメントを更新し、フォールバック処理も含む
+  ///
+  /// [userId] ユーザーID
+  /// [userName] 新しいユーザー名（オプション）
+  /// [avatarUrl] 新しいアバターURL（オプション）
+  /// Returns: 更新成功時はtrue
+  static Future<bool> updateUserInfo({
+    required String userId,
     String? userName,
     String? avatarUrl,
   }) async {
@@ -441,7 +584,16 @@ class UserService {
       if (userName != null) updateData['userName'] = userName;
       if (avatarUrl != null) updateData['avatarUrl'] = avatarUrl;
 
-      await _firestore.collection('users').doc(userId).update(updateData);
+      // FCMトークンベースで更新を試行
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken != null) {
+        await _firestore.collection('users').doc(fcmToken).update(updateData);
+        AppLogger.success('FCMトークンベースでユーザー情報更新完了', tag: 'UserService');
+      } else {
+        // フォールバック: userIdをドキュメントIDとして使用
+        await _firestore.collection('users').doc(userId).update(updateData);
+        AppLogger.warning('フォールバック: userIdベースでユーザー情報更新完了', tag: 'UserService');
+      }
 
       // 写真の userName も更新（userName が指定された場合のみ）
       if (userName != null) {
