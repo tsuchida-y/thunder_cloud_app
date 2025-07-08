@@ -5,10 +5,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isPublic",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
@@ -19,16 +15,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "isPublic",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "expiresAt",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
         }
       ]
     },
@@ -47,26 +35,16 @@
       ]
     },
     {
-      "collectionGroup": "likes",
+      "collectionGroup": "photos",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "expiresAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "likes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "photoId",
+          "fieldPath": "isPublic",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "expiresAt",
-          "order": "ASCENDING"
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -77,10 +55,16 @@
         {
           "fieldPath": "isActive",
           "order": "ASCENDING"
-        },
+        }
+      ]
+    },
+    {
+      "collectionGroup": "weather_cache",
+      "queryScope": "COLLECTION",
+      "fields": [
         {
-          "fieldPath": "lastUpdated",
-          "order": "DESCENDING"
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
         }
       ]
     }
