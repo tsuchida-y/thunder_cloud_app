@@ -145,6 +145,11 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
       AppLogger.success('WeatherScreen初期化完了 (${initDuration.inMilliseconds}ms)', tag: 'WeatherScreen');
     } catch (e) {
       AppLogger.error('WeatherScreen初期化エラー', error: e, tag: 'WeatherScreen');
+      // エラーが発生しても、位置情報だけは再試行
+      if (_currentLocation == null) {
+        AppLogger.info('エラー後の位置情報再試行', tag: 'WeatherScreen');
+        await _loadLocationDataOptimized();
+      }
     }
   }
 
@@ -331,6 +336,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     final startTime = DateTime.now();
     AppLogger.info('最適化された位置情報取得開始', tag: 'WeatherScreen');
 
+    // デバッグ: LocationServiceの状態を確認
+    final locationStatus = LocationService.getLocationStatus();
+    AppLogger.info('LocationService状態: $locationStatus', tag: 'WeatherScreen');
+
     // 1. まず画面遷移用の高速取得を試行（キャッシュ利用）
     final fastLocation = LocationService.getLocationForScreenTransition();
 
@@ -350,6 +359,10 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     // 2. キャッシュがない場合は通常の位置情報取得を実行
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;
     AppLogger.warning('キャッシュなし - 通常の位置情報取得を実行 (${elapsed}ms)', tag: 'WeatherScreen');
+
+    // デバッグ: 位置情報取得前の状態を再確認
+    AppLogger.info('位置情報取得前の状態: $_currentLocation', tag: 'WeatherScreen');
+
     await _loadLocationFast();
   }
 
@@ -410,6 +423,7 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
     try {
       AppLogger.info('フォールバック位置情報取得開始', tag: 'WeatherScreen');
 
+      // 強制的に新しい位置情報を取得
       final location = await LocationService.getCurrentLocationAsLatLng(forceRefresh: true)
           .timeout(AppConstants.locationTimeout);
 
@@ -419,10 +433,46 @@ class WeatherScreenState extends State<WeatherScreen> with WidgetsBindingObserve
 
         // 位置情報取得後、気象データも自動取得
         _updateWeatherData();
+      } else {
+        AppLogger.error('フォールバック位置情報取得も失敗', tag: 'WeatherScreen');
+        // 最後の手段として、位置情報監視を開始
+        _startLocationMonitoringAsFallback();
       }
     } catch (e) {
       AppLogger.error('フォールバック位置情報取得エラー', error: e, tag: 'WeatherScreen');
+      // 最後の手段として、位置情報監視を開始
+      _startLocationMonitoringAsFallback();
     }
+  }
+
+  /// 最後の手段として位置情報監視を開始
+  void _startLocationMonitoringAsFallback() {
+    AppLogger.info('最後の手段として位置情報監視を開始', tag: 'WeatherScreen');
+
+    // 既存のコールバックを保存
+    final originalCallback = LocationService.onLocationChanged;
+
+    // 一時的なコールバックを設定
+    LocationService.onLocationChanged = (LatLng location) {
+      AppLogger.success('監視から位置情報取得: $location', tag: 'WeatherScreen');
+
+      if (mounted) {
+        setState(() => _currentLocation = location);
+        _updateWeatherData();
+      }
+
+      // 位置情報が取得できたら監視を停止
+      LocationService.stopLocationMonitoring();
+
+      // 元のコールバックを復元
+      LocationService.onLocationChanged = originalCallback;
+
+      // 元のコールバックがあれば呼び出し
+      originalCallback?.call(location);
+    };
+
+    // 位置情報監視を開始
+    LocationService.startLocationMonitoring();
   }
 
   /*
