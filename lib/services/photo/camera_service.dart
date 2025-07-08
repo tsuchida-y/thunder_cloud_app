@@ -7,12 +7,31 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../utils/logger.dart';
 
+/// カメラサービスクラス
+/// カメラの初期化、写真撮影、画像処理機能を提供
+/// 権限チェックとエラーハンドリングを含む
 class CameraService {
+  /*
+  ================================================================================
+                                    状態管理
+                          カメラの状態とコントローラー管理
+  ================================================================================
+  */
   static CameraController? _controller;
   static List<CameraDescription>? _cameras;
   static bool _isInitialized = false;
 
+  /*
+  ================================================================================
+                                カメラ初期化機能
+                        カメラの初期設定と権限チェック
+  ================================================================================
+  */
+
   /// カメラサービスの初期化
+  /// 権限チェック、カメラ選択、コントローラー初期化を実行
+  ///
+  /// Returns: 初期化成功時はtrue
   static Future<bool> initialize() async {
     try {
       AppLogger.info('=== カメラサービス初期化開始 ===', tag: 'CameraService');
@@ -26,8 +45,8 @@ class CameraService {
       // 既存のコントローラーを解放
       await dispose();
 
-      // Step 1: 利用可能なカメラを取得（権限チェックも含む）
-      AppLogger.info('Step 1: 利用可能なカメラを取得中...', tag: 'CameraService');
+      // ステップ1: 利用可能なカメラを取得（権限チェックも含む）
+      AppLogger.info('ステップ1: 利用可能なカメラを取得中...', tag: 'CameraService');
       try {
         _cameras = await availableCameras();
         AppLogger.info('availableCameras()実行完了', tag: 'CameraService');
@@ -53,8 +72,8 @@ class CameraService {
         AppLogger.info('カメラ $i: ${camera.name} (${camera.lensDirection})', tag: 'CameraService');
       }
 
-      // Step 2: 背面カメラを選択
-      AppLogger.info('Step 2: 背面カメラを選択中...', tag: 'CameraService');
+      // ステップ2: 背面カメラを選択
+      AppLogger.info('ステップ2: 背面カメラを選択中...', tag: 'CameraService');
       CameraDescription selectedCamera;
       try {
         selectedCamera = _cameras!.firstWhere(
@@ -67,8 +86,8 @@ class CameraService {
         return false;
       }
 
-      // Step 3: カメラコントローラーを初期化
-      AppLogger.info('Step 3: カメラコントローラーを初期化中...', tag: 'CameraService');
+      // ステップ3: カメラコントローラーを初期化
+      AppLogger.info('ステップ3: カメラコントローラーを初期化中...', tag: 'CameraService');
       try {
         _controller = CameraController(
           selectedCamera,
@@ -114,13 +133,36 @@ class CameraService {
     }
   }
 
+  /*
+  ================================================================================
+                                プロパティアクセス
+                        カメラ状態の取得と確認
+  ================================================================================
+  */
+
   /// カメラコントローラーを取得
+  /// 現在のカメラコントローラーインスタンスを返す
+  ///
+  /// Returns: カメラコントローラー（nullの可能性あり）
   static CameraController? get controller => _controller;
 
   /// 初期化状態を取得
+  /// カメラが正常に初期化されているかを確認
+  ///
+  /// Returns: 初期化済みの場合はtrue
   static bool get isInitialized => _isInitialized && _controller != null && _controller!.value.isInitialized;
 
+  /*
+  ================================================================================
+                                権限チェック機能
+                        カメラアクセス権限の確認
+  ================================================================================
+  */
+
   /// カメラ権限の詳細な状況を確認（簡易版）
+  /// availableCameras()を使用してカメラアクセス可能性をチェック
+  ///
+  /// Returns: 権限状態とカメラ情報のマップ
   static Future<Map<String, dynamic>> checkPermissionStatus() async {
     try {
       // availableCameras()を呼び出してカメラアクセス可能かチェック
@@ -147,7 +189,17 @@ class CameraService {
     }
   }
 
+  /*
+  ================================================================================
+                                写真撮影機能
+                        写真撮影と画像処理
+  ================================================================================
+  */
+
   /// 写真を撮影
+  /// カメラで写真を撮影し、画像処理を実行
+  ///
+  /// Returns: 撮影成功時は処理済みファイル
   static Future<File?> takePicture() async {
     if (!isInitialized) {
       AppLogger.error('カメラが初期化されていません', tag: 'CameraService');
@@ -171,12 +223,23 @@ class CameraService {
     }
   }
 
+  /*
+  ================================================================================
+                                画像処理機能
+                        画像のリサイズと圧縮処理
+  ================================================================================
+  */
+
   /// 画像処理（リサイズ・圧縮）
+  /// 画像サイズの最適化と品質調整を実行
+  ///
+  /// [imageFile] 処理対象の画像ファイル
+  /// Returns: 処理済みの画像ファイル
   static Future<File?> _processImage(File imageFile) async {
     try {
       AppLogger.info('画像処理開始: ${imageFile.path}', tag: 'CameraService');
 
-      // 画像を読み込み
+      // ステップ1: 画像を読み込み
       final Uint8List imageBytes = await imageFile.readAsBytes();
       img.Image? image = img.decodeImage(imageBytes);
 
@@ -187,10 +250,10 @@ class CameraService {
 
       AppLogger.info('元画像サイズ: ${image.width}x${image.height} (${imageBytes.length} bytes)', tag: 'CameraService');
 
-      // 画像サイズを確認（最大2MB制限）
+      // ステップ2: 画像サイズを確認（最大2MB制限）
       const int maxSizeBytes = 2 * 1024 * 1024; // 2MB
 
-      // 必要に応じてリサイズ
+      // ステップ3: 必要に応じてリサイズ
       if (imageBytes.length > maxSizeBytes || image.width > 1920 || image.height > 1920) {
         AppLogger.info('画像リサイズを実行中...', tag: 'CameraService');
 
@@ -204,19 +267,19 @@ class CameraService {
         AppLogger.info('リサイズ後サイズ: ${image.width}x${image.height}', tag: 'CameraService');
       }
 
-      // JPEG形式で保存（品質80%）
+      // ステップ4: JPEG形式で保存（品質80%）
       final Uint8List processedBytes = Uint8List.fromList(
         img.encodeJpg(image, quality: 80)
       );
 
-      // 処理済み画像を保存
+      // ステップ5: 処理済み画像を保存
       final Directory appDir = await getApplicationDocumentsDirectory();
       final String fileName = 'thunder_cloud_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final File processedFile = File('${appDir.path}/$fileName');
 
       await processedFile.writeAsBytes(processedBytes);
 
-      // 元の一時ファイルを削除
+      // ステップ6: 元の一時ファイルを削除
       if (await imageFile.exists()) {
         await imageFile.delete();
       }
@@ -229,7 +292,17 @@ class CameraService {
     }
   }
 
+  /*
+  ================================================================================
+                                カメラ制御機能
+                        フラッシュ、ズーム等の制御
+  ================================================================================
+  */
+
   /// フラッシュモードを切り替え
+  /// フラッシュのオン/オフを切り替え
+  ///
+  /// Returns: なし
   static Future<void> toggleFlash() async {
     if (!isInitialized) return;
 
@@ -244,6 +317,10 @@ class CameraService {
   }
 
   /// ズームレベルを設定
+  /// カメラのズームレベルを指定値に設定
+  ///
+  /// [zoom] ズームレベル
+  /// Returns: なし
   static Future<void> setZoomLevel(double zoom) async {
     if (!isInitialized) return;
 
@@ -254,7 +331,17 @@ class CameraService {
     }
   }
 
+  /*
+  ================================================================================
+                                リソース管理
+                        カメラリソースの解放とクリーンアップ
+  ================================================================================
+  */
+
   /// カメラサービスを解放
+  /// カメラコントローラーを適切に解放し、リソースをクリーンアップ
+  ///
+  /// Returns: なし
   static Future<void> dispose() async {
     try {
       if (_controller != null) {
