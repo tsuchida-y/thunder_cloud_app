@@ -27,38 +27,51 @@ import UserNotifications
     Messaging.messaging().delegate = self
 
     // APNS登録（確実に実行）
-    DispatchQueue.main.async {
-      application.registerForRemoteNotifications()
-    }
+    print("📱 Registering for remote notifications...")
+    application.registerForRemoteNotifications()
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   // APNS token受信時の処理
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-    print("📱 APNS Token registered successfully: \(deviceToken.map { String(format: "%02.2hhx", $0) }.joined())")
-    Messaging.messaging().apnsToken = deviceToken
+    let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+    print("📱 APNS Token registered successfully: \(tokenString)")
 
-    // APNSトークン設定後にFCMトークンを取得
-    Messaging.messaging().token { token, error in
-      if let error = error {
-        print("❌ FCM token error: \(error)")
-      } else if let token = token {
-        print("✅ FCM token obtained: \(token)")
+    // APNSトークンを設定
+    Messaging.messaging().apnsToken = deviceToken
+    print("📱 APNS Token set in Firebase Messaging")
+
+    // 少し待ってからFCMトークンを取得
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+      Messaging.messaging().token { token, error in
+        if let error = error {
+          print("❌ FCM token error after APNS success: \(error)")
+        } else if let token = token {
+          print("✅ FCM token obtained after APNS success: \(token.prefix(20))...")
+        }
       }
     }
   }
 
   // APNS token取得失敗時の処理
   override func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-    print("❌ APNS Token registration failed: \(error)")
+    print("❌ APNS Token registration failed: \(error.localizedDescription)")
 
-    // 失敗時もFCMトークン取得を試行
+    // エラーの詳細を出力
+    if let nsError = error as NSError? {
+      print("❌ APNS Error Code: \(nsError.code)")
+      print("❌ APNS Error Domain: \(nsError.domain)")
+      print("❌ APNS Error UserInfo: \(nsError.userInfo)")
+    }
+
+    // 失敗時もFCMトークン取得を試行（開発環境での回避策）
+    print("🔄 Attempting FCM token retrieval despite APNS failure...")
     Messaging.messaging().token { token, error in
       if let error = error {
         print("❌ FCM token error after APNS failure: \(error)")
       } else if let token = token {
-        print("✅ FCM token obtained despite APNS failure: \(token)")
+        print("✅ FCM token obtained despite APNS failure: \(token.prefix(20))...")
       }
     }
   }
