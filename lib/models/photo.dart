@@ -15,6 +15,7 @@ class Photo {
   final int likes;
   final bool isPublic;
   final List<String> tags;
+  final List<String> likedBy; // 新規追加：いいねしたユーザーのリスト
 
   Photo({
     required this.id,
@@ -30,6 +31,7 @@ class Photo {
     this.likes = 0,
     this.isPublic = true,
     this.tags = const [],
+    this.likedBy = const [], // 新規追加
   });
 
   /// Firestoreドキュメントから写真オブジェクトを作成
@@ -49,6 +51,7 @@ class Photo {
       likes: data['likes'] ?? 0,
       isPublic: data['isPublic'] ?? true,
       tags: List<String>.from(data['tags'] ?? []),
+      likedBy: List<String>.from(data['likedBy'] ?? []), // 新規追加
     );
   }
 
@@ -70,6 +73,7 @@ class Photo {
       likes: map['likes'] ?? 0,
       isPublic: map['isPublic'] ?? true,
       tags: List<String>.from(map['tags'] ?? []),
+      likedBy: List<String>.from(map['likedBy'] ?? []), // 新規追加
     );
   }
 
@@ -87,6 +91,7 @@ class Photo {
       'likes': likes,
       'isPublic': isPublic,
       'tags': tags,
+      'likedBy': likedBy, // 新規追加
     };
   }
 
@@ -106,6 +111,7 @@ class Photo {
       'likes': likes,
       'isPublic': isPublic,
       'tags': tags,
+      'likedBy': likedBy, // 新規追加
     };
   }
 
@@ -124,6 +130,7 @@ class Photo {
     int? likes,
     bool? isPublic,
     List<String>? tags,
+    List<String>? likedBy, // 新規追加
   }) {
     return Photo(
       id: id ?? this.id,
@@ -139,7 +146,13 @@ class Photo {
       likes: likes ?? this.likes,
       isPublic: isPublic ?? this.isPublic,
       tags: tags ?? this.tags,
+      likedBy: likedBy ?? this.likedBy, // 新規追加
     );
+  }
+
+  /// 指定されたユーザーがいいねしているかチェック
+  bool isLikedByUser(String userId) {
+    return likedBy.contains(userId);
   }
 }
 
