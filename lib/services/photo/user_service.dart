@@ -381,8 +381,7 @@ class UserService {
       // 通知システム用フィールド
       'fcmToken': fcmToken,
       'isActive': true,
-      'appVersion': '1.0.0',
-      'platform': 'flutter',
+      'appVersion': AppConstants.appVersion,
       'lastUpdated': now,
 
       // プロフィール情報用フィールド

@@ -274,8 +274,6 @@ class PushNotificationService {
         'longitude': roundedLongitude,
         'lastUpdated': FieldValue.serverTimestamp(),
         'isActive': true,
-        'appVersion': '1.0.0',
-        'platform': 'flutter',
       };
 
       // ステップ4: FCMトークンをドキュメントIDとして使用
