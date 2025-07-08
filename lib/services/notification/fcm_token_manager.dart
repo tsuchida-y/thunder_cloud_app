@@ -4,24 +4,12 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../constants/app_constants.dart';
+
 /// FCMトークン管理サービスクラス
 /// Firebase Cloud Messagingトークンの取得・キャッシュ・管理を担当
 /// シミュレーター環境での代替トークン生成も提供
 class FCMTokenManager {
-  /*
-  ================================================================================
-                                    定数定義
-                          キャッシュ期間とリトライ設定
-  ================================================================================
-  */
-  /// キャッシュされたトークンの有効期限（1時間）
-  /// トークンの再取得頻度を制御
-  static const Duration _tokenValidityDuration = Duration(hours: 1);
-
-  /// 最大リトライ回数
-  /// トークン取得失敗時の再試行回数
-  static const int _maxRetries = 3;
-
   /*
   ================================================================================
                                     状態管理
@@ -53,7 +41,7 @@ class FCMTokenManager {
     if (_cachedToken == null || _lastTokenUpdate == null) return false;
 
     final now = DateTime.now();
-    return now.difference(_lastTokenUpdate!) < _tokenValidityDuration;
+    return now.difference(_lastTokenUpdate!) < AppConstants.tokenValidityDuration;
   }
 
   /*
@@ -103,7 +91,7 @@ class FCMTokenManager {
   /// [messaging] Firebase Messagingインスタンス
   /// [maxRetries] 最大リトライ回数
   /// Returns: 取得したトークン、失敗時はnull
-  static Future<String?> _acquireRealToken(FirebaseMessaging messaging, {int maxRetries = _maxRetries}) async {
+  static Future<String?> _acquireRealToken(FirebaseMessaging messaging, {int maxRetries = AppConstants.fcmTokenMaxRetries}) async {
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         dev.log("🔑 FCMトークン取得試行 $attempt/$maxRetries");

@@ -68,6 +68,7 @@ class AppConstants {
   static const int baseLocationTimeoutSeconds = 20;
   static const int locationTimeoutIncrementSeconds = 10;
   static const int retryDelayMultiplier = 2;
+  static const int fcmTokenMaxRetries = 3; // FCMトークン取得の最大リトライ回数
 
   // ===== UI・レイアウト関連 =====
   // 画面サイズ判定
