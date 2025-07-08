@@ -246,8 +246,8 @@ class PhotoService {
     });
   }
 
-  /// 期限切れ写真を削除（Storage + Firestore + 関連データ）
-  /// 画像ファイル、Firestoreドキュメント、関連いいねを削除
+  /// 期限切れ写真を削除（Storage + Firestore）
+  /// 画像ファイルとFirestoreドキュメントを削除（いいねは写真と一緒に削除される）
   ///
   /// [doc] 削除する写真のドキュメント
   static Future<void> _deleteExpiredPhoto(DocumentSnapshot doc) async {
@@ -265,10 +265,7 @@ class PhotoService {
         }
       }
 
-      // ステップ2: 関連するいいねを削除
-      await _deleteRelatedLikes(doc.id);
-
-      // ステップ3: Firestoreから写真データを削除
+      // ステップ2: Firestoreから写真データを削除（いいね情報も一緒に削除される）
       await doc.reference.delete();
     } catch (e) {
       AppLogger.error('期限切れ写真削除エラー: ${doc.id} - $e', tag: 'PhotoService');
@@ -311,37 +308,36 @@ class PhotoService {
   */
 
   /// 写真にいいねを追加
-  /// 重複チェックを行い、いいね数を更新
+  /// シンプルな配列ベースの実装でパフォーマンスと可読性を向上
   ///
   /// [photoId] 写真ID
   /// [userId] ユーザーID
   /// Returns: いいね追加成功時はtrue
   static Future<bool> likePhoto(String photoId, String userId) async {
     try {
-      // ステップ1: 既にいいねしているかチェック
-      final isAlreadyLiked = await isPhotoLikedByUser(photoId, userId);
-      if (isAlreadyLiked) {
+      AppLogger.info('いいね追加開始: $photoId', tag: 'PhotoService');
+
+      // ステップ1: 写真の存在確認
+      final photoDoc = await _firestore.collection('photos').doc(photoId).get();
+      if (!photoDoc.exists) {
+        AppLogger.error('写真が見つかりません: $photoId', tag: 'PhotoService');
+        return false;
+      }
+
+      // ステップ2: 現在のいいね状態をチェック
+      final photo = Photo.fromDocument(photoDoc);
+      if (photo.isLikedByUser(userId)) {
         AppLogger.warning('既にいいね済み: $photoId', tag: 'PhotoService');
         return false;
       }
 
-      // ステップ2: いいね情報を保存（TTL付きで30日後に自動削除）
-      final likeId = '${photoId}_$userId';
-      final like = {
-        'photoId': photoId,
-        'userId': userId,
-        'timestamp': DateTime.now(),
-        'expiresAt': DateTime.now().add(const Duration(days: 30)), // 30日後に期限切れ
-      };
-
-      await _firestore.collection('likes').doc(likeId).set(like);
-
-      // ステップ3: 写真のいいね数を更新
+      // ステップ3: いいねを追加（アトミック操作）
       await _firestore.collection('photos').doc(photoId).update({
         'likes': FieldValue.increment(1),
+        'likedBy': FieldValue.arrayUnion([userId]),
       });
 
-      AppLogger.info('いいね追加: $photoId', tag: 'PhotoService');
+      AppLogger.success('いいね追加完了: $photoId', tag: 'PhotoService');
       return true;
     } catch (e) {
       AppLogger.error('いいね追加エラー: $e', tag: 'PhotoService');
@@ -350,30 +346,36 @@ class PhotoService {
   }
 
   /// 写真のいいねを削除
-  /// いいね状態をチェックし、いいね数を更新
+  /// シンプルな配列ベースの実装でパフォーマンスと可読性を向上
   ///
   /// [photoId] 写真ID
   /// [userId] ユーザーID
   /// Returns: いいね削除成功時はtrue
   static Future<bool> unlikePhoto(String photoId, String userId) async {
     try {
-      // ステップ1: いいねしているかチェック
-      final isLiked = await isPhotoLikedByUser(photoId, userId);
-      if (!isLiked) {
+      AppLogger.info('いいね削除開始: $photoId', tag: 'PhotoService');
+
+      // ステップ1: 写真の存在確認
+      final photoDoc = await _firestore.collection('photos').doc(photoId).get();
+      if (!photoDoc.exists) {
+        AppLogger.error('写真が見つかりません: $photoId', tag: 'PhotoService');
+        return false;
+      }
+
+      // ステップ2: 現在のいいね状態をチェック
+      final photo = Photo.fromDocument(photoDoc);
+      if (!photo.isLikedByUser(userId)) {
         AppLogger.warning('いいねしていません: $photoId', tag: 'PhotoService');
         return false;
       }
 
-      // ステップ2: いいね情報を削除
-      final likeId = '${photoId}_$userId';
-      await _firestore.collection('likes').doc(likeId).delete();
-
-      // ステップ3: 写真のいいね数を更新
+      // ステップ3: いいねを削除（アトミック操作）
       await _firestore.collection('photos').doc(photoId).update({
         'likes': FieldValue.increment(-1),
+        'likedBy': FieldValue.arrayRemove([userId]),
       });
 
-      AppLogger.info('いいね削除: $photoId', tag: 'PhotoService');
+      AppLogger.success('いいね削除完了: $photoId', tag: 'PhotoService');
       return true;
     } catch (e) {
       AppLogger.error('いいね削除エラー: $e', tag: 'PhotoService');
@@ -382,99 +384,30 @@ class PhotoService {
   }
 
   /// ユーザーが写真にいいねしているかチェック
-  /// 期限切れチェックも実行
+  /// Photoオブジェクトから直接判定するシンプルな実装
   ///
-  /// [photoId] 写真ID
+  /// [photo] 写真オブジェクト
   /// [userId] ユーザーID
   /// Returns: いいね状態（true=いいね済み）
-  static Future<bool> isPhotoLikedByUser(String photoId, String userId) async {
-    try {
-      final likeId = '${photoId}_$userId';
-      final doc = await _firestore.collection('likes').doc(likeId).get();
-
-      if (!doc.exists) {
-        return false;
-      }
-
-      // 期限切れチェック（クライアントサイドでも確認）
-      final data = doc.data() as Map<String, dynamic>;
-      final expiresAt = (data['expiresAt'] as Timestamp?)?.toDate();
-      if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
-        // 期限切れの場合は削除
-        await doc.reference.delete();
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      AppLogger.error('いいね状態確認エラー: $e', tag: 'PhotoService');
-      return false;
-    }
+  static bool isPhotoLikedByUser(Photo photo, String userId) {
+    return photo.isLikedByUser(userId);
   }
 
   /// 写真のいいね状態を一括取得（最適化版）
-  /// 複数の写真のいいね状態を効率的に取得
+  /// 写真データと一緒に取得されるため、追加のクエリが不要
   ///
-  /// [photoIds] 写真IDのリスト
+  /// [photos] 写真オブジェクトのリスト
   /// [userId] ユーザーID
   /// Returns: 写真IDをキーとしたいいね状態マップ
-  static Future<Map<String, bool>> getPhotosLikeStatus(List<String> photoIds, String userId) async {
-    try {
-      final likeStatus = <String, bool>{};
+  static Map<String, bool> getPhotosLikeStatus(List<Photo> photos, String userId) {
+    final likeStatus = <String, bool>{};
 
-      if (photoIds.isEmpty) {
-        return likeStatus;
-      }
-
-      // ステップ1: 全ての写真を未いいね状態で初期化
-      for (String photoId in photoIds) {
-        likeStatus[photoId] = false;
-      }
-
-      // ステップ2: バッチでいいね状態を確認（最大10件ずつ）
-      const batchSize = 10;
-      for (int i = 0; i < photoIds.length; i += batchSize) {
-        final batch = photoIds.skip(i).take(batchSize).toList();
-        final likeIds = batch.map((photoId) => '${photoId}_$userId').toList();
-
-        // whereIn クエリを使用して効率的に取得
-        final likesSnapshot = await _firestore
-            .collection('likes')
-            .where(FieldPath.documentId, whereIn: likeIds)
-            .get();
-
-        final now = DateTime.now();
-        for (var doc in likesSnapshot.docs) {
-          final data = doc.data();
-          final photoId = data['photoId'] as String;
-
-          // 期限切れチェック
-          final expiresAt = (data['expiresAt'] as Timestamp?)?.toDate();
-          if (expiresAt != null && now.isAfter(expiresAt)) {
-            // 期限切れの場合は削除（バックグラウンドで）
-            doc.reference.delete().catchError((e) {
-              AppLogger.warning('期限切れいいね削除エラー: $e', tag: 'PhotoService');
-            });
-            continue;
-          }
-
-          if (batch.contains(photoId)) {
-            likeStatus[photoId] = true;
-          }
-        }
-      }
-
-      AppLogger.info('いいね状態一括取得完了: ${likeStatus.length}件', tag: 'PhotoService');
-      return likeStatus;
-    } catch (e) {
-      AppLogger.error('いいね状態一括取得エラー: $e', tag: 'PhotoService');
-      // エラー時は全て未いいね状態で返す
-      final likeStatus = <String, bool>{};
-      for (String photoId in photoIds) {
-        likeStatus[photoId] = false;
-      }
-      return likeStatus;
+    for (final photo in photos) {
+      likeStatus[photo.id] = photo.isLikedByUser(userId);
     }
+
+    AppLogger.info('いいね状態一括取得完了: ${likeStatus.length}件', tag: 'PhotoService');
+    return likeStatus;
   }
 
   /*
@@ -485,7 +418,7 @@ class PhotoService {
   */
 
   /// 写真を削除
-  /// 権限チェック、Storage削除、Firestore削除、関連いいね削除を実行
+  /// 権限チェック、Storage削除、Firestore削除を実行（いいねは写真と一緒に削除される）
   ///
   /// [photoId] 写真ID
   /// [userId] ユーザーID
@@ -513,37 +446,14 @@ class PhotoService {
         AppLogger.warning('画像ファイル削除エラー: $e', tag: 'PhotoService');
       }
 
-      // ステップ3: Firestoreから写真データを削除
+      // ステップ3: Firestoreから写真データを削除（いいね情報も一緒に削除される）
       await _firestore.collection('photos').doc(photoId).delete();
-
-      // ステップ4: 関連するいいねを削除
-      await _deleteRelatedLikes(photoId);
 
       AppLogger.success('写真削除完了: $photoId', tag: 'PhotoService');
       return true;
     } catch (e) {
       AppLogger.error('写真削除エラー: $e', tag: 'PhotoService');
       return false;
-    }
-  }
-
-  /// 関連するいいねを削除
-  /// 指定された写真IDに関連するすべてのいいねを削除
-  ///
-  /// [photoId] 写真ID
-  static Future<void> _deleteRelatedLikes(String photoId) async {
-    try {
-      // いいねを削除
-      final likesSnapshot = await _firestore
-          .collection('likes')
-          .where('photoId', isEqualTo: photoId)
-          .get();
-
-      for (final doc in likesSnapshot.docs) {
-        await doc.reference.delete();
-      }
-    } catch (e) {
-      AppLogger.error('関連いいね削除エラー: $e', tag: 'PhotoService');
     }
   }
 
