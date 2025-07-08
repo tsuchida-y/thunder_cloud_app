@@ -278,11 +278,4 @@ class CommunityService {
     _isInitialized = false;
     AppLogger.info('CommunityService リソース解放完了', tag: 'CommunityService');
   }
-
-  // ===== プライベートメソッド =====
-
-  /// ユーザー情報を事前読み込み
-  Future<void> _preloadUserInfos(List<String> userIds) async {
-    // ユーザー情報事前読み込みを削除
-  }
 }
