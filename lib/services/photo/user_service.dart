@@ -233,16 +233,41 @@ class UserService {
       });
 
       // ステップ3: 既存の写真のuserNameも更新
+      // 現在のFCMトークンを取得して追加の安全性チェック
       final photosQuery = await _firestore
           .collection('photos')
           .where('userId', isEqualTo: userId)
           .get();
 
-      final batch = _firestore.batch();
-      for (var doc in photosQuery.docs) {
-        batch.update(doc.reference, {'userName': newName});
+      if (photosQuery.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        int updateCount = 0;
+
+        for (var doc in photosQuery.docs) {
+          final data = doc.data();
+          final photoFcmToken = data['fcmToken'] as String?;
+
+          // FCMトークンが一致する場合のみ更新（存在しない場合は更新）
+          if (photoFcmToken == null || photoFcmToken == fcmToken) {
+            batch.update(doc.reference, {
+              'userName': newName,
+              'fcmToken': fcmToken, // FCMトークンも更新
+            });
+            updateCount++;
+          } else {
+            AppLogger.warning('FCMトークンが一致しない写真をスキップ: ${doc.id}', tag: 'UserService');
+          }
+        }
+
+        if (updateCount > 0) {
+          await batch.commit();
+          AppLogger.success('安全チェック付きで写真のuserName更新完了: $updateCount件', tag: 'UserService');
+        } else {
+          AppLogger.info('更新対象の写真がありません', tag: 'UserService');
+        }
+      } else {
+        AppLogger.info('userIdに対応する写真が見つかりません', tag: 'UserService');
       }
-      await batch.commit();
 
       AppLogger.success('ユーザー名更新完了: $newName', tag: 'UserService');
       return true;
@@ -596,16 +621,47 @@ class UserService {
 
       // 写真の userName も更新（userName が指定された場合のみ）
       if (userName != null) {
-        final photosQuery = await _firestore
-            .collection('photos')
-            .where('userId', isEqualTo: userId)
-            .get();
+        // 現在のFCMトークンを取得して追加の安全性チェック
+        final fcmToken = FCMTokenManager.currentToken;
+        if (fcmToken != null) {
+          // userIdとFCMトークンの両方で写真を検索（二重チェック）
+          final photosQuery = await _firestore
+              .collection('photos')
+              .where('userId', isEqualTo: userId)
+              .get();
 
-        final batch = _firestore.batch();
-        for (var doc in photosQuery.docs) {
-          batch.update(doc.reference, {'userName': userName});
+          if (photosQuery.docs.isNotEmpty) {
+            final batch = _firestore.batch();
+            int updateCount = 0;
+
+            for (var doc in photosQuery.docs) {
+              final data = doc.data();
+              final photoFcmToken = data['fcmToken'] as String?;
+
+              // FCMトークンが一致する場合のみ更新（存在しない場合は更新）
+              if (photoFcmToken == null || photoFcmToken == fcmToken) {
+                batch.update(doc.reference, {
+                  'userName': userName,
+                  'fcmToken': fcmToken, // FCMトークンも更新
+                });
+                updateCount++;
+              } else {
+                AppLogger.warning('FCMトークンが一致しない写真をスキップ: ${doc.id}', tag: 'UserService');
+              }
+            }
+
+            if (updateCount > 0) {
+              await batch.commit();
+              AppLogger.success('安全チェック付きで写真のuserName更新完了: $updateCount件', tag: 'UserService');
+            } else {
+              AppLogger.info('更新対象の写真がありません', tag: 'UserService');
+            }
+          } else {
+            AppLogger.info('userIdに対応する写真が見つかりません', tag: 'UserService');
+          }
+        } else {
+          AppLogger.warning('FCMトークンが取得できないため写真のuserName更新をスキップ', tag: 'UserService');
         }
-        await batch.commit();
       }
 
       AppLogger.success('ユーザー情報更新完了', tag: 'UserService');
