@@ -135,14 +135,29 @@ class _MainScreenState extends State<MainScreen> {
   /// 全画面を更新（プロフィール変更時に呼び出される）
   /// ギャラリーとコミュニティ画面を強制再構築し、天気画面は軽量更新
   void _refreshAllScreens() {
+    // コミュニティ画面のデータを更新（キー再生成ではなく、既存インスタンスの更新メソッドを使用）
+    try {
+      final communityScreenState = communityScreenKey.currentState;
+      if (communityScreenState != null) {
+        // CommunityScreenのrefreshDataメソッドを呼び出し
+        (communityScreenState as dynamic).refreshData();
+        AppLogger.info('コミュニティ画面のデータ更新完了', tag: 'MainScreen');
+      }
+    } catch (e) {
+      AppLogger.warning('コミュニティ画面データ更新エラー: $e', tag: 'MainScreen');
+      // エラーの場合は従来の方法（キー再生成）を使用
+      setState(() {
+        communityScreenKey = GlobalKey();
+      });
+    }
+
     setState(() {
-      // ギャラリーとコミュニティのキーを再生成して強制再構築
+      // ギャラリーのキーを再生成して強制再構築
       galleryScreenKey = GlobalKey();
-      communityScreenKey = GlobalKey();
     });
 
-    // 地図画面は軽量更新
-    weatherScreenKey.currentState?.setState(() {});
+    // WeatherScreenの軽量更新を削除（位置情報の状態リセットを防ぐ）
+    // weatherScreenKey.currentState?.setState(() {});
   }
 
   /// 現在の位置情報を取得

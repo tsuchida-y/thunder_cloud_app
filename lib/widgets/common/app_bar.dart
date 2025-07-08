@@ -56,7 +56,10 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: () async {
           final result = await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => SettingsScreen(currentLocation: currentLocation),
+              builder: (context) => SettingsScreen(
+                currentLocation: currentLocation,
+                onProfileUpdated: onProfileUpdated, // コールバックを渡す
+              ),
             ),
           );
           // プロフィールが更新された場合、コールバックを実行

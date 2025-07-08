@@ -13,10 +13,12 @@ import 'settings/settings_service.dart';
 /// 設定画面 - アプリの各種設定と状態確認
 class SettingsScreen extends StatefulWidget {
   final LatLng? currentLocation;
+  final VoidCallback? onProfileUpdated; // プロフィール更新時のコールバック
 
   const SettingsScreen({
     super.key,
     this.currentLocation,
+    this.onProfileUpdated, // コールバックを追加
   });
 
   @override
@@ -190,6 +192,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         // 3. UI状態を最新データで更新
         _updateDataFromService();
+
+        // 4. メイン画面にプロフィール更新を通知（コミュニティ画面のリロード）
+        if (widget.onProfileUpdated != null) {
+          widget.onProfileUpdated!();
+          AppLogger.info('プロフィール更新をメイン画面に通知', tag: 'SettingsScreen');
+        }
 
         final duration = DateTime.now().difference(startTime);
         AppLogger.success('プロフィール更新完了 (${duration.inMilliseconds}ms)', tag: 'SettingsScreen');
