@@ -56,7 +56,7 @@ class CleanupService {
 
       console.log(`🗑️ ${snapshot.docs.length}件の期限切れ写真を削除中...`);
 
-      // 各写真を個別に削除（Storage + Firestore + 関連データ）
+      // 各写真を個別に削除（Storage + Firestore）
       for (const doc of snapshot.docs) {
         try {
           const data = doc.data();
@@ -76,23 +76,7 @@ class CleanupService {
             }
           }
 
-          // 関連するいいねを削除
-          const likesSnapshot = await this.firestore
-            .collection('likes')
-            .where('photoId', '==', photoId)
-            .get();
-
-          const likeBatch = this.firestore.batch();
-          likesSnapshot.docs.forEach((likeDoc) => {
-            likeBatch.delete(likeDoc.ref);
-          });
-
-          if (likesSnapshot.docs.length > 0) {
-            await likeBatch.commit();
-            console.log(`🗑️ 関連いいね削除: ${photoId} (${likesSnapshot.docs.length}件)`);
-          }
-
-          // Firestoreから写真データを削除
+          // Firestoreから写真データを削除（いいね情報も一緒に削除される）
           await doc.ref.delete();
           totalDeleted++;
 
@@ -114,57 +98,6 @@ class CleanupService {
 
     } catch (error) {
       console.error('❌ 期限切れ写真クリーンアップエラー:', error);
-      return 0;
-    }
-  }
-
-  /**
-   * 期限切れいいねの自動削除
-   */
-  async cleanupExpiredLikes() {
-    console.log('🧹 期限切れいいねクリーンアップ開始');
-
-    try {
-      const now = new Date();
-      const batchSize = 500; // いいねは軽量なので多めに処理
-      let totalDeleted = 0;
-
-      console.log(`📅 ${now.toISOString()} 時点で期限切れのいいねを削除`);
-
-      // 期限切れのいいねを検索
-      const snapshot = await this.firestore
-        .collection('likes')
-        .where('expiresAt', '<=', now)
-        .limit(batchSize)
-        .get();
-
-      if (snapshot.empty) {
-        console.log('✅ 削除対象の期限切れいいねなし');
-        return 0;
-      }
-
-      console.log(`🗑️ ${snapshot.docs.length}件の期限切れいいねを削除中...`);
-
-      // バッチ削除で効率化
-      const batch = this.firestore.batch();
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      await batch.commit();
-      totalDeleted = snapshot.docs.length;
-
-      console.log(`✅ 期限切れいいねクリーンアップ完了: ${totalDeleted}件削除`);
-
-      // 大量のデータがある場合の通知
-      if (snapshot.docs.length === batchSize) {
-        console.log('🔄 さらに期限切れいいねが存在する可能性があります');
-      }
-
-      return totalDeleted;
-
-    } catch (error) {
-      console.error('❌ 期限切れいいねクリーンアップエラー:', error);
       return 0;
     }
   }

@@ -139,15 +139,13 @@ class ScheduleHandlers {
    * 削除対象:
    * - expiresAt フィールドが現在時刻を過ぎた写真
    * - Firebase Storage上の画像ファイル
-   * - Firestore上の写真メタデータ
-   * - 関連するいいね・コメントデータ
+   * - Firestore上の写真メタデータ（いいね情報も含む）
    *
    * 処理手順:
    * 1. 期限切れ写真一覧取得
    * 2. Storage画像ファイル削除
-   * 3. 関連いいねデータ削除
-   * 4. Firestore写真ドキュメント削除
-   * 5. 削除統計ログ出力
+   * 3. Firestore写真ドキュメント削除（いいね情報も一緒に削除）
+   * 4. 削除統計ログ出力
    *
    * 安全措置:
    * - バッチサイズ制限（100件/回）
@@ -158,32 +156,6 @@ class ScheduleHandlers {
     console.log('🧹 期限切れ写真クリーンアップ開始');
     await this.cleanupService.cleanupExpiredPhotos();
     console.log('✅ 期限切れ写真クリーンアップ完了');
-  }
-
-  /**
-   * 期限切れいいね削除処理
-   *
-   * スケジュール: 毎日午前2時実行
-   *
-   * 削除対象:
-   * - expiresAt フィールドが現在時刻を過ぎたいいね
-   * - 対象写真が削除済みの孤立いいね
-   * - 不正なユーザーIDのいいね
-   *
-   * 処理特徴:
-   * - 高速バッチ削除（500件/回）
-   * - 軽量データのため大量処理可能
-   * - 写真削除との時差実行（依存関係整理）
-   *
-   * データ整合性:
-   * - 削除前の参照整合性チェック
-   * - 孤立参照の自動検出・削除
-   * - カスケード削除の確実な実行
-   */
-  async cleanupExpiredLikes() {
-    console.log('🧹 期限切れいいねクリーンアップ開始');
-    await this.cleanupService.cleanupExpiredLikes();
-    console.log('✅ 期限切れいいねクリーンアップ完了');
   }
 
   /**

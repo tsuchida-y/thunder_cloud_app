@@ -103,13 +103,6 @@ exports.cleanupWeatherCache = onSchedule('0 3 * * *', () => scheduleHandlers.cle
 exports.cleanupExpiredPhotos = onSchedule('0 1 * * *', () => scheduleHandlers.cleanupExpiredPhotos());
 
 /**
- * 期限切れいいね削除処理
- * スケジュール: 毎日午前2時
- * 処理内容: 期限切れのいいねデータをFirestoreから削除
- */
-exports.cleanupExpiredLikes = onSchedule('0 2 * * *', () => scheduleHandlers.cleanupExpiredLikes());
-
-/**
  * 入道雲監視処理（冗長バックアップ）
  * スケジュール: 5分間隔
  * 処理内容: メイン監視処理のバックアップとして動作
