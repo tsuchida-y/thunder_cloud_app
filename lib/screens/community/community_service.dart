@@ -25,8 +25,6 @@ class PhotoLoadResult {
 class CommunityService {
   // ===== キャッシュ =====
   final Map<String, Map<String, dynamic>> _userInfoCache = {};
-  final Map<String, bool> _likeStatusCache = {};
-  final Map<String, int> _likeCountCache = {};
 
   // ===== 定数 =====
   static const int _defaultPhotoLimit = 20;
@@ -45,12 +43,8 @@ class CommunityService {
       AppLogger.info('全ての公開写真を取得', tag: 'CommunityService');
       final photos = await PhotoService.getPublicPhotos(limit: limit);
 
-      // ユーザー情報、いいね状態、いいね数を並行して取得
-      await Future.wait([
-        _preloadUserInfos(photos.map((p) => p.userId).toSet().toList()),
-        _preloadLikeStatus(photos.map((p) => p.id).toList()),
-        _preloadLikeCounts(photos),
-      ]);
+      // ユーザー情報を並行して取得（いいね状態は写真データに含まれているため不要）
+      await _preloadUserInfos(photos.map((p) => p.userId).toSet().toList());
 
       final hasMore = photos.length >= limit;
 
@@ -73,11 +67,8 @@ class CommunityService {
       final photos = await PhotoService.getPublicPhotos(limit: limit);
 
       if (photos.isNotEmpty) {
-        await Future.wait([
-          _preloadUserInfos(photos.map((p) => p.userId).toSet().toList()),
-          _preloadLikeStatus(photos.map((p) => p.id).toList()),
-          _preloadLikeCounts(photos),
-        ]);
+        // ユーザー情報を並行して取得（いいね状態は写真データに含まれているため不要）
+        await _preloadUserInfos(photos.map((p) => p.userId).toSet().toList());
       }
 
       final hasMore = photos.length >= limit;
@@ -95,32 +86,20 @@ class CommunityService {
     AppLogger.info('いいね切り替え開始: ${photo.id}', tag: 'CommunityService');
 
     try {
-      final currentStatus = _likeStatusCache[photo.id] ?? false;
-      final currentCount = _likeCountCache[photo.id] ?? photo.likes;
-      final newStatus = !currentStatus;
-      final newCount = newStatus ? currentCount + 1 : currentCount - 1;
-
       // ユーザーIDを動的に取得
       final userId = await AppConstants.getCurrentUserId();
 
-      // 楽観的更新（状態と数値の両方を更新）
-      _likeStatusCache[photo.id] = newStatus;
-      _likeCountCache[photo.id] = newCount;
+      // 現在のいいね状態を確認
+      final isCurrentlyLiked = photo.isLikedByUser(userId);
 
-      if (newStatus) {
-        await PhotoService.likePhoto(photo.id, userId);
-      } else {
+      if (isCurrentlyLiked) {
         await PhotoService.unlikePhoto(photo.id, userId);
+        AppLogger.success('いいね削除完了: ${photo.id}', tag: 'CommunityService');
+      } else {
+        await PhotoService.likePhoto(photo.id, userId);
+        AppLogger.success('いいね追加完了: ${photo.id}', tag: 'CommunityService');
       }
-
-      AppLogger.success('いいね切り替え完了: ${photo.id} -> $newStatus (count: $newCount)', tag: 'CommunityService');
     } catch (e) {
-      // エラー時は元の状態に戻す
-      final originalStatus = !(_likeStatusCache[photo.id] ?? false);
-      final originalCount = originalStatus ? (_likeCountCache[photo.id] ?? 0) + 1 : (_likeCountCache[photo.id] ?? 0) - 1;
-      _likeStatusCache[photo.id] = originalStatus;
-      _likeCountCache[photo.id] = originalCount;
-
       AppLogger.error('いいね切り替えエラー', error: e, tag: 'CommunityService');
       rethrow;
     }
@@ -186,7 +165,7 @@ class CommunityService {
       await PhotoService.deletePhoto(photoId, userId);
 
       // キャッシュからも削除
-      _likeStatusCache.remove(photoId);
+      _userInfoCache.remove(photoId);
 
       AppLogger.success('写真削除完了: $photoId', tag: 'CommunityService');
     } catch (e) {
@@ -221,19 +200,17 @@ class CommunityService {
 
   /// いいね状態を取得
   bool getLikeStatus(String photoId) {
-    return _likeStatusCache[photoId] ?? false;
+    return false; // いいね状態は写真データに含まれているため、ここでは常にfalseを返す
   }
 
   /// いいね数を取得
   int getLikeCount(String photoId, int defaultCount) {
-    return _likeCountCache[photoId] ?? defaultCount;
+    return defaultCount; // いいね数は写真データに含まれているため、ここでは常にdefaultCountを返す
   }
 
   /// キャッシュをクリア
   void clearCache() {
     _userInfoCache.clear();
-    _likeStatusCache.clear();
-    _likeCountCache.clear();
     AppLogger.info('キャッシュクリア完了', tag: 'CommunityService');
   }
 
@@ -255,49 +232,6 @@ class CommunityService {
       AppLogger.success('ユーザー情報事前読み込み完了', tag: 'CommunityService');
     } catch (e) {
       AppLogger.error('ユーザー情報事前読み込みエラー', error: e, tag: 'CommunityService');
-    }
-  }
-
-  /// いいね状態を事前読み込み
-  Future<void> _preloadLikeStatus(List<String> photoIds) async {
-    if (photoIds.isEmpty) return;
-
-    final uncachedPhotoIds = photoIds.where((id) => !_likeStatusCache.containsKey(id)).toList();
-    if (uncachedPhotoIds.isEmpty) return;
-
-    AppLogger.info('いいね状態事前読み込み: ${uncachedPhotoIds.length}件', tag: 'CommunityService');
-
-    try {
-      // ユーザーIDを動的に取得
-      final userId = await AppConstants.getCurrentUserId();
-
-      final likeStatus = await PhotoService.getPhotosLikeStatus(
-        uncachedPhotoIds,
-        userId,
-      );
-
-      _likeStatusCache.addAll(likeStatus);
-      AppLogger.success('いいね状態事前読み込み完了: ${likeStatus.length}件', tag: 'CommunityService');
-    } catch (e) {
-      AppLogger.error('いいね状態事前読み込みエラー', error: e, tag: 'CommunityService');
-    }
-  }
-
-  /// いいね数を事前読み込み
-  Future<void> _preloadLikeCounts(List<Photo> photos) async {
-    if (photos.isEmpty) return;
-
-    AppLogger.info('いいね数事前読み込み: ${photos.length}件', tag: 'CommunityService');
-
-    try {
-      for (final photo in photos) {
-        if (!_likeCountCache.containsKey(photo.id)) {
-          _likeCountCache[photo.id] = photo.likes;
-        }
-      }
-      AppLogger.success('いいね数事前読み込み完了', tag: 'CommunityService');
-    } catch (e) {
-      AppLogger.error('いいね数事前読み込みエラー', error: e, tag: 'CommunityService');
     }
   }
 }
