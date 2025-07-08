@@ -36,13 +36,12 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
                          写真カードの状態を管理する変数群
   ================================================================================
   */
-  Map<String, dynamic>? _userInfo;
-  bool _isLoadingUserInfo = true;
+  // ユーザー情報の動的取得を削除（写真データのuserNameを直接使用）
 
   @override
   void initState() {
     super.initState();
-    _loadUserInfo();
+    // ユーザー情報の読み込みを削除
   }
 
   @override
@@ -55,26 +54,6 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
         oldWidget.photo.likedBy.length != widget.photo.likedBy.length) {
       // setState は不要（build メソッドが自動的に呼ばれる）
       AppLogger.info('写真データ更新を検知: ${widget.photo.id} (いいね数: ${widget.photo.likes})', tag: 'CommunityPhotoCard');
-    }
-  }
-
-  /// ユーザー情報を読み込み
-  Future<void> _loadUserInfo() async {
-    try {
-      final userInfo = await widget.communityService.getUserInfo(widget.photo.userId);
-      if (mounted) {
-        setState(() {
-          _userInfo = userInfo;
-          _isLoadingUserInfo = false;
-        });
-      }
-    } catch (e) {
-      AppLogger.error('ユーザー情報読み込みエラー', error: e, tag: 'CommunityPhotoCard');
-      if (mounted) {
-        setState(() {
-          _isLoadingUserInfo = false;
-        });
-      }
     }
   }
 
@@ -124,47 +103,40 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
 
   /// ユーザーアバターを構築
   Widget _buildUserAvatar() {
-    if (_isLoadingUserInfo) {
-      return const CircleAvatar(
-        radius: AppConstants.avatarRadiusSmall,
-        backgroundColor: Colors.grey,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
+    // ユーザー情報の動的取得を削除（写真データのuserNameを直接使用）
+    final userName = widget.photo.userName;
 
-    final avatarUrl = _userInfo?['avatarUrl'] as String?;
-
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+    if (userName.isNotEmpty) {
       return CircleAvatar(
         radius: AppConstants.avatarRadiusSmall,
-        backgroundImage: CachedNetworkImageProvider(avatarUrl),
-        onBackgroundImageError: (_, __) => AppLogger.warning(
-          'アバター画像読み込みエラー: $avatarUrl',
-          tag: 'CommunityPhotoCard',
+        backgroundColor: AppConstants.primarySkyBlue,
+        child: Text(
+          userName.substring(0, 1).toUpperCase(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       );
     }
 
-    return CircleAvatar(
+    return const CircleAvatar(
       radius: AppConstants.avatarRadiusSmall,
-      backgroundColor: AppConstants.primarySkyBlue,
-      child: Text(
-        (_userInfo?['userName'] as String? ?? 'U').substring(0, 1).toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      backgroundColor: Colors.grey,
+      child: CircularProgressIndicator(strokeWidth: 2),
     );
   }
 
   /// ユーザー名と日付を構築
   Widget _buildUserNameAndDate() {
+    final userName = widget.photo.userName;
+    final timestamp = widget.photo.timestamp;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _userInfo?['userName'] as String? ?? 'ロード中...',
+          userName,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: AppConstants.fontSizeMedium,
@@ -172,7 +144,7 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
         ),
         const SizedBox(height: AppConstants.paddingXSmall),
         Text(
-          _formatDateTime(widget.photo.timestamp),
+          _formatDateTime(timestamp),
           style: TextStyle(
             color: Colors.grey[600],
             fontSize: AppConstants.fontSizeSmall,

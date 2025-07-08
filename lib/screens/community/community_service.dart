@@ -7,7 +7,6 @@ import '../../constants/app_constants.dart';
 import '../../models/photo.dart';
 import '../../services/photo/local_photo_service.dart';
 import '../../services/photo/photo_service.dart';
-import '../../services/photo/user_service.dart';
 import '../../utils/logger.dart';
 
 /// 写真読み込み結果
@@ -24,7 +23,7 @@ class PhotoLoadResult {
 /// コミュニティ関連のビジネスロジックを管理するサービス
 class CommunityService {
   // ===== キャッシュ =====
-  final Map<String, Map<String, dynamic>> _userInfoCache = {};
+  // ユーザー情報キャッシュを削除（写真データのuserNameを直接使用）
 
   // ===== 状態管理 =====
   String? _currentUserId;
@@ -68,8 +67,7 @@ class CommunityService {
       // 写真データをキャッシュに保存
       _photos = photos;
 
-      // ユーザー情報を並行して取得（いいね状態は写真データに含まれているため不要）
-      await _preloadUserInfos(photos.map((p) => p.userId).toSet().toList());
+      // ユーザー情報の事前読み込みを削除（写真データのuserNameを直接使用）
 
       final hasMore = photos.length >= limit;
 
@@ -95,8 +93,7 @@ class CommunityService {
         // 写真データをキャッシュに追加
         _photos.addAll(photos);
 
-        // ユーザー情報を並行して取得（いいね状態は写真データに含まれているため不要）
-        await _preloadUserInfos(photos.map((p) => p.userId).toSet().toList());
+        // ユーザー情報の事前読み込みを削除（写真データのuserNameを直接使用）
       }
 
       final hasMore = photos.length >= limit;
@@ -210,36 +207,12 @@ class CommunityService {
       await PhotoService.deletePhoto(photoId, userId);
 
       // キャッシュからも削除
-      _userInfoCache.remove(photoId);
+      // _userInfoCache.remove(photoId); // ユーザー情報キャッシュは削除
 
       AppLogger.success('写真削除完了: $photoId', tag: 'CommunityService');
     } catch (e) {
       AppLogger.error('写真削除エラー', error: e, tag: 'CommunityService');
       rethrow;
-    }
-  }
-
-  /// ユーザー情報を取得（キャッシュ付き）
-  Future<Map<String, dynamic>> getUserInfo(String userId) async {
-    if (_userInfoCache.containsKey(userId)) {
-      return _userInfoCache[userId]!;
-    }
-
-    try {
-      final userInfo = await UserService.getUserInfo(userId);
-      _userInfoCache[userId] = userInfo;
-      return userInfo;
-    } catch (e) {
-      AppLogger.error('ユーザー情報取得エラー: $userId', error: e, tag: 'CommunityService');
-
-      // デフォルト情報を返す
-      final defaultInfo = {
-        'userId': userId,
-        'userName': 'ユーザー',
-        'avatarUrl': '',
-      };
-      _userInfoCache[userId] = defaultInfo;
-      return defaultInfo;
     }
   }
 
@@ -280,14 +253,26 @@ class CommunityService {
 
   /// キャッシュをクリア
   void clearCache() {
-    _userInfoCache.clear();
+    // _userInfoCache.clear(); // ユーザー情報キャッシュは削除
     _photos.clear();
     AppLogger.info('キャッシュクリア完了', tag: 'CommunityService');
   }
 
+  /// 特定のユーザーのキャッシュを無効化
+  void invalidateUserCache(String userId) {
+    // _userInfoCache.remove(userId); // ユーザー情報キャッシュは削除
+    AppLogger.info('ユーザーキャッシュ無効化: $userId', tag: 'CommunityService');
+  }
+
+  /// 全てのユーザーキャッシュを無効化
+  void invalidateAllUserCache() {
+    // _userInfoCache.clear(); // ユーザー情報キャッシュは削除
+    AppLogger.info('全ユーザーキャッシュ無効化完了', tag: 'CommunityService');
+  }
+
   /// リソースを解放
   void dispose() {
-    _userInfoCache.clear();
+    // _userInfoCache.clear(); // ユーザー情報キャッシュは削除
     _photos.clear();
     _currentUserId = null;
     _isInitialized = false;
@@ -298,20 +283,6 @@ class CommunityService {
 
   /// ユーザー情報を事前読み込み
   Future<void> _preloadUserInfos(List<String> userIds) async {
-    if (userIds.isEmpty) return;
-
-    final uncachedUserIds = userIds.where((id) => !_userInfoCache.containsKey(id)).toList();
-    if (uncachedUserIds.isEmpty) return;
-
-    AppLogger.info('ユーザー情報事前読み込み: ${uncachedUserIds.length}件', tag: 'CommunityService');
-
-    try {
-      await Future.wait(
-        uncachedUserIds.map((userId) => getUserInfo(userId)),
-      );
-      AppLogger.success('ユーザー情報事前読み込み完了', tag: 'CommunityService');
-    } catch (e) {
-      AppLogger.error('ユーザー情報事前読み込みエラー', error: e, tag: 'CommunityService');
-    }
+    // ユーザー情報事前読み込みを削除
   }
 }
