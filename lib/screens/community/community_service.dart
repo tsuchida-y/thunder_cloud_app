@@ -26,10 +26,27 @@ class CommunityService {
   // ===== キャッシュ =====
   final Map<String, Map<String, dynamic>> _userInfoCache = {};
 
+  // ===== 状態管理 =====
+  String? _currentUserId;
+  List<Photo> _photos = []; // 現在読み込まれている写真データ
+  bool _isInitialized = false; // 初期化状態の管理
+
   // ===== 定数 =====
   static const int _defaultPhotoLimit = 20;
 
   // ===== 公開メソッド =====
+
+  /// サービスを初期化
+  Future<void> initialize() async {
+    if (_isInitialized) {
+      AppLogger.info('CommunityService は既に初期化済み', tag: 'CommunityService');
+      return;
+    }
+
+    _currentUserId = await AppConstants.getCurrentUserId();
+    _isInitialized = true;
+    AppLogger.info('CommunityService初期化完了: userId=$_currentUserId', tag: 'CommunityService');
+  }
 
   /// 写真一覧を読み込み
   Future<PhotoLoadResult> loadPhotos({
@@ -39,9 +56,17 @@ class CommunityService {
     AppLogger.info('写真読み込み開始 (初期読み込み: $isInitialLoad)', tag: 'CommunityService');
 
     try {
+      // 現在のユーザーIDを確認
+      if (_currentUserId == null) {
+        await initialize();
+      }
+
       // 全ての公開写真を取得（位置情報による制限なし）
       AppLogger.info('全ての公開写真を取得', tag: 'CommunityService');
       final photos = await PhotoService.getPublicPhotos(limit: limit);
+
+      // 写真データをキャッシュに保存
+      _photos = photos;
 
       // ユーザー情報を並行して取得（いいね状態は写真データに含まれているため不要）
       await _preloadUserInfos(photos.map((p) => p.userId).toSet().toList());
@@ -67,6 +92,9 @@ class CommunityService {
       final photos = await PhotoService.getPublicPhotos(limit: limit);
 
       if (photos.isNotEmpty) {
+        // 写真データをキャッシュに追加
+        _photos.addAll(photos);
+
         // ユーザー情報を並行して取得（いいね状態は写真データに含まれているため不要）
         await _preloadUserInfos(photos.map((p) => p.userId).toSet().toList());
       }
@@ -82,23 +110,40 @@ class CommunityService {
   }
 
   /// いいねの切り替え
-  Future<void> toggleLike(Photo photo) async {
+  Future<Photo?> toggleLike(Photo photo) async {
     AppLogger.info('いいね切り替え開始: ${photo.id}', tag: 'CommunityService');
 
     try {
-      // ユーザーIDを動的に取得
-      final userId = await AppConstants.getCurrentUserId();
+      // 現在のユーザーIDを確認
+      if (_currentUserId == null) {
+        await initialize();
+      }
+
+      if (_currentUserId == null) {
+        throw Exception('ユーザーIDが取得できません');
+      }
 
       // 現在のいいね状態を確認
-      final isCurrentlyLiked = photo.isLikedByUser(userId);
+      final isCurrentlyLiked = photo.isLikedByUser(_currentUserId!);
 
+      Photo? updatedPhoto;
       if (isCurrentlyLiked) {
-        await PhotoService.unlikePhoto(photo.id, userId);
+        updatedPhoto = await PhotoService.unlikePhoto(photo.id, _currentUserId!);
         AppLogger.success('いいね削除完了: ${photo.id}', tag: 'CommunityService');
       } else {
-        await PhotoService.likePhoto(photo.id, userId);
+        updatedPhoto = await PhotoService.likePhoto(photo.id, _currentUserId!);
         AppLogger.success('いいね追加完了: ${photo.id}', tag: 'CommunityService');
       }
+
+      // キャッシュされた写真データを更新
+      if (updatedPhoto != null) {
+        final index = _photos.indexWhere((p) => p.id == photo.id);
+        if (index != -1) {
+          _photos[index] = updatedPhoto;
+        }
+      }
+
+      return updatedPhoto;
     } catch (e) {
       AppLogger.error('いいね切り替えエラー', error: e, tag: 'CommunityService');
       rethrow;
@@ -200,18 +245,53 @@ class CommunityService {
 
   /// いいね状態を取得
   bool getLikeStatus(String photoId) {
-    return false; // いいね状態は写真データに含まれているため、ここでは常にfalseを返す
+    if (_currentUserId == null) return false;
+
+    // キャッシュされた写真データから直接いいね状態を取得
+    try {
+      final photo = _photos.firstWhere((p) => p.id == photoId);
+      return photo.isLikedByUser(_currentUserId!);
+    } catch (e) {
+      AppLogger.warning('いいね状態取得エラー: $photoId', tag: 'CommunityService');
+      return false;
+    }
   }
 
   /// いいね数を取得
   int getLikeCount(String photoId, int defaultCount) {
-    return defaultCount; // いいね数は写真データに含まれているため、ここでは常にdefaultCountを返す
+    // キャッシュされた写真データから直接いいね数を取得
+    try {
+      final photo = _photos.firstWhere((p) => p.id == photoId);
+      return photo.likes;
+    } catch (e) {
+      AppLogger.warning('いいね数取得エラー: $photoId', tag: 'CommunityService');
+      return defaultCount;
+    }
+  }
+
+  /// 写真データを更新
+  void updatePhoto(Photo updatedPhoto) {
+    final index = _photos.indexWhere((p) => p.id == updatedPhoto.id);
+    if (index != -1) {
+      _photos[index] = updatedPhoto;
+      AppLogger.info('写真データ更新完了: ${updatedPhoto.id}', tag: 'CommunityService');
+    }
   }
 
   /// キャッシュをクリア
   void clearCache() {
     _userInfoCache.clear();
+    _photos.clear();
     AppLogger.info('キャッシュクリア完了', tag: 'CommunityService');
+  }
+
+  /// リソースを解放
+  void dispose() {
+    _userInfoCache.clear();
+    _photos.clear();
+    _currentUserId = null;
+    _isInitialized = false;
+    AppLogger.info('CommunityService リソース解放完了', tag: 'CommunityService');
   }
 
   // ===== プライベートメソッド =====

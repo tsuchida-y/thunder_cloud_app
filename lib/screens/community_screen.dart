@@ -61,6 +61,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _communityService.dispose(); // CommunityServiceのリソースを解放
     super.dispose();
   }
 
@@ -77,6 +78,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     // ユーザーIDを取得
     _currentUserId = await AppConstants.getCurrentUserId();
+
+    // CommunityServiceを初期化
+    await _communityService.initialize();
 
     // 写真を読み込み
     await _loadPhotos();
@@ -191,14 +195,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
   /// いいねの切り替え
   Future<void> _onLikeToggle(Photo photo) async {
     try {
-      await _communityService.toggleLike(photo);
+      // いいね操作を実行し、更新された写真データを取得
+      final updatedPhoto = await _communityService.toggleLike(photo);
 
-      // UI を更新
-      if (mounted) {
-        setState(() {});
+      if (updatedPhoto != null && mounted) {
+        // 写真リスト内の該当写真を更新
+        setState(() {
+          final index = _photos.indexWhere((p) => p.id == photo.id);
+          if (index != -1) {
+            _photos[index] = updatedPhoto;
+          }
+        });
+
+        AppLogger.info('いいね切り替え完了: ${photo.id} (いいね数: ${updatedPhoto.likes})', tag: 'CommunityScreen');
       }
-
-      AppLogger.info('いいね切り替え完了: ${photo.id}', tag: 'CommunityScreen');
     } catch (e) {
       AppLogger.error('いいね切り替えエラー', error: e, tag: 'CommunityScreen');
       _showErrorSnackBar('いいねの更新に失敗しました');

@@ -45,6 +45,19 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
     _loadUserInfo();
   }
 
+  @override
+  void didUpdateWidget(CommunityPhotoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // 写真データが更新された場合はUIを再構築
+    if (oldWidget.photo.id != widget.photo.id ||
+        oldWidget.photo.likes != widget.photo.likes ||
+        oldWidget.photo.likedBy.length != widget.photo.likedBy.length) {
+      // setState は不要（build メソッドが自動的に呼ばれる）
+      AppLogger.info('写真データ更新を検知: ${widget.photo.id} (いいね数: ${widget.photo.likes})', tag: 'CommunityPhotoCard');
+    }
+  }
+
   /// ユーザー情報を読み込み
   Future<void> _loadUserInfo() async {
     try {
@@ -216,7 +229,7 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
   /// 写真アクションを構築
   Widget _buildPhotoActions() {
     final isLiked = widget.communityService.getLikeStatus(widget.photo.id);
-    final likeCount = widget.communityService.getLikeCount(widget.photo.id, widget.photo.likes);
+    final likeCount = widget.photo.likes; // 写真オブジェクトから直接取得
 
     return Padding(
       padding: const EdgeInsets.symmetric(

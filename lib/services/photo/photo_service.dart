@@ -312,8 +312,8 @@ class PhotoService {
   ///
   /// [photoId] 写真ID
   /// [userId] ユーザーID
-  /// Returns: いいね追加成功時はtrue
-  static Future<bool> likePhoto(String photoId, String userId) async {
+  /// Returns: 更新された写真オブジェクト（成功時）、null（失敗時）
+  static Future<Photo?> likePhoto(String photoId, String userId) async {
     try {
       AppLogger.info('いいね追加開始: $photoId', tag: 'PhotoService');
 
@@ -321,27 +321,34 @@ class PhotoService {
       final photoDoc = await _firestore.collection('photos').doc(photoId).get();
       if (!photoDoc.exists) {
         AppLogger.error('写真が見つかりません: $photoId', tag: 'PhotoService');
-        return false;
+        return null;
       }
 
       // ステップ2: 現在のいいね状態をチェック
       final photo = Photo.fromDocument(photoDoc);
       if (photo.isLikedByUser(userId)) {
-        AppLogger.warning('既にいいね済み: $photoId', tag: 'PhotoService');
-        return false;
+        AppLogger.info('既にいいね済みです: $photoId', tag: 'PhotoService');
+        return photo; // 既にいいね済みの場合は現在の状態を返す
       }
 
       // ステップ3: いいねを追加（アトミック操作）
       await _firestore.collection('photos').doc(photoId).update({
-        'likes': FieldValue.increment(1),
         'likedBy': FieldValue.arrayUnion([userId]),
+        'likes': FieldValue.increment(1),
       });
 
-      AppLogger.success('いいね追加完了: $photoId', tag: 'PhotoService');
-      return true;
+      // ステップ4: 更新後の写真データを取得
+      final updatedDoc = await _firestore.collection('photos').doc(photoId).get();
+      if (updatedDoc.exists) {
+        final updatedPhoto = Photo.fromDocument(updatedDoc);
+        AppLogger.success('いいね追加完了: $photoId (いいね数: ${updatedPhoto.likes})', tag: 'PhotoService');
+        return updatedPhoto;
+      }
+
+      return null;
     } catch (e) {
-      AppLogger.error('いいね追加エラー: $e', tag: 'PhotoService');
-      return false;
+      AppLogger.error('いいね追加エラー: $photoId - $e', tag: 'PhotoService');
+      return null;
     }
   }
 
@@ -350,8 +357,8 @@ class PhotoService {
   ///
   /// [photoId] 写真ID
   /// [userId] ユーザーID
-  /// Returns: いいね削除成功時はtrue
-  static Future<bool> unlikePhoto(String photoId, String userId) async {
+  /// Returns: 更新された写真オブジェクト（成功時）、null（失敗時）
+  static Future<Photo?> unlikePhoto(String photoId, String userId) async {
     try {
       AppLogger.info('いいね削除開始: $photoId', tag: 'PhotoService');
 
@@ -359,27 +366,34 @@ class PhotoService {
       final photoDoc = await _firestore.collection('photos').doc(photoId).get();
       if (!photoDoc.exists) {
         AppLogger.error('写真が見つかりません: $photoId', tag: 'PhotoService');
-        return false;
+        return null;
       }
 
       // ステップ2: 現在のいいね状態をチェック
       final photo = Photo.fromDocument(photoDoc);
       if (!photo.isLikedByUser(userId)) {
-        AppLogger.warning('いいねしていません: $photoId', tag: 'PhotoService');
-        return false;
+        AppLogger.info('いいねしていません: $photoId', tag: 'PhotoService');
+        return photo; // いいねしていない場合は現在の状態を返す
       }
 
       // ステップ3: いいねを削除（アトミック操作）
       await _firestore.collection('photos').doc(photoId).update({
-        'likes': FieldValue.increment(-1),
         'likedBy': FieldValue.arrayRemove([userId]),
+        'likes': FieldValue.increment(-1),
       });
 
-      AppLogger.success('いいね削除完了: $photoId', tag: 'PhotoService');
-      return true;
+      // ステップ4: 更新後の写真データを取得
+      final updatedDoc = await _firestore.collection('photos').doc(photoId).get();
+      if (updatedDoc.exists) {
+        final updatedPhoto = Photo.fromDocument(updatedDoc);
+        AppLogger.success('いいね削除完了: $photoId (いいね数: ${updatedPhoto.likes})', tag: 'PhotoService');
+        return updatedPhoto;
+      }
+
+      return null;
     } catch (e) {
-      AppLogger.error('いいね削除エラー: $e', tag: 'PhotoService');
-      return false;
+      AppLogger.error('いいね削除エラー: $photoId - $e', tag: 'PhotoService');
+      return null;
     }
   }
 
