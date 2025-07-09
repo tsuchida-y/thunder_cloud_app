@@ -59,6 +59,10 @@ class FCMTokenManager {
   static Future<String?> getToken({bool forceRefresh = false}) async {
     if (!forceRefresh && isTokenValid && _cachedToken != null) {
       dev.log("✅ キャッシュされたFCMトークンを使用: ${_cachedToken!.substring(0, 20)}...");
+      // デバッグ用：完全なキャッシュトークンを表示
+      if (kDebugMode) {
+        dev.log("🔑 キャッシュされた完全なFCMトークン: $_cachedToken");
+      }
       return _cachedToken;
     }
     dev.log("🔄 FCMトークンを新規取得中...");
@@ -106,6 +110,10 @@ class FCMTokenManager {
 
         if (token != null && token.isNotEmpty) {
           dev.log("✅ 実機FCMトークン取得成功");
+          // デバッグ用：完全なトークンを表示
+          if (kDebugMode) {
+            dev.log("🔑 取得した完全なFCMトークン: $token");
+          }
           return token;
         }
 
@@ -200,6 +208,11 @@ class FCMTokenManager {
     _cachedToken = token;
     _lastTokenUpdate = DateTime.now();
     dev.log("💾 FCMトークンをキャッシュ");
+
+    // デバッグ用：完全なトークンを表示
+    if (kDebugMode) {
+      dev.log("🔑 完全なFCMトークン: $token");
+    }
   }
 
   /// トークンキャッシュをクリア

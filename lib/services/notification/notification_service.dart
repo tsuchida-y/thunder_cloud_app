@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../utils/logger.dart';
@@ -245,6 +246,10 @@ class NotificationService {
       if (token != null) {
         // ステップ4: トークンの保存（キャッシュは自動的に行われる）
         AppLogger.success('FCMトークン取得完了: ${token.substring(0, 20)}...', tag: 'NotificationService');
+        // デバッグ用：完全なトークンを表示
+        if (kDebugMode) {
+          AppLogger.success('🔑 完全なFCMトークン: $token', tag: 'NotificationService');
+        }
       } else {
         AppLogger.error('FCMトークンの取得に失敗しました', tag: 'NotificationService');
       }
@@ -331,6 +336,10 @@ class NotificationService {
   /// [newToken] 新しいトークン
   Future<void> _handleTokenRefresh(String newToken) async {
     AppLogger.info('FCMトークン更新: ${newToken.substring(0, 20)}...', tag: 'NotificationService');
+    // デバッグ用：完全なトークンを表示
+    if (kDebugMode) {
+      AppLogger.info('🔑 更新された完全なFCMトークン: $newToken', tag: 'NotificationService');
+    }
 
     try {
       // ステップ1: 新しいトークンの保存（キャッシュは自動的に行われる）

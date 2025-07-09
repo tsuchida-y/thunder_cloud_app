@@ -3,6 +3,7 @@ import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../utils/logger.dart';
 import 'fcm_token_manager.dart';
@@ -122,6 +123,10 @@ class PushNotificationService {
 
       if (token != null) {
         AppLogger.info('FCMトークン取得成功: ${token.substring(0, 20)}...', tag: 'PushNotificationService');
+        // デバッグ用：完全なトークンを表示
+        if (kDebugMode) {
+          AppLogger.info('🔑 完全なFCMトークン: $token', tag: 'PushNotificationService');
+        }
 
         // ステップ2: メッセージハンドラーの設定
         _setupMessageHandlers();
