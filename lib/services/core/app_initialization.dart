@@ -1,10 +1,9 @@
 import 'dart:developer' as dev;
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-// import '../firebase_options.dart'; // ファイルが見つからないためコメントアウト
+import '../../firebase_options.dart';
 import '../location/location_service.dart';
 import '../notification/notification_service.dart';
 import '../notification/push_notification_service.dart';
@@ -121,7 +120,7 @@ class AppInitializationService {
       dev.log("🔥 Firebase Core初期化開始");
 
       await Firebase.initializeApp(
-        //options: DefaultFirebaseOptions.currentPlatform, // 一時的にコメントアウト
+        options: DefaultFirebaseOptions.currentPlatform, // 一時的にコメントアウト
       );
 
       dev.log("✅ Firebase Core初期化完了");
@@ -136,7 +135,12 @@ class AppInitializationService {
     try {
       dev.log("🔔 通知サービス初期化開始");
       await NotificationService().initialize();
-      dev.log("✅ 通知サービス初期化完了");
+      dev.log("✅ ローカル通知サービス初期化完了");
+
+      // プッシュ通知サービス初期化
+      dev.log("📱 プッシュ通知サービス初期化開始");
+      await PushNotificationService.initialize();
+      dev.log("✅ プッシュ通知サービス初期化完了");
     } catch (e) {
       dev.log("❌ 通知サービス初期化エラー: $e");
     }
@@ -239,9 +243,4 @@ class AppInitializationService {
   }
 }
 
-/// バックグラウンドメッセージハンドラー
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(/* options: DefaultFirebaseOptions.currentPlatform */); // 一時的にコメントアウト
-  dev.log("📨 バックグラウンドメッセージ受信: ${message.messageId}");
-}
+// バックグラウンドメッセージハンドラーはmain.dartで定義されているため削除

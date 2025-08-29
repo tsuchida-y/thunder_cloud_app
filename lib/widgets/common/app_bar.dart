@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../screens/settings_screen.dart';
+import '../../screens/settings/settings_screen.dart';
 
 ///AppBar用のウィジェット
 ///今後おしゃれにしていきたいから、別ファイルに分離
@@ -56,10 +56,7 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: () async {
           final result = await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => SettingsScreen(
-                currentLocation: currentLocation,
-                onProfileUpdated: onProfileUpdated, // コールバックを渡す
-              ),
+              builder: (context) => const SettingsScreen(),
             ),
           );
           // プロフィールが更新された場合、コールバックを実行
@@ -73,6 +70,5 @@ class WeatherAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-
 
 }

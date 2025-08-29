@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -14,6 +15,19 @@ import 'services/location/location_service.dart';
 import 'utils/logger.dart';
 import 'widgets/common/app_bar.dart';
 
+/// バックグラウンドメッセージハンドラー
+/// アプリがバックグラウンドまたは終了状態の時にFCM通知を処理
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Firebase初期化（バックグラウンド用）
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  AppLogger.info('📨 バックグラウンドメッセージ受信: ${message.messageId}', tag: 'BackgroundHandler');
+  AppLogger.info('📨 タイトル: ${message.notification?.title}', tag: 'BackgroundHandler');
+  AppLogger.info('📨 本文: ${message.notification?.body}', tag: 'BackgroundHandler');
+  AppLogger.info('📨 データ: ${message.data}', tag: 'BackgroundHandler');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -27,6 +41,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // バックグラウンドメッセージハンドラーを登録
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   runApp(const MyApp());
 }

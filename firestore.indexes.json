@@ -57,7 +57,7 @@
           "order": "ASCENDING"
         }
       ]
-    },
+        },
     {
       "collectionGroup": "weather_cache",
       "queryScope": "COLLECTION",

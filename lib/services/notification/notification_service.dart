@@ -357,6 +357,26 @@ class NotificationService {
   ================================================================================
   */
 
+  /// ローカル通知を表示（パブリックメソッド）
+  /// 指定された内容でローカル通知を表示
+  ///
+  /// [title] 通知タイトル
+  /// [body] 通知本文
+  /// [payload] 通知ペイロード
+  static Future<void> showLocalNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    final instance = NotificationService();
+    await instance._showLocalNotification(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+      payload: payload,
+    );
+  }
+
   /// ローカル通知を表示
   /// 指定された内容でローカル通知を表示
   ///

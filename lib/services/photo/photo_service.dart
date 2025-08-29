@@ -414,14 +414,14 @@ class PhotoService {
   /// [userId] ユーザーID
   /// Returns: 写真IDをキーとしたいいね状態マップ
   static Map<String, bool> getPhotosLikeStatus(List<Photo> photos, String userId) {
-    final likeStatus = <String, bool>{};
+      final likeStatus = <String, bool>{};
 
     for (final photo in photos) {
       likeStatus[photo.id] = photo.isLikedByUser(userId);
-    }
+      }
 
-    AppLogger.info('いいね状態一括取得完了: ${likeStatus.length}件', tag: 'PhotoService');
-    return likeStatus;
+      AppLogger.info('いいね状態一括取得完了: ${likeStatus.length}件', tag: 'PhotoService');
+      return likeStatus;
   }
 
   /*

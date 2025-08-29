@@ -107,16 +107,16 @@ class _CommunityPhotoCardState extends State<CommunityPhotoCard> {
     final userName = widget.photo.userName;
 
     if (userName.isNotEmpty) {
-      return CircleAvatar(
-        radius: AppConstants.avatarRadiusSmall,
-        backgroundColor: AppConstants.primarySkyBlue,
-        child: Text(
+    return CircleAvatar(
+      radius: AppConstants.avatarRadiusSmall,
+      backgroundColor: AppConstants.primarySkyBlue,
+      child: Text(
           userName.substring(0, 1).toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
         ),
+      ),
       );
     }
 
