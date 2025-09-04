@@ -9,7 +9,6 @@ import '../services/user/user_id_service.dart';
 /// アプリ全体で使用される定数を管理するクラス
 class AppConstants {
   // ===== アプリ基本情報 =====
-  static const String appTitle = "入道雲サーチ";
   static const String appVersion = "1.0.3";
 
   // デバッグモード設定（本番では false に設定）
@@ -56,7 +55,6 @@ class AppConstants {
   static const Duration appInitializationTimeout = Duration(seconds: 15);
   static const Duration locationTimeout = Duration(seconds: 10);
   static const Duration weatherDataTimeout = Duration(seconds: 10);
-  static const Duration mainScreenDelay = Duration(seconds: 2);
   static const Duration settingsUpdateDelay = Duration(seconds: 2);
   static const Duration debugTestDelay = Duration(milliseconds: 500);
   static const Duration periodicUpdateInterval = Duration(seconds: 30);

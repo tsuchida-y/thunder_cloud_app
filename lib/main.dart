@@ -29,6 +29,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 void main() async {
+  //ネイティブコードとのやりとりのために必要
+  //asyncのmain()関数を使う場合、この初期化は必須
   WidgetsFlutterBinding.ensureInitialized();
 
   // 画面の向きを縦向きに固定
@@ -56,7 +58,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: AppConstants.appTitle,
+      title: "入道雲サーチ",
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppConstants.primarySkyBlue,
@@ -76,7 +78,7 @@ class MainScreen extends StatefulWidget {
 
   const MainScreen({
     super.key,
-    this.initialTab = AppConstants.navigationIndexWeather,
+    this.initialTab = 0,
   });
 
   @override
@@ -86,12 +88,12 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   late int _currentIndex;
 
-  // 各画面のキーを管理
+  // ウィジェットを一意に識別するための各画面のキーを管理
   GlobalKey<WeatherScreenState> weatherScreenKey = GlobalKey<WeatherScreenState>();
   GlobalKey galleryScreenKey = GlobalKey();
   GlobalKey communityScreenKey = GlobalKey();
 
-  // 画面インスタンスを保持（再構築を防ぐ）
+  // 画面インスタンスを保持（再構築を防ぐことで状態を保持や処理コストの向上につながる）
   late final Widget weatherScreen;
   late final Widget galleryScreen;
   late final Widget communityScreen;
@@ -104,12 +106,12 @@ class _MainScreenState extends State<MainScreen> {
     // 画面インスタンスを一度だけ作成
     weatherScreen = WeatherScreen(
       key: weatherScreenKey,
-      onProfileUpdated: _refreshAllScreens,
+      onProfileUpdated: _refreshAllScreens,//プロフィール更新時に呼び出されるコールバック
     );
     galleryScreen = GalleryScreen(key: galleryScreenKey);
     communityScreen = CommunityScreen(
       key: communityScreenKey,
-      onPhotoDownloaded: _refreshGallery,
+      onPhotoDownloaded: _refreshGallery,//コミュニティから写真がダウンロードされた後に呼び出されるコールバック
     );
 
     _initializeApp();
@@ -123,8 +125,8 @@ class _MainScreenState extends State<MainScreen> {
       await AppInitializationService.initializeApp();
 
       // 少し待ってから位置情報の自動保存を実行
-      await Future.delayed(AppConstants.mainScreenDelay);
       // 位置情報保存処理は既にinitializeApp内で実行される
+      await Future.delayed(const Duration(seconds: 2));
 
       AppLogger.success('アプリケーション初期化完了', tag: 'MainScreen');
     } catch (e) {

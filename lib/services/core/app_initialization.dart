@@ -18,26 +18,43 @@ class AppInitializationService {
   static bool get isInitialized => _isInitialized;
 
   /// アプリケーションの初期化（Firebase Coreは同期、他はバックグラウンド）
+  /// _initializeFirebaseCoreが完了した時点で終了
   static Future<void> initializeApp() async {
     if (_isInitialized) {
-      dev.log("✅ アプリは既に初期化済みです");
+      dev.log("アプリは既に初期化済みです");
       return;
     }
 
     try {
-      dev.log("🔥 Firebase Core初期化開始");
-
       // Firebase Core初期化（同期的に実行）
+      dev.log("Firebase Core初期化開始");
       await _initializeFirebaseCore();
+      dev.log("Firebase Core初期化完了");
 
       _isInitialized = true;
-      dev.log("✅ Firebase Core初期化完了");
 
-      // 他のサービスはバックグラウンドで初期化
+      // ここの処理(バックグラウンド)を呼び出すだけして次に進む
       _initializeBackgroundServices();
 
     } catch (e) {
-      dev.log("❌ 初期化エラー: $e");
+      dev.log("初期化エラー: $e");
+      rethrow;
+    }
+  }
+
+
+  /// Firebase Coreのみの最小初期化メソッド
+  static Future<void> _initializeFirebaseCore() async {
+    try {
+      dev.log("Firebase Core初期化開始");
+
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      dev.log("Firebase Core初期化完了");
+    } catch (e) {
+      dev.log("Firebase Core初期化エラー: $e");
       rethrow;
     }
   }
@@ -48,18 +65,18 @@ class AppInitializationService {
     dev.log("🔄 バックグラウンドサービス初期化開始");
 
     try {
-      // ステップ1: サービス並列初期化
-      dev.log("🔔 サービス並列初期化開始");
+      // 3つの初期化処理を同時に開始
+      dev.log("サービス並列初期化開始");
       await Future.wait([
         _initializeNotificationService(),
         _initializeLocationService(),
         _initializeUserIdService(),
       ]);
 
-      // ステップ2: 初回アクセス時のユーザー作成（FCMトークン取得を待つ）
-      dev.log("👤 初回アクセス時のユーザー作成開始");
+      // 初回アクセス時のユーザー作成
+      dev.log("初回アクセス時のユーザー作成開始");
       final userId = await UserIdService.getUserId();
-      dev.log("👤 ユーザーID取得: ${userId.substring(0, 8)}...");
+      dev.log("ユーザーID取得: ${userId.substring(0, 8)}...");//先頭8文字だけ
 
       // FCMトークンの取得を待つ（最大60秒）
       bool userCreated = false;
@@ -111,22 +128,6 @@ class AppInitializationService {
       await PushNotificationService.saveUserLocation(location.latitude, location.longitude);
     } catch (e) {
       dev.log("❌ 位置情報のFirestore保存エラー: $e");
-    }
-  }
-
-  /// Firebase Coreのみの最小初期化
-  static Future<void> _initializeFirebaseCore() async {
-    try {
-      dev.log("🔥 Firebase Core初期化開始");
-
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform, // 一時的にコメントアウト
-      );
-
-      dev.log("✅ Firebase Core初期化完了");
-    } catch (e) {
-      dev.log("❌ Firebase Core初期化エラー: $e");
-      rethrow;
     }
   }
 
