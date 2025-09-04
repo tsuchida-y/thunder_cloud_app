@@ -11,30 +11,38 @@ class UserIdService {
 
   /// 一意のユーザーIDを取得（初回のみ生成、以降はキャッシュ）
   static Future<String> getUserId() async {
+
+    // キャッシュがあればそれを返す
     if (_cachedUserId != null) {
       AppLogger.debug('キャッシュされたユーザーIDを使用: $_cachedUserId', tag: 'UserIdService');
       return _cachedUserId!;
     }
 
     try {
+      //値をスマホのローカルストレージに保存するためのAPI
+      //prefsは[キー,値]で管理される
       final prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString(_userIdKey);
 
+      // 初回起動時：新しいUUIDを生成しローカルに保存する
       if (userId == null) {
-        // 初回起動時：新しいUUIDを生成
         userId = _uuid.v4();
         await prefs.setString(_userIdKey, userId);
+
+        //TODO:デバック用のため、後で削除する
         AppLogger.info('新しいユーザーIDを生成: $userId', tag: 'UserIdService');
       } else {
+        //TODO:デバック用のため、後で削除する
         AppLogger.info('既存のユーザーIDを取得: $userId', tag: 'UserIdService');
       }
-
       _cachedUserId = userId;
       return userId;
+
     } catch (e) {
       AppLogger.error('ユーザーID取得エラー', error: e, tag: 'UserIdService');
 
       // エラー時はフォールバック用の一時IDを生成
+      //TODO:この一時的なIDがずっと使われるのはだめ
       final fallbackId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
       AppLogger.warning('フォールバックIDを使用: $fallbackId', tag: 'UserIdService');
       return fallbackId;
