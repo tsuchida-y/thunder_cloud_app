@@ -3,7 +3,6 @@ import 'dart:developer' as dev;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../utils/logger.dart';
 import 'fcm_token_manager.dart';
@@ -12,40 +11,22 @@ import 'fcm_token_manager.dart';
 /// FCMメッセージ処理とユーザー位置情報管理を担当
 /// 入道雲検出時の通知処理とFirestore連携を提供
 class PushNotificationService {
-  /*
-  ================================================================================
-                                    シングルトン
-                          アプリ全体で共有する単一インスタンス
-  ================================================================================
-  */
+
+  // Firebaseインスタンス
   static FirebaseMessaging? _messaging;
   static FirebaseFirestore? _firestore;
 
-  /*
-  ================================================================================
-                                    状態管理
-                          サービス状態とコールバック管理
-  ================================================================================
-  */
   /// UI更新用のコールバック関数
   /// 入道雲検出時にUIを更新するためのコールバック
   static Function(List<String>)? onThunderCloudDetected;
 
-  /// サービスが初期化されているかどうか
+  /// サービスが初期化されているかどうか(外部からは読み取り専用)
   static bool _isInitialized = false;
   static bool get isInitialized => _isInitialized;
 
-  /*
-  ================================================================================
-                                初期化機能
-                        FCMサービスとFirestore接続の初期化
-  ================================================================================
-  */
 
   /// プッシュ通知サービスの初期化
   /// FCM権限取得、トークン管理、メッセージハンドラー設定を実行
-  ///
-  /// Returns: 初期化の成功/失敗
   static Future<void> initialize() async {
     // 重複初期化を防ぐ
     if (_isInitialized) {
@@ -56,16 +37,16 @@ class PushNotificationService {
     AppLogger.info('プッシュ通知サービス初期化開始', tag: 'PushNotificationService');
 
     try {
-      // ステップ1: Firebaseインスタンスの初期化
+      //Firebaseインスタンスの初期化
       _messaging = FirebaseMessaging.instance;
       _firestore = FirebaseFirestore.instance;
 
       AppLogger.info('ローカル通知権限は初期化時に処理済み', tag: 'PushNotificationService');
 
-      // ステップ2: FCM通知権限の要求
+      //FCM通知権限の要求
       final settings = await _requestFCMPermission();
 
-      // ステップ3: 権限に基づく処理の分岐
+      //権限に基づく処理の分岐
       if (_isPermissionGranted(settings.authorizationStatus)) {
         await _initializeWithPermission();
       } else {
@@ -82,10 +63,22 @@ class PushNotificationService {
 
   /// FCM通知権限を要求
   /// ユーザーにFCM通知の許可を求める
-  ///
-  /// Returns: 通知設定情報
+  /// 権限状態を確認し、拒否された場合は再試行する
   static Future<NotificationSettings> _requestFCMPermission() async {
     try {
+      // 現在の権限状態をネイティブに確認
+      final currentSettings = await _messaging!.getNotificationSettings();
+      AppLogger.info('現在の通知権限状態: ${currentSettings.authorizationStatus}', tag: 'PushNotificationService');
+
+      //既に許可されている場合はそのまま返す
+      if (currentSettings.authorizationStatus == AuthorizationStatus.authorized) {
+        AppLogger.info('通知権限は既に許可されています', tag: 'PushNotificationService');
+        return currentSettings;
+      }
+
+      //権限を要求
+      //通知権限ダイアログを表示して、ユーザーの応答を待つ
+      AppLogger.info('通知権限を要求中...', tag: 'PushNotificationService');
       final settings = await _messaging!.requestPermission(
         alert: true,
         badge: true,
@@ -96,7 +89,33 @@ class PushNotificationService {
         provisional: false,
       );
 
-      AppLogger.info('FCM通知権限状態: ${settings.authorizationStatus}', tag: 'PushNotificationService');
+      //権限の結果を確認
+      final isGranted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      AppLogger.info('通知権限要求結果: ${isGranted ? '許可' : '拒否'}', tag: 'PushNotificationService');
+
+      //権限が拒否された場合の再試行
+      if (!isGranted) {
+        AppLogger.warning('通知権限が拒否されました。5秒後に再試行します', tag: 'PushNotificationService');
+        await Future.delayed(const Duration(seconds: 5));
+
+        //再試行
+        AppLogger.info('通知権限の再要求中...', tag: 'PushNotificationService');
+        final retryPermission = await _messaging!.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          announcement: false,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+        );
+
+        final retryGranted = retryPermission.authorizationStatus == AuthorizationStatus.authorized;
+        AppLogger.info('通知権限再要求結果: ${retryGranted ? '許可' : '拒否'}', tag: 'PushNotificationService');
+
+        return retryPermission;
+      }
+
       return settings;
     } catch (e) {
       AppLogger.error('FCM通知権限要求エラー', error: e, tag: 'PushNotificationService');
@@ -106,9 +125,6 @@ class PushNotificationService {
 
   /// 権限が許可されているかどうかを判定
   /// 許可または暫定許可の場合にtrueを返す
-  ///
-  /// [status] 権限状態
-  /// Returns: 権限が許可されているかどうか
   static bool _isPermissionGranted(AuthorizationStatus status) {
     return status == AuthorizationStatus.authorized ||
            status == AuthorizationStatus.provisional;
@@ -118,17 +134,13 @@ class PushNotificationService {
   /// 完全な通知機能を有効化
   static Future<void> _initializeWithPermission() async {
     try {
-      // ステップ1: FCMトークンの取得
+      //FCMトークンの取得
       final token = await FCMTokenManager.getToken();
 
       if (token != null) {
         AppLogger.info('FCMトークン取得成功: ${token.substring(0, 20)}...', tag: 'PushNotificationService');
-        // デバッグ用：完全なトークンを表示
-        if (kDebugMode) {
-          AppLogger.info('🔑 完全なFCMトークン: $token', tag: 'PushNotificationService');
-        }
 
-        // ステップ2: メッセージハンドラーの設定
+        //メッセージハンドラーの設定
         _setupMessageHandlers();
 
         AppLogger.success('プッシュ通知サービス初期化完了', tag: 'PushNotificationService');
@@ -157,24 +169,17 @@ class PushNotificationService {
     }
   }
 
-  /*
-  ================================================================================
-                                メッセージ処理機能
-                        FCMメッセージの受信とハンドリング
-  ================================================================================
-  */
-
   /// メッセージハンドラーの設定
   /// フォアグラウンド・バックグラウンド・初期メッセージの処理を設定
   static void _setupMessageHandlers() {
     try {
-      // ステップ1: フォアグラウンドでのメッセージ受信を監視
+      //フォアグラウンドでのメッセージ受信を監視
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-      // ステップ2: 通知タップでアプリが開かれた時の処理
+      //通知タップでアプリが開かれた時の処理
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-      // ステップ3: アプリ起動時に通知から開かれたかチェック
+      //アプリが停止している状態に通知から開かれたかチェック
       _checkInitialMessage();
 
       AppLogger.info('メッセージハンドラー設定完了', tag: 'PushNotificationService');
@@ -187,11 +192,11 @@ class PushNotificationService {
   /// アプリ起動時に通知から開かれた場合の処理
   static void _checkInitialMessage() async {
     try {
-      // ステップ1: 初期メッセージの取得
+      // 初期メッセージの取得
       RemoteMessage? initialMessage = await _messaging!.getInitialMessage();
 
       if (initialMessage != null) {
-        // ステップ2: 初期メッセージの処理
+        // 初期メッセージの処理
         _handleNotificationTap(initialMessage);
         AppLogger.info('初期メッセージ処理完了', tag: 'PushNotificationService');
       }
@@ -200,15 +205,12 @@ class PushNotificationService {
     }
   }
 
-  /// フォアグラウンドでメッセージを受信した時の処理
-  /// アプリ使用中の通知受信時の処理
-  ///
-  /// [message] 受信したメッセージ
+  /// アプリ使用中に通知を受信した時の処理
   static void _handleForegroundMessage(RemoteMessage message) {
     AppLogger.info('フォアグラウンドメッセージ受信: ${message.notification?.title}', tag: 'PushNotificationService');
 
     try {
-      // ステップ1: メッセージタイプの確認
+      //メッセージタイプの確認
       if (message.data['type'] == 'thunder_cloud') {
         // ステップ2: 方向データの抽出
         final directionsData = message.data['directions'] ?? '';
@@ -226,30 +228,20 @@ class PushNotificationService {
     }
   }
 
-  /// 通知タップ時の処理
   /// 通知がタップされた時の処理
-  ///
-  /// [message] 受信したメッセージ
   static void _handleNotificationTap(RemoteMessage message) {
     AppLogger.info('通知がタップされました: ${message.data}', tag: 'PushNotificationService');
 
     try {
-      // ステップ1: メッセージタイプの確認
+      // メッセージタイプの確認
       if (message.data['type'] == 'thunder_cloud') {
         AppLogger.info('入道雲通知タップ - 詳細画面へ遷移予定', tag: 'PushNotificationService');
-        // TODO: 詳細画面への遷移処理を実装
+        // TODO: 入道雲画面への遷移処理を実装
       }
     } catch (e) {
       AppLogger.error('通知タップ処理エラー', error: e, tag: 'PushNotificationService');
     }
   }
-
-  /*
-  ================================================================================
-                                位置情報管理機能
-                        ユーザー位置情報のFirestore保存と更新
-  ================================================================================
-  */
 
   /// ユーザー位置情報をFirestoreに保存
   /// FCMトークンをドキュメントIDとして使用、座標は小数点2位に丸める（プライバシー保護）
