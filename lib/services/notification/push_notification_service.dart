@@ -245,26 +245,22 @@ class PushNotificationService {
 
   /// ユーザー位置情報をFirestoreに保存
   /// FCMトークンをドキュメントIDとして使用、座標は小数点2位に丸める（プライバシー保護）
-  ///
-  /// [latitude] 緯度
-  /// [longitude] 経度
   static Future<void> saveUserLocation(double latitude, double longitude) async {
     try {
-      // ステップ1: FCMトークンを取得
+      // FCMトークンを取得
       final fcmToken = FCMTokenManager.currentToken;
       if (fcmToken == null) {
         AppLogger.error('FCMトークンが取得できません', tag: 'PushNotificationService');
         return;
       }
 
-      // ステップ2: 座標を小数点2位に丸める（プライバシー保護）
+      // 座標を小数点2位に丸める（プライバシー保護）
       final roundedLatitude = double.parse(latitude.toStringAsFixed(2));
       final roundedLongitude = double.parse(longitude.toStringAsFixed(2));
 
       AppLogger.info('ユーザー位置情報保存開始: 緯度=$latitude → $roundedLatitude, 経度=$longitude → $roundedLongitude', tag: 'PushNotificationService');
 
-      // ステップ3: 統合構造のユーザーデータを作成
-      // 既存のプロフィール情報を保持しながら位置情報を更新
+      // Firestoreに保存するためのデータ構造を作成
       final userData = {
         'fcmToken': fcmToken,
         'latitude': roundedLatitude,
@@ -273,7 +269,7 @@ class PushNotificationService {
         'isActive': true,
       };
 
-      // ステップ4: FCMトークンをドキュメントIDとして使用
+      //TODO:FCMトークンは一時的なものだから、ドキュメントIDとしては適切か検討する必要あり
       await _firestore!.collection('users').doc(fcmToken).set(
         userData,
         SetOptions(merge: true),
@@ -282,24 +278,23 @@ class PushNotificationService {
       AppLogger.success('ユーザー位置情報保存完了（FCMトークン付き）: (${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)})', tag: 'PushNotificationService');
       AppLogger.info('ドキュメントID: users/${fcmToken.substring(0, 20)}...', tag: 'PushNotificationService');
 
-      // ステップ5: 保存確認のためにデータを読み取り
+      // 保存確認のためにデータを読み取り
       await _verifySavedData(fcmToken);
     } catch (e) {
       AppLogger.error('ユーザー位置情報保存エラー', error: e, tag: 'PushNotificationService');
     }
   }
 
-  /// 保存されたデータの確認
+
   /// Firestoreに正しく保存されたかを確認
-  ///
-  /// [fcmToken] FCMトークン
+  /// 保存されているデータを読み取り、ログに出力
   static Future<void> _verifySavedData(String fcmToken) async {
     try {
-      // ステップ1: ドキュメントの取得
+      // ドキュメントの取得
       final doc = await _firestore!.collection('users').doc(fcmToken).get();
 
       if (doc.exists) {
-        // ステップ2: データの確認
+        // データの確認
         final data = doc.data();
         AppLogger.success('Firestore保存確認成功:', tag: 'PushNotificationService');
         AppLogger.info('FCMトークン: ${data?['fcmToken']?.substring(0, 20)}...', tag: 'PushNotificationService');
