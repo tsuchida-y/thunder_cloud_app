@@ -39,66 +39,6 @@ class NotificationService {
     }
   }
 
-  /// プッシュ通知と重複
-  // Future<bool> _requestNotificationPermissionWithRetry() async {
-  //   try {
-  //     //現在の権限状態をネイティブに確認しに行く
-  //     final settings = await _firebaseMessaging.getNotificationSettings();
-  //     AppLogger.info('現在の通知権限状態: ${settings.authorizationStatus}', tag: 'NotificationService');
-
-  //     // 権限が既に許可されている場合はtrueを返す
-  //     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-  //       AppLogger.info('通知権限は既に許可されています', tag: 'NotificationService');
-  //       return true;
-  //     }
-
-  //     // 権限を要求
-  //     //通知権限ダイアログを表示して、ユーザーの応答を待つ
-  //     AppLogger.info('通知権限を要求中...', tag: 'NotificationService');
-  //     final permission = await _firebaseMessaging.requestPermission(
-  //       alert: true,
-  //       announcement: false,
-  //       badge: true,
-  //       carPlay: false,
-  //       criticalAlert: false,
-  //       provisional: false,
-  //       sound: true,
-  //     );
-
-  //     // 権限の結果を確認
-  //     final isGranted = permission.authorizationStatus == AuthorizationStatus.authorized;
-  //     AppLogger.info('通知権限要求結果: ${isGranted ? '許可' : '拒否'}', tag: 'NotificationService');
-
-  //     // 権限が拒否された場合の再試行
-  //     if (!isGranted) {
-  //       AppLogger.warning('通知権限が拒否されました。5秒後に再試行します', tag: 'NotificationService');
-  //       await Future.delayed(const Duration(seconds: 5));
-
-  //       // 再試行
-  //       AppLogger.info('通知権限の再要求中...', tag: 'NotificationService');
-  //       final retryPermission = await _firebaseMessaging.requestPermission(
-  //         alert: true,
-  //         announcement: false,
-  //         badge: true,
-  //         carPlay: false,
-  //         criticalAlert: false,
-  //         provisional: false,
-  //         sound: true,
-  //       );
-
-  //       final retryGranted = retryPermission.authorizationStatus == AuthorizationStatus.authorized;
-  //       AppLogger.info('通知権限再要求結果: ${retryGranted ? '許可' : '拒否'}', tag: 'NotificationService');
-
-  //       return retryGranted;
-  //     }
-
-  //     return isGranted;
-  //   } catch (e) {
-  //     AppLogger.error('通知権限要求エラー', error: e, tag: 'NotificationService');
-  //     return false;
-  //   }
-  // }
-
   /// ローカル通知の初期化をするメソッド
   Future<void> _initializeLocalNotifications() async {
     try {

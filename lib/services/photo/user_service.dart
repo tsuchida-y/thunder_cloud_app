@@ -22,6 +22,40 @@ class UserService {
   ================================================================================
   */
 
+
+  /// 初回アクセス時のユーザー作成
+  /// アプリ起動時に確実にユーザードキュメントを作成
+  /// Returns: 作成成功時はtrue
+  static Future<bool> createUserOnFirstAccess(String userId) async {
+    try {
+      AppLogger.info('初回アクセス時のユーザー作成開始', tag: 'UserService');
+
+      //FCMトークンをキャッシュから取得
+      final fcmToken = FCMTokenManager.currentToken;
+      if (fcmToken == null) {
+        AppLogger.warning('FCMトークンが取得できません。後で再試行します', tag: 'UserService');
+        return false;
+      }
+
+      // ステップ2: 既存ドキュメントの確認
+      final existingDoc = await _firestore.collection('users').doc(fcmToken).get();
+
+      if (existingDoc.exists) {
+        AppLogger.info('ユーザードキュメントは既に存在します', tag: 'UserService');
+        return true;
+      }
+
+      // ステップ3: 新しいユーザードキュメントを作成
+      final defaultUserInfo = _createDefaultUserInfo(fcmToken, userId);
+      await _firestore.collection('users').doc(fcmToken).set(defaultUserInfo);
+
+      AppLogger.success('初回アクセス時のユーザー作成完了', tag: 'UserService');
+      return true;
+    } catch (e) {
+      AppLogger.error('初回アクセス時のユーザー作成エラー: $e', tag: 'UserService');
+      return false;
+    }
+  }
   /// ユーザー情報を取得（統合構造）
   /// FCMトークンをドキュメントIDとして使用し、存在しない場合は作成
   /// 重複ドキュメントの検出・削除も実行
@@ -115,41 +149,7 @@ class UserService {
     }
   }
 
-  /// 初回アクセス時のユーザー作成
-  /// アプリ起動時に確実にユーザードキュメントを作成
-  ///
-  /// [userId] ユーザーID
-  /// Returns: 作成成功時はtrue
-  static Future<bool> createUserOnFirstAccess(String userId) async {
-    try {
-      AppLogger.info('初回アクセス時のユーザー作成開始', tag: 'UserService');
 
-      // ステップ1: FCMトークンを取得
-      final fcmToken = FCMTokenManager.currentToken;
-      if (fcmToken == null) {
-        AppLogger.warning('FCMトークンが取得できません。後で再試行します', tag: 'UserService');
-        return false;
-      }
-
-      // ステップ2: 既存ドキュメントの確認
-      final existingDoc = await _firestore.collection('users').doc(fcmToken).get();
-
-      if (existingDoc.exists) {
-        AppLogger.info('ユーザードキュメントは既に存在します', tag: 'UserService');
-        return true;
-      }
-
-      // ステップ3: 新しいユーザードキュメントを作成
-      final defaultUserInfo = _createDefaultUserInfo(fcmToken, userId);
-      await _firestore.collection('users').doc(fcmToken).set(defaultUserInfo);
-
-      AppLogger.success('初回アクセス時のユーザー作成完了', tag: 'UserService');
-      return true;
-    } catch (e) {
-      AppLogger.error('初回アクセス時のユーザー作成エラー: $e', tag: 'UserService');
-      return false;
-    }
-  }
 
   /// ユーザー統計情報を取得
   /// usersコレクションの状況を確認

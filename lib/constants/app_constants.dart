@@ -40,7 +40,7 @@ class AppConstants {
   static const double earthRadiusKm = 6371.0;
 
   // 位置監視設定
-  static const double locationUpdateDistanceFilter = 1000.0; // 1km移動で更新（5kmから変更）
+  static const int locationUpdateDistanceFilter = 1000; // 1km移動で更新（5kmから変更）
   static const int locationUpdateTimeInterval = 5; // 最低5分間隔
   static const LocationAccuracy locationAccuracy = LocationAccuracy.medium;
 
