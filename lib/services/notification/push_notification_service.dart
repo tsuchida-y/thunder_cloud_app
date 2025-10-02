@@ -138,7 +138,7 @@ class PushNotificationService {
       final token = await FCMTokenManager.getToken();
 
       if (token != null) {
-        AppLogger.info('FCMトークン取得成功: ${token.substring(0, 20)}...', tag: 'PushNotificationService');
+        AppLogger.info('FCMトークン取得成功: $token', tag: 'PushNotificationService');
 
         //メッセージハンドラーの設定
         _setupMessageHandlers();
