@@ -131,6 +131,20 @@ class FCMTokenManager {
   /// [attempt] 現在の試行回数
   static Future<void> _ensureAPNSToken(FirebaseMessaging messaging, int attempt) async {
     try {
+      // シミュレータの場合は処理をスキップ
+      if (kDebugMode && Platform.isIOS) {
+        // シミュレータかどうかの判定を追加
+        try {
+          final deviceInfo = await _getDeviceInfo();
+          if (deviceInfo['isSimulator'] == true) {
+            dev.log("⚠️ iOSシミュレータ環境のため、APNSトークン処理をスキップ");
+            return;
+          }
+        } catch (e) {
+          dev.log("⚠️ デバイス情報取得失敗、実機として処理継続: $e");
+        }
+      }
+
       // ステップ1: 通知権限の確認と要求
       final settings = await messaging.getNotificationSettings();
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
