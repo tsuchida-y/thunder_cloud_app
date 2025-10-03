@@ -229,6 +229,21 @@ class FCMTokenManager {
   }
 }
 
+
+/// デバイス情報を取得（シミュレータ判定用）
+static Future<Map<String, dynamic>> _getDeviceInfo() async {
+  try {
+    // 簡易的な判定
+    return {
+      'isSimulator': Platform.environment.containsKey('SIMULATOR_DEVICE_NAME'),
+      'platform': Platform.operatingSystem,
+    };
+  } catch (e) {
+    dev.log("⚠️ デバイス情報取得エラー: $e");
+    return {'isSimulator': false};
+  }
+}
+
   /*
   ================================================================================
                                 キャッシュ管理
