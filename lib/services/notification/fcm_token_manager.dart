@@ -175,35 +175,59 @@ class FCMTokenManager {
       // ステップ2: APNSトークンの取得（より長い待機時間で試行）
       String? apnsToken;
       const int maxAttempts = 10; // 試行回数を増加
-      const int waitTimeMs = 2000; // 待機時間を2秒に延長
+      const List<int> waitTimes = [500, 1000, 1500, 2000, 3000]; // 段階的に待機時間を増加
 
       for (int i = 0; i < maxAttempts; i++) {
-        dev.log("⚠️ APNSトークン未取得 (試行 $attempt-${i + 1})");
+        dev.log("🔄 APNSトークン取得試行 $attempt-${i + 1}/$maxAttempts");
 
         // APNSトークンを取得
         apnsToken = await messaging.getAPNSToken();
 
         if (apnsToken != null && apnsToken.isNotEmpty) {
-          dev.log("✅ APNSトークン確認済み: ${apnsToken.substring(0, 10)}...");
+          dev.log("✅ APNSトークン取得成功: ${apnsToken.substring(0, 10)}...");
+          if (kDebugMode) {
+            dev.log("🔑 完全なAPNSトークン: $apnsToken");
+          }
           return;
         }
 
-        // 待機時間を延長（iOSシステムがAPNSトークンを設定する時間を確保）
-        await Future.delayed(const Duration(milliseconds: waitTimeMs));
+        // 段階的な待機時間
+        final waitTime = waitTimes[i < waitTimes.length ? i : waitTimes.length - 1];
+        dev.log("⏳ ${waitTime}ms待機後に再試行...");
+        await Future.delayed(Duration(milliseconds: waitTime));
+
+        // より積極的な権限再確認（5回目以降）
+        if (i >= 4) {
+          dev.log("🔄 通知権限を再確認中...");
+          final recheckSettings = await messaging.getNotificationSettings();
+          if (recheckSettings.authorizationStatus != AuthorizationStatus.authorized) {
+            dev.log("❌ 通知権限が取り消されました");
+            return;
+          }
+        }
       }
 
-      dev.log("❌ APNSトークンの取得に失敗しました");
+      dev.log("❌ APNSトークンの取得に失敗しました ($maxAttempts回試行)");
 
       // 開発環境での回避策
       if (kDebugMode) {
-        dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
-        return;
-      }
+        final finalSettings = await messaging.getNotificationSettings();
+        dev.log("📋 最終的な通知設定状態:");
+        dev.log("  - authorizationStatus: ${finalSettings.authorizationStatus}");
+        dev.log("  - alert: ${finalSettings.alert}");
+        dev.log("  - badge: ${finalSettings.badge}");
+        dev.log("  - sound: ${finalSettings.sound}");
 
-    } catch (e) {
-      dev.log("❌ APNSトークン取得エラー: $e");
+        dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
+        dev.log("💡 実機でテストするか、Firebase Console経由でテスト通知を送信してください");
+      }
+  } catch (e, stackTrace) {
+    dev.log("❌ APNSトークン取得エラー: $e");
+    if (kDebugMode) {
+      dev.log("📋 スタックトレース: $stackTrace");
     }
   }
+}
 
   /*
   ================================================================================
