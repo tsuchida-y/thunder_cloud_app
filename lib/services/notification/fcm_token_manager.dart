@@ -147,18 +147,29 @@ class FCMTokenManager {
 
       // ステップ1: 通知権限の確認と要求
       final settings = await messaging.getNotificationSettings();
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        dev.log("⚠️ 通知権限が許可されていません (試行 $attempt)");
-        // 権限を再要求
+      dev.log("📱 現在の通知権限状態: ${settings.authorizationStatus}");
+
+      if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        dev.log("🔔 通知権限を要求中...");
         final permission = await messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          announcement: false,
         );
+        dev.log("🔔 通知権限要求結果: ${permission.authorizationStatus}");
+
         if (permission.authorizationStatus != AuthorizationStatus.authorized) {
-          dev.log("❌ 通知権限の要求に失敗しました");
+          dev.log("❌ 通知権限が拒否されました");
           return;
         }
+      } else if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        dev.log("❌ 通知権限が許可されていません: ${settings.authorizationStatus}");
+        dev.log("💡 設定アプリで手動で権限を許可してください");
+        return;
       }
 
       // ステップ2: APNSトークンの取得（より長い待機時間で試行）
