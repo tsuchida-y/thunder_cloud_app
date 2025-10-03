@@ -36,7 +36,8 @@ dependencies:
   # UI強化
   cached_network_image: ^3.4.1
   share_plus: ^11.0.0
-  image_gallery_saver: ^2.0.3
+  # image_gallery_saver: ^2.0.3
+  gal: ^2.3.0
 
   # ローカルキャッシュ機能
   shared_preferences: ^2.5.3
