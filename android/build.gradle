@@ -1,15 +1,20 @@
+//全てのプロジェクトに適応される設定
 allprojects {
     repositories {
-        google()
-        mavenCentral()
+        google()    //googleのリポジトリを使用
+        mavenCentral()    //mavenCentralのリポジトリを使用
     }
 }
 
+//ビルド出力ディレクトリの設定
 rootProject.buildDir = "../build"
+
+//全てのサブプロジェクトに適応される設定
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 
+//cleanタスクの定義
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }

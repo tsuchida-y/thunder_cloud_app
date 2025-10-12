@@ -1,4 +1,7 @@
+//プラグイン管理の設定
 pluginManagement {
+
+    //FlutterSDKのパスの設定
     def flutterSdkPath = {
         def properties = new Properties()
         file("local.properties").withInputStream { properties.load(it) }
@@ -7,8 +10,10 @@ pluginManagement {
         return flutterSdkPath
     }()
 
+    //FlutterツールのGradleビルド設定を含める
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
+    //プラグインのリポジトリ設定
     repositories {
         google()
         mavenCentral()
@@ -16,6 +21,7 @@ pluginManagement {
     }
 }
 
+//使用するプラグインの定義
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
     id "com.android.application" version "8.6.0" apply false
@@ -25,4 +31,5 @@ plugins {
     id "org.jetbrains.kotlin.android" version "1.8.22" apply false
 }
 
+//アプリケーションモジュールの設定
 include ":app"
