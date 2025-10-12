@@ -339,7 +339,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
           const SizedBox(height: AppConstants.paddingMedium),
           Text(
-            'まだ写真が投稿されていません',
+            '2週間以内に投稿された写真はありません',
             style: TextStyle(
               fontSize: AppConstants.fontSizeLarge,
               color: Colors.grey[600],
