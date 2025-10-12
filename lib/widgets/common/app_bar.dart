@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-import '../../screens/settings/settings_screen.dart';
+import 'package:thunder_cloud_app/screens/settings_screen.dart';
 
 ///AppBar用のウィジェット
 ///今後おしゃれにしていきたいから、別ファイルに分離
