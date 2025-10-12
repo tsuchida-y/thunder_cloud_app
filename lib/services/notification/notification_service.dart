@@ -158,26 +158,4 @@ class NotificationService {
       AppLogger.error('ローカル通知表示エラー', error: e, tag: 'NotificationService');
     }
   }
-
-//TODO:通知の削除ってどこで使用されてる？
-  /// 指定されたIDの通知を削除
-  Future<void> cancelNotification(int id) async {
-    try {
-      await _localNotifications.cancel(id);
-      AppLogger.info('通知削除完了: ID $id', tag: 'NotificationService');
-    } catch (e) {
-      AppLogger.error('通知削除エラー', error: e, tag: 'NotificationService');
-    }
-  }
-
-  /// 全通知の削除
-  /// すべての通知を削除
-  Future<void> cancelAllNotifications() async {
-    try {
-      await _localNotifications.cancelAll();
-      AppLogger.info('全通知削除完了', tag: 'NotificationService');
-    } catch (e) {
-      AppLogger.error('全通知削除エラー', error: e, tag: 'NotificationService');
-    }
-  }
 }
