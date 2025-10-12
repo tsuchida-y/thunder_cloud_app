@@ -4,9 +4,9 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:gal/gal.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 import '../../constants/app_constants.dart';
 import '../../models/photo.dart';
@@ -484,37 +484,49 @@ class PhotoService {
   /// [photo] 写真データ
   /// [currentUserId] 現在のユーザーID
   /// Returns: ダウンロード成功時はtrue
-  static Future<bool> downloadPhoto(Photo photo, String currentUserId) async {
-    try {
-      AppLogger.info('📥 写真ダウンロード開始: ${photo.id}', tag: 'PhotoService');
+static Future<bool> downloadPhoto(Photo photo, String currentUserId) async {
+  try {
+    AppLogger.info('📥 写真ダウンロード開始: ${photo.id}', tag: 'PhotoService');
 
-      // ステップ1: 画像をダウンロード
-      final response = await http.get(Uri.parse(photo.imageUrl));
-      if (response.statusCode != 200) {
-        AppLogger.error('❌ 画像ダウンロード失敗: ${response.statusCode}', tag: 'PhotoService');
-        return false;
-      }
-
-      // ステップ2: 端末のギャラリーに保存
-      final Uint8List imageBytes = response.bodyBytes;
-      final result = await ImageGallerySaver.saveImage(
-        imageBytes,
-        name: 'thunder_cloud_${photo.id}_${DateTime.now().millisecondsSinceEpoch}',
-        quality: 100,
-      );
-
-      if (result['isSuccess'] == true) {
-        AppLogger.success('✅ 写真ダウンロード完了: ${photo.id}', tag: 'PhotoService');
-        return true;
-      } else {
-        AppLogger.error('❌ 端末ギャラリーへの保存に失敗: ${photo.id}', tag: 'PhotoService');
-        return false;
-      }
-    } catch (e) {
-      AppLogger.error('写真ダウンロードエラー: $e', tag: 'PhotoService');
+    // ステップ1: 画像をダウンロード
+    final response = await http.get(Uri.parse(photo.imageUrl));
+    if (response.statusCode != 200) {
+      AppLogger.error('❌ 画像ダウンロード失敗: ${response.statusCode}', tag: 'PhotoService');
       return false;
     }
+
+    // ステップ2: 端末のギャラリーに保存
+    final Uint8List imageBytes = response.bodyBytes;
+
+    // 変更前
+    // final result = await ImageGallerySaver.saveImage(
+    //   imageBytes,
+    //   name: 'thunder_cloud_${photo.id}_${DateTime.now().millisecondsSinceEpoch}',
+    //   quality: 100,
+    // );
+
+    // 変更後
+    await Gal.putImageBytes(
+      imageBytes,
+      name: 'thunder_cloud_${photo.id}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+
+    AppLogger.success('✅ 写真ダウンロード完了: ${photo.id}', tag: 'PhotoService');
+    return true;
+
+    // 変更前の結果チェック部分を削除
+    // if (result['isSuccess'] == true) {
+    //   AppLogger.success('✅ 写真ダウンロード完了: ${photo.id}', tag: 'PhotoService');
+    //   return true;
+    // } else {
+    //   AppLogger.error('❌ 端末ギャラリーへの保存に失敗: ${photo.id}', tag: 'PhotoService');
+    //   return false;
+    // }
+  } catch (e) {
+    AppLogger.error('写真ダウンロードエラー: $e', tag: 'PhotoService');
+    return false;
   }
+}
 
   /*
   ================================================================================

@@ -13,12 +13,7 @@ import '../notification/fcm_token_manager.dart';
 /// GPS位置情報の取得、監視、キャッシュ管理を行う
 /// 静的メソッドで実装され、アプリ全体で共有される
 class LocationService {
-  /*
-  ================================================================================
-                                    状態管理
-                          位置情報のキャッシュと状態管理
-  ================================================================================
-  */
+
   /// キャッシュされた位置情報（メモリ効率化のため）
   static LatLng? _cachedLocation;
 
@@ -31,21 +26,10 @@ class LocationService {
   /// 位置変更時のコールバック関数
   static Function(LatLng)? onLocationChanged;
 
-  /*
-  ================================================================================
-                                    設定値
-                          サービスの動作を制御する定数
-  ================================================================================
-  */
-  /// 位置情報の有効期限（10分から1時間に延長）
+
+  /// 位置情報の有効期限
   static const Duration _locationValidityDuration = Duration(hours: 1);
 
-  /*
-  ================================================================================
-                                データ取得機能
-                        GPS・Firestoreからの位置情報取得
-  ================================================================================
-  */
 
   /// 高速な位置情報取得（並列処理）
   /// FirestoreとGPSの取得を並列で実行し、最初に取得できた結果を返す
@@ -114,27 +98,24 @@ class LocationService {
     }
   }
 
-  /// 現在位置をLatLng形式で取得
+  /// 現在位置を取得
   /// 単純なGPS取得処理（高速取得の代替手段）
-  ///
-  /// [forceRefresh] 強制的に新しい位置情報を取得するかどうか
-  ///
   /// Returns: 現在位置のLatLng、取得失敗時はnull
   static Future<LatLng?> getCurrentLocationAsLatLng({bool forceRefresh = false}) async {
     try {
       AppLogger.info('位置情報取得開始 (forceRefresh: $forceRefresh)', tag: 'LocationService');
 
-      // ステップ1: キャッシュの有効性チェック
+      // キャッシュが有効ならキャッシュの位置情報を返す
       if (!forceRefresh && _isLocationValid()) {
         AppLogger.info('キャッシュされた位置情報を使用: $_cachedLocation', tag: 'LocationService');
         return _cachedLocation;
       }
 
-      // ステップ2: GPSから位置情報を取得
+      //位置情報を取得
       final position = await _getCurrentPositionWithRetry();
       final newLocation = LatLng(position.latitude, position.longitude);
 
-      // ステップ3: 位置情報をキャッシュ
+      //位置情報をデバイスにキャッシュとして保存
       _cacheLocation(newLocation);
       AppLogger.success('新しい位置情報を取得: $newLocation', tag: 'LocationService');
 
@@ -145,15 +126,7 @@ class LocationService {
     }
   }
 
-  /*
-  ================================================================================
-                                監視機能
-                       位置情報の継続的な監視と更新
-  ================================================================================
-  */
-
-  /// 位置情報の監視を開始
-  /// 継続的な位置情報更新により、リアルタイムな位置変化を検知
+  /// 位置情報の監視を開始し、リアルタイムな位置変化を検知
   static void startLocationMonitoring() {
     if (_positionStream != null) {
       AppLogger.warning('位置監視は既に開始されています', tag: 'LocationService');
@@ -162,16 +135,75 @@ class LocationService {
 
     AppLogger.info('位置情報監視開始', tag: 'LocationService');
 
-    // ステップ1: Geolocatorの位置ストリームを設定
+    //位置情報が変わるたびに自動で実行される
     _positionStream = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
-        accuracy: AppConstants.locationAccuracy,
-        distanceFilter: AppConstants.locationUpdateDistanceFilter.toInt(),
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        distanceFilter: AppConstants.locationUpdateDistanceFilter,
       ),
     ).listen(
       _handleLocationUpdate,  // 位置更新時の処理
       onError: _handleLocationError,  // エラー時の処理
     );
+  }
+
+  /// 位置情報更新ハンドラー
+  /// 継続監視中の位置情報変更を処理
+  /// 位置情報が変わっているかの再チェック(ライブラリを信用しすぎない)
+  static void _handleLocationUpdate(Position position) {
+    final newLocation = LatLng(position.latitude, position.longitude);
+
+    //キャッシュの位置情報と現在地が設定値以上離れていたら処理
+    if (_shouldUpdateLocation(newLocation)) {
+      // 位置情報をキャッシュ
+      _cacheLocation(newLocation);
+      AppLogger.info('位置情報更新: $newLocation', tag: 'LocationService');
+
+      // UIの更新や他の処理をコールバックで通知
+      onLocationChanged?.call(newLocation);
+    }
+  }
+
+
+  /// 位置情報をデバイスのメモリに保存
+  static void _cacheLocation(LatLng location) {
+    _cachedLocation = location;
+    _lastLocationUpdate = DateTime.now();
+    AppLogger.debug('位置情報をキャッシュ: $location', tag: 'LocationService');
+  }
+
+
+    /// 2つの位置間の距離を計算（メートル単位）
+  /// 直線距離を計算して、意味のある移動かどうかを判定
+  static double calculateDistance(LatLng point1, LatLng point2) {
+    return Geolocator.distanceBetween(
+      point1.latitude,
+      point1.longitude,
+      point2.latitude,
+      point2.longitude,
+    );
+  }
+
+
+  /// 位置更新が必要かチェック
+  /// 移動距離に基づいて意味のある更新かどうかを判定
+  /// 返り値：true なら更新、false ならスキップ
+  static bool _shouldUpdateLocation(LatLng newLocation) {
+
+    //キャッシュされた位置情報が存在しない場合、新しい位置情報で更新する
+    if (_cachedLocation == null) return true;
+
+    //移動距離の計算
+    final distance = calculateDistance(_cachedLocation!, newLocation);
+    final shouldUpdate = distance >= AppConstants.locationUpdateDistanceFilter;
+
+    //更新スキップ時のログ出力
+    if (!shouldUpdate) {
+      AppLogger.debug('位置更新スキップ (移動距離: ${distance.toStringAsFixed(1)}m)',
+                     tag: 'LocationService');
+    }
+
+    return shouldUpdate;
   }
 
   /// 位置情報監視を停止
@@ -182,23 +214,101 @@ class LocationService {
     AppLogger.info('位置情報監視停止', tag: 'LocationService');
   }
 
-  /*
-  ================================================================================
-                                ユーティリティメソッド
-                        補助的な処理・計算・状態取得
-  ================================================================================
-  */
 
-  /// 2つの位置間の距離を計算（メートル単位）
-  /// 直線距離を計算して、意味のある移動かどうかを判定
-  static double calculateDistance(LatLng point1, LatLng point2) {
-    return Geolocator.distanceBetween(
-      point1.latitude,
-      point1.longitude,
-      point2.latitude,
-      point2.longitude,
-    );
+  /// キャッシュされた位置情報が有効かチェック
+  /// 有効期限に基づくキャッシュの妥当性判定
+  /// Returns: キャッシュが有効かどうか
+  static bool _isLocationValid() {
+    if (_cachedLocation == null || _lastLocationUpdate == null) {
+      return false;
+    }
+
+    //現在時刻とキャッシュの時間を比較し、有効期限内かどうかを判定
+    final now = DateTime.now();
+    final isValid = now.difference(_lastLocationUpdate!) < _locationValidityDuration;
+
+    // ステップ2: 期限切れ時のログ出力
+    if (!isValid) {
+      AppLogger.debug('キャッシュされた位置情報が期限切れ', tag: 'LocationService');
+    }
+
+    return isValid;
   }
+
+  /// 現在の位置情報を取得
+  /// ネットワーク状況に応じた適応的なリトライ処理
+  /// Returns: 経度緯度(Position)、取得失敗時は例外をスロー
+  static Future<Position> _getCurrentPositionWithRetry({
+    int maxRetries = AppConstants.maxLocationRetries,// リトライ回数
+  }) async {
+    Exception? lastException;
+
+    // 指定回数までリトライ
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // 位置情報権限の確認と要求
+        await _ensureLocationPermissions();
+
+        AppLogger.info('位置情報取得試行 $attempt/$maxRetries', tag: 'LocationService');
+
+        // 試行回数に応じたタイムアウト設定
+        final timeoutSeconds = AppConstants.baseLocationTimeoutSeconds +
+                              (attempt * AppConstants.locationTimeoutIncrementSeconds);
+
+        //位置情報の取得
+        //優先度はGPS > Wi-Fi > モバイルネットワーク
+        return await Geolocator.getCurrentPosition(
+          locationSettings: LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: timeoutSeconds),
+          ),
+        );
+      } catch (e) {
+        lastException = e as Exception;
+        AppLogger.warning('位置情報取得エラー (試行 $attempt/$maxRetries): $e',
+                         tag: 'LocationService');
+
+        //リトライ間隔の設定
+        if (attempt < maxRetries) {
+          final delaySeconds = attempt * AppConstants.retryDelayMultiplier;
+          AppLogger.info('$delaySeconds秒後にリトライします', tag: 'LocationService');
+          await Future.delayed(Duration(seconds: delaySeconds));
+        }
+      }
+    }
+
+    throw lastException ?? LocationServiceException('位置情報取得に失敗しました');
+  }
+
+
+  /// 位置情報権限の確認と要求
+  static Future<void> _ensureLocationPermissions() async {
+
+    //デバイスの位置情報サービスが有効かどうか
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      throw LocationServiceException('位置情報サービスが無効です');
+    }
+
+    //権限確認
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      AppLogger.info('位置情報権限を要求中', tag: 'LocationService');
+      permission = await Geolocator.requestPermission();
+
+      if (permission == LocationPermission.denied) {
+        throw LocationPermissionException('位置情報の権限が拒否されました');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw LocationPermissionException('位置情報の権限が永続的に拒否されました');
+    }
+
+    AppLogger.info('位置情報権限確認完了', tag: 'LocationService');
+  }
+
+
 
   /// 現在のキャッシュされた位置情報
   static LatLng? get cachedLocation => _cachedLocation;
@@ -433,51 +543,7 @@ class LocationService {
   ================================================================================
   */
 
-  /// 現在の位置情報を取得（リトライ付き）
-  /// ネットワーク状況に応じた適応的なリトライ処理
-  ///
-  /// [maxRetries] 最大リトライ回数（デフォルトはAppConstantsから取得）
-  /// Returns: 位置情報のPositionオブジェクト
-  static Future<Position> _getCurrentPositionWithRetry({
-    int maxRetries = AppConstants.maxLocationRetries,
-  }) async {
-    Exception? lastException;
 
-    // ステップ1: 指定回数までリトライ
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        // ステップ2: 位置情報権限の確保
-        await _ensureLocationPermissions();
-
-        AppLogger.info('位置情報取得試行 $attempt/$maxRetries', tag: 'LocationService');
-
-        // ステップ3: 試行回数に応じたタイムアウト設定
-        final timeoutSeconds = AppConstants.baseLocationTimeoutSeconds +
-                              (attempt * AppConstants.locationTimeoutIncrementSeconds);
-
-        // ステップ4: GPS位置情報の取得
-        return await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: timeoutSeconds),
-          ),
-        );
-      } catch (e) {
-        lastException = e as Exception;
-        AppLogger.warning('位置情報取得エラー (試行 $attempt/$maxRetries): $e',
-                         tag: 'LocationService');
-
-        // ステップ5: リトライ間隔の設定
-        if (attempt < maxRetries) {
-          final delaySeconds = attempt * AppConstants.retryDelayMultiplier;
-          AppLogger.info('$delaySeconds秒後にリトライします', tag: 'LocationService');
-          await Future.delayed(Duration(seconds: delaySeconds));
-        }
-      }
-    }
-
-    throw lastException ?? LocationServiceException('位置情報取得に失敗しました');
-  }
 
   /*
   ================================================================================
@@ -486,32 +552,7 @@ class LocationService {
   ================================================================================
   */
 
-  /// 位置情報権限の確保
-  /// サービス有効性と権限の段階的な確認
-  static Future<void> _ensureLocationPermissions() async {
-    // ステップ1: サービス有効性チェック
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      throw LocationServiceException('位置情報サービスが無効です');
-    }
 
-    // ステップ2: 権限チェックと要求
-    LocationPermission permission = await Geolocator.checkPermission();
-
-    if (permission == LocationPermission.denied) {
-      AppLogger.info('位置情報権限を要求中', tag: 'LocationService');
-      permission = await Geolocator.requestPermission();
-
-      if (permission == LocationPermission.denied) {
-        throw LocationPermissionException('位置情報の権限が拒否されました');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw LocationPermissionException('位置情報の権限が永続的に拒否されました');
-    }
-
-    AppLogger.info('位置情報権限確認完了', tag: 'LocationService');
-  }
 
   /*
   ================================================================================
@@ -520,23 +561,7 @@ class LocationService {
   ================================================================================
   */
 
-  /// 位置情報更新ハンドラー
-  /// 継続監視中の位置情報変更を処理
-  ///
-  /// [position] 新しい位置情報
-  static void _handleLocationUpdate(Position position) {
-    final newLocation = LatLng(position.latitude, position.longitude);
 
-    // ステップ1: 意味のある移動かチェック
-    if (_shouldUpdateLocation(newLocation)) {
-      // ステップ2: 位置情報をキャッシュ
-      _cacheLocation(newLocation);
-      AppLogger.info('位置情報更新: $newLocation', tag: 'LocationService');
-
-      // ステップ3: コールバック実行
-      onLocationChanged?.call(newLocation);
-    }
-  }
 
   /// 位置情報エラーハンドラー
   /// 監視中のエラーを適切に処理
@@ -553,56 +578,11 @@ class LocationService {
   ================================================================================
   */
 
-  /// 位置更新が必要かチェック
-  /// 移動距離に基づいて意味のある更新かどうかを判定
-  ///
-  /// [newLocation] 新しい位置情報
-  /// Returns: 更新が必要かどうか
-  static bool _shouldUpdateLocation(LatLng newLocation) {
-    if (_cachedLocation == null) return true;
 
-    // ステップ1: 移動距離の計算
-    final distance = calculateDistance(_cachedLocation!, newLocation);
-    final shouldUpdate = distance >= AppConstants.locationUpdateDistanceFilter;
 
-    // ステップ2: 更新スキップ時のログ出力
-    if (!shouldUpdate) {
-      AppLogger.debug('位置更新スキップ (移動距離: ${distance.toStringAsFixed(1)}m)',
-                     tag: 'LocationService');
-    }
 
-    return shouldUpdate;
-  }
 
-  /// 位置情報をキャッシュ
-  /// メモリ内での位置情報管理
-  ///
-  /// [location] キャッシュする位置情報
-  static void _cacheLocation(LatLng location) {
-    _cachedLocation = location;
-    _lastLocationUpdate = DateTime.now();
-    AppLogger.debug('位置情報をキャッシュ: $location', tag: 'LocationService');
-  }
 
-  /// キャッシュされた位置情報が有効かチェック
-  /// 有効期限に基づくキャッシュの妥当性判定
-  /// Returns: キャッシュが有効かどうか
-  static bool _isLocationValid() {
-    if (_cachedLocation == null || _lastLocationUpdate == null) {
-      return false;
-    }
-
-    // ステップ1: 現在時刻との比較
-    final now = DateTime.now();
-    final isValid = now.difference(_lastLocationUpdate!) < _locationValidityDuration;
-
-    // ステップ2: 期限切れ時のログ出力
-    if (!isValid) {
-      AppLogger.debug('キャッシュされた位置情報が期限切れ', tag: 'LocationService');
-    }
-
-    return isValid;
-  }
 }
 
 /*

@@ -134,27 +134,27 @@ class AppInitializationService {
   /// 通知サービスの初期化
   static Future<void> _initializeNotificationService() async {
     try {
-      dev.log("🔔 通知サービス初期化開始");
+      dev.log("ローカル通知サービス初期化開始");
       await NotificationService().initialize();
-      dev.log("✅ ローカル通知サービス初期化完了");
+      dev.log("ローカル通知サービス初期化完了");
 
       // プッシュ通知サービス初期化
-      dev.log("📱 プッシュ通知サービス初期化開始");
+      dev.log("プッシュ通知サービス初期化開始");
       await PushNotificationService.initialize();
-      dev.log("✅ プッシュ通知サービス初期化完了");
+      dev.log("プッシュ通知サービス初期化完了");
+
     } catch (e) {
-      dev.log("❌ 通知サービス初期化エラー: $e");
+      dev.log("通知サービス初期化エラー: $e");
     }
   }
 
   /// 位置情報サービスの初期化（一度だけ実行）
   static Future<void> _initializeLocationService() async {
     try {
-      dev.log("📍 位置情報サービス初期化開始");
-
+      dev.log("位置情報サービス初期化開始");
       // 位置情報監視を先に開始（軽量）
       LocationService.startLocationMonitoring();
-      dev.log("✅ 位置情報監視開始");
+      dev.log("位置情報監視開始");
 
       // 位置情報取得は非同期で実行（UIをブロックしない）
       _getLocationInBackground();
@@ -174,11 +174,12 @@ class AppInitializationService {
     }
   }
 
-  /// バックグラウンドで位置情報を取得
+  /// バックグラウンドで位置情報を非同期に取得
+  /// キャッシュに保存
   static void _getLocationInBackground() {
     Future.microtask(() async {
       try {
-        dev.log("🔄 バックグラウンド位置情報取得開始");
+        dev.log("バックグラウンド位置情報取得開始");
 
         final location = await LocationService.getCurrentLocationAsLatLng()
             .timeout(
@@ -190,7 +191,7 @@ class AppInitializationService {
             );
 
         if (location != null) {
-          dev.log("✅ バックグラウンド位置情報取得成功: $location");
+          dev.log("バックグラウンド位置情報取得成功: $location");
 
           // 位置情報をFirestoreに自動保存
           try {

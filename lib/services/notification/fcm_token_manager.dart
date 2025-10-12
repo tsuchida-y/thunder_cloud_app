@@ -10,29 +10,16 @@ import '../../constants/app_constants.dart';
 /// Firebase Cloud Messagingトークンの取得・キャッシュ・管理を担当
 /// シミュレーター環境での代替トークン生成も提供
 class FCMTokenManager {
-  /*
-  ================================================================================
-                                    状態管理
-                          トークンのキャッシュと有効性管理
-  ================================================================================
-  */
-  /// キャッシュされたFCMトークン
-  /// 有効期限内のトークンを保持
+
+  // キャッシュされたFCMトークン
   static String? _cachedToken;
 
-  /// 最後のトークン更新時刻
-  /// キャッシュの有効期限判定に使用
+  // 最後のトークン更新時刻
+  // キャッシュの有効期限判定に使用
   static DateTime? _lastTokenUpdate;
 
-  /*
-  ================================================================================
-                                プロパティアクセス
-                        トークン状態の取得と確認
-  ================================================================================
-  */
-
-  /// 現在のFCMトークンを取得
-  /// キャッシュされたトークンを返す（nullの可能性あり）
+  // 現在のFCMトークンを取得
+  // キャッシュされたトークンを返す（nullの可能性あり）
   static String? get currentToken => _cachedToken;
 
   /// トークンが有効かどうかチェック
@@ -144,54 +131,118 @@ class FCMTokenManager {
   /// [attempt] 現在の試行回数
   static Future<void> _ensureAPNSToken(FirebaseMessaging messaging, int attempt) async {
     try {
+      // シミュレータの場合は処理をスキップ
+      if (kDebugMode && Platform.isIOS) {
+        // シミュレータかどうかの判定を追加
+        try {
+          final deviceInfo = await _getDeviceInfo();
+          if (deviceInfo['isSimulator'] == true) {
+            dev.log("⚠️ iOSシミュレータ環境のため、APNSトークン処理をスキップ");
+            return;
+          }
+        } catch (e) {
+          dev.log("⚠️ デバイス情報取得失敗、実機として処理継続: $e");
+        }
+      }
+
       // ステップ1: 通知権限の確認と要求
       final settings = await messaging.getNotificationSettings();
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        dev.log("⚠️ 通知権限が許可されていません (試行 $attempt)");
-        // 権限を再要求
+      dev.log("📱 現在の通知権限状態: ${settings.authorizationStatus}");
+
+      if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        dev.log("🔔 通知権限を要求中...");
         final permission = await messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          announcement: false,
         );
+        dev.log("🔔 通知権限要求結果: ${permission.authorizationStatus}");
+
         if (permission.authorizationStatus != AuthorizationStatus.authorized) {
-          dev.log("❌ 通知権限の要求に失敗しました");
+          dev.log("❌ 通知権限が拒否されました");
           return;
         }
+      } else if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        dev.log("❌ 通知権限が許可されていません: ${settings.authorizationStatus}");
+        dev.log("💡 設定アプリで手動で権限を許可してください");
+        return;
       }
 
       // ステップ2: APNSトークンの取得（より長い待機時間で試行）
       String? apnsToken;
       const int maxAttempts = 10; // 試行回数を増加
-      const int waitTimeMs = 2000; // 待機時間を2秒に延長
+      const List<int> waitTimes = [500, 1000, 1500, 2000, 3000]; // 段階的に待機時間を増加
 
       for (int i = 0; i < maxAttempts; i++) {
-        dev.log("⚠️ APNSトークン未取得 (試行 $attempt-${i + 1})");
+        dev.log("🔄 APNSトークン取得試行 $attempt-${i + 1}/$maxAttempts");
 
         // APNSトークンを取得
         apnsToken = await messaging.getAPNSToken();
 
         if (apnsToken != null && apnsToken.isNotEmpty) {
-          dev.log("✅ APNSトークン確認済み: ${apnsToken.substring(0, 10)}...");
+          dev.log("✅ APNSトークン取得成功: ${apnsToken.substring(0, 10)}...");
+          if (kDebugMode) {
+            dev.log("🔑 完全なAPNSトークン: $apnsToken");
+          }
           return;
         }
 
-        // 待機時間を延長（iOSシステムがAPNSトークンを設定する時間を確保）
-        await Future.delayed(const Duration(milliseconds: waitTimeMs));
+        // 段階的な待機時間
+        final waitTime = waitTimes[i < waitTimes.length ? i : waitTimes.length - 1];
+        dev.log("⏳ ${waitTime}ms待機後に再試行...");
+        await Future.delayed(Duration(milliseconds: waitTime));
+
+        // より積極的な権限再確認（5回目以降）
+        if (i >= 4) {
+          dev.log("🔄 通知権限を再確認中...");
+          final recheckSettings = await messaging.getNotificationSettings();
+          if (recheckSettings.authorizationStatus != AuthorizationStatus.authorized) {
+            dev.log("❌ 通知権限が取り消されました");
+            return;
+          }
+        }
       }
 
-      dev.log("❌ APNSトークンの取得に失敗しました");
+      dev.log("❌ APNSトークンの取得に失敗しました ($maxAttempts回試行)");
 
       // 開発環境での回避策
       if (kDebugMode) {
-        dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
-        return;
-      }
+        final finalSettings = await messaging.getNotificationSettings();
+        dev.log("📋 最終的な通知設定状態:");
+        dev.log("  - authorizationStatus: ${finalSettings.authorizationStatus}");
+        dev.log("  - alert: ${finalSettings.alert}");
+        dev.log("  - badge: ${finalSettings.badge}");
+        dev.log("  - sound: ${finalSettings.sound}");
 
-    } catch (e) {
-      dev.log("❌ APNSトークン取得エラー: $e");
+        dev.log("⚠️ 開発環境のため、APNSトークンなしで続行します");
+        dev.log("💡 実機でテストするか、Firebase Console経由でテスト通知を送信してください");
+      }
+  } catch (e, stackTrace) {
+    dev.log("❌ APNSトークン取得エラー: $e");
+    if (kDebugMode) {
+      dev.log("📋 スタックトレース: $stackTrace");
     }
   }
+}
+
+
+/// デバイス情報を取得（シミュレータ判定用）
+static Future<Map<String, dynamic>> _getDeviceInfo() async {
+  try {
+    // 簡易的な判定
+    return {
+      'isSimulator': Platform.environment.containsKey('SIMULATOR_DEVICE_NAME'),
+      'platform': Platform.operatingSystem,
+    };
+  } catch (e) {
+    dev.log("⚠️ デバイス情報取得エラー: $e");
+    return {'isSimulator': false};
+  }
+}
 
   /*
   ================================================================================
