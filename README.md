@@ -2,32 +2,32 @@
 
 美しい入道雲の発生を検出・通知し、写真撮影・共有を楽しむ総合アプリです。
 
-## 📱 アプリ画面
+## アプリ画面
 
 ### メイン画面
-<img src="assets/images/main_screen.png" width="300" alt="メイン画面 - 入道雲サーチ画面">
+<img src="assets/images/main_screen.png" width="200" alt="メイン画面 - 入道雲サーチ画面">
 
 現在地を中心に東西南北4方向の入道雲発生状況を表示。青い円は各方向の気象状況を示し、入道雲検出時は雲の画像に、晴天時は青空の画像に自動切り替えされます。
 
 ### 設定画面
 <div style="display: flex; gap: 10px;">
-  <img src="assets/images/setting_screen1.png" width="300" alt="設定画面1 - 基本設定">
-  <img src="assets/images/setting_screen2.png" width="300" alt="設定画面2 - 詳細設定">
+  <img src="assets/images/setting_screen1.png" width="200" alt="設定画面1 - 基本設定">
+  <img src="assets/images/setting_screen2.png" width="200" alt="設定画面2 - 詳細設定">
 </div>
 
 アプリの設定を管理できます。ユーザーアバターの登録、ユーザー名の設定、詳細な気象情報や位置情報の確認ができます。
 
 ### ギャラリー画面
-<img src="assets/images/gallery_screen.png" width="300" alt="ギャラリー画面 - マイフォト管理">
+<img src="assets/images/gallery_screen.png" width="200" alt="ギャラリー画面 - マイフォト管理">
 
 撮影した写真やダウンロードした写真の管理・閲覧ができます。ローカルに保存された写真を一覧表示し、詳細表示や削除が可能です。
 
 ### コミュニティ画面
-<img src="assets/images/community_screen.png" width="300" alt="コミュニティ画面 - 写真共有">
+<img src="assets/images/community_screen.png" width="200" alt="コミュニティ画面 - 写真共有">
 
 他のユーザーが投稿した入道雲写真を閲覧できます。いいね機能や写真ダウンロード機能でコミュニティを楽しめます。
 
-## ✨ 主な機能
+## 主な機能
 
 ### 🌩️ 入道雲監視機能
 - **リアルタイム入道雲検出**: 現在位置周辺12地点を5分間隔で自動監視
@@ -119,6 +119,3 @@ flutter run
 - **Backend**: Firebase (Cloud Functions, Firestore, FCM, Storage)
 - **地図**: Google Maps API
 - **気象データ**: Open-Meteo API
-- [夜間モード](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E5%A4%9C%E9%96%93%E3%83%A2%E3%83%BC%E3%83%89) - 省エネ機能
-- [位置情報システム](https://github.com/tsuchida-y/thunder_cloud_app/wiki/%E4%BD%8D%E7%BD%AE%E6%83%85%E5%A0%B1%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0) - 自動位置追跡機能
-- [APIリクエスト最適化](https://github.com/tsuchida-y/thunder_cloud_app/wiki/API%E3%83%AA%E3%82%AF%E3%82%A8%E3%82%B9%E3%83%88%E6%9C%80%E9%81%A9%E5%8C%96) - パフォーマンス改善
