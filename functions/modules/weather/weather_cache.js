@@ -124,13 +124,47 @@ class WeatherCache {
    * - 方向別リスクアセスメント
    * - ユーザー位置周辺の包括的気象状況把握
    */
+  /**
+   * 再取得が不要な方向別キャッシュの鮮度だけを更新
+   * Open-Meteoの取得間隔内であれば timestamp を更新して true を返す
+   */
+  async refreshIfRecentlyFetched(lat, lon) {
+    const cacheKey = HelperFunctions.generateCacheKey(lat, lon);
+    const docRef = this.firestore.collection('weather_cache').doc(cacheKey);
+
+    try {
+      const cacheDoc = await docRef.get();
+      if (!cacheDoc.exists) {
+        return false;
+      }
+
+      const cachedData = cacheDoc.data();
+      const fetchedAt = cachedData.fetchedAt && cachedData.fetchedAt.toDate && cachedData.fetchedAt.toDate();
+      const hasData = cachedData.cacheType === 'multi_distance_directional' && cachedData.data &&
+        Object.values(cachedData.data).some(directionData => directionData && Object.keys(directionData).length > 0);
+
+      if (!fetchedAt || !hasData ||
+          Date.now() - fetchedAt.getTime() >= WEATHER_CONSTANTS.WEATHER_FETCH_INTERVAL_MS) {
+        return false;
+      }
+
+      await docRef.update({ timestamp: new Date() });
+      return true;
+    } catch (error) {
+      console.error(`❌ キャッシュ鮮度更新エラー (${cacheKey}):`, error);
+      return false;
+    }
+  }
+
   async setDirectionalData(lat, lon, directionalData) {
     const cacheKey = HelperFunctions.generateCacheKey(lat, lon);
+    const now = new Date();
 
     try {
       await this.firestore.collection('weather_cache').doc(cacheKey).set({
         data: directionalData,
-        timestamp: new Date(),
+        timestamp: now,
+        fetchedAt: now,
         location: {
           latitude: lat,
           longitude: lon

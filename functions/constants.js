@@ -15,6 +15,7 @@ const WEATHER_CONSTANTS = {
 
   // キャッシュ設定
   CACHE_DURATION_MS: 5 * 60 * 1000, // 5分
+  WEATHER_FETCH_INTERVAL_MS: 60 * 60 * 1000, // Open-Meteoからの再取得間隔（予報値は1時間単位）
   CACHE_CLEANUP_RETENTION_HOURS: 2, // 2時間
   CACHE_CLEANUP_BATCH_SIZE: 100,
 
@@ -117,7 +118,7 @@ const BATCH_SETTINGS = {
 const USER_MONITORING = {
   ACTIVE_USER_DURATION_MS: 24 * 60 * 60 * 1000, // 24時間
   CACHE_CHECK_DURATION_MS: 5 * 60 * 1000, // 5分
-  NOTIFICATION_DEDUP_WINDOW_MS: 4 * 60 * 1000, // 同一監視周期（5分）内の重複通知を防止
+  NOTIFICATION_DEDUP_WINDOW_MS: 55 * 60 * 1000, // 気象データの更新間隔（1時間）内の再通知を防止
 };
 
 /**

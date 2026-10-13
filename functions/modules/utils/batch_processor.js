@@ -79,7 +79,14 @@ class BatchProcessor {
         }
 
       } catch (batchError) {
-        console.error(`❌ バッチ ${i + 1}/${batches.length} 処理エラー:`, batchError);
+        console.error(`❌ バッチ ${i + 1}/${batches.length} 処理エラー:`, batchError.message);
+
+        // 利用上限超過時は個別取得しても失敗し、呼び出し回数だけ増えるため打ち切る
+        if (batchError.response && batchError.response.status === 429) {
+          console.error('⛔ Open-Meteoの利用上限超過: 個別フォールバックをスキップ');
+          allResults.push(...batch.map(() => null));
+          continue;
+        }
 
         // 失敗したバッチは個別処理にフォールバック
         console.log(`🔄 バッチ ${i + 1} を個別処理でフォールバック`);
@@ -103,15 +110,15 @@ class BatchProcessor {
     for (const coord of coordinates) {
       try {
         const weatherData = await WeatherAPI.fetchSingleLocation(coord.latitude, coord.longitude);
-        results.push(weatherData || this._getDefaultWeatherData());
+        // 取得できなかった地点は null（実測でない既定値をキャッシュに保存しない）
+        results.push(weatherData || null);
 
         // 個別処理間で少し待機
         await new Promise(resolve => setTimeout(resolve, 100));
 
       } catch (error) {
         console.error(`❌ 個別処理エラー (${coord.latitude}, ${coord.longitude}):`, error);
-        // エラーの場合はデフォルト値を追加
-        results.push(this._getDefaultWeatherData());
+        results.push(null);
       }
     }
 
