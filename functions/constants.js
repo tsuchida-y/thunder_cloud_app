@@ -117,6 +117,7 @@ const BATCH_SETTINGS = {
 const USER_MONITORING = {
   ACTIVE_USER_DURATION_MS: 24 * 60 * 60 * 1000, // 24時間
   CACHE_CHECK_DURATION_MS: 5 * 60 * 1000, // 5分
+  NOTIFICATION_DEDUP_WINDOW_MS: 4 * 60 * 1000, // 同一監視周期（5分）内の重複通知を防止
 };
 
 /**

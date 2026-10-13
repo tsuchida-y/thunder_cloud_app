@@ -182,6 +182,13 @@ class ScheduleHandlers {
    */
   async monitorThunderClouds() {
     console.log('🌩️ 入道雲監視開始（5分間隔）');
+
+    // 夜間モードチェック（メイン処理と同じく20時〜8時は通知しない）
+    if (HelperFunctions.isNightMode()) {
+      console.log('🌙 夜間モード（20時〜8時）: 入道雲監視を完全にスキップ');
+      return;
+    }
+
     await this.thunderMonitoring.monitorThunderClouds();
     console.log('✅ 入道雲監視完了');
   }

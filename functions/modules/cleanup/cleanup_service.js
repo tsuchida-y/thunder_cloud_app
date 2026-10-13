@@ -67,8 +67,12 @@ class CleanupService {
           if (imageUrl) {
             try {
               const bucket = admin.storage().bucket();
-              const fileName = imageUrl.split('/').pop().split('?')[0]; // URLからファイル名を抽出
-              const file = bucket.file(`photos/${data.userId}/${fileName}`);
+              // ダウンロードURLの /o/ 以降はURLエンコードされたオブジェクトパス（photos%2F{userId}%2F{file}）
+              const encodedPath = imageUrl.split('?')[0].split('/o/')[1];
+              const filePath = encodedPath ?
+                decodeURIComponent(encodedPath) :
+                `photos/${data.userId}/${imageUrl.split('/').pop().split('?')[0]}`;
+              const file = bucket.file(filePath);
               await file.delete();
               console.log(`🗑️ Storage画像削除: ${photoId}`);
             } catch (storageError) {

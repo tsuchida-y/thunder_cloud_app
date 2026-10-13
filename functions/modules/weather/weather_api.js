@@ -42,15 +42,7 @@ class WeatherAPI {
         'current=temperature_2m&timezone=auto&forecast_days=1'
       );
 
-      return {
-        cape: response.data.hourly.cape[0] || 0,
-        lifted_index: response.data.hourly.lifted_index[0] || 0,
-        convective_inhibition: response.data.hourly.convective_inhibition[0] || 0,
-        temperature: response.data.current.temperature_2m || 20,
-        cloud_cover: response.data.hourly.cloud_cover[0] || 0,
-        cloud_cover_mid: response.data.hourly.cloud_cover_mid[0] || 0,
-        cloud_cover_high: response.data.hourly.cloud_cover_high[0] || 0
-      };
+      return this._extractWeatherData(response.data);
     } catch (error) {
       console.error('❌ Open-Meteo API エラー:', error);
       return null;
@@ -107,17 +99,16 @@ class WeatherAPI {
       console.log(`✅ 段階的バッチAPI呼び出し成功: ${coordinates.length}地点`);
 
       // レスポンスを各地点に分割
-      const results = [];
-      const dataCount = Array.isArray(response.data.latitude) ? response.data.latitude.length : 1;
+      // Open-Meteoは複数地点指定時「地点ごとのオブジェクトの配列」を返し、1地点のときは単一オブジェクトを返す
+      const locations = Array.isArray(response.data) ? response.data : [response.data];
 
-      if (dataCount !== coordinates.length) {
-        console.warn(`⚠️ データ数不一致: 期待値${coordinates.length}、実際${dataCount}`);
+      if (locations.length !== coordinates.length) {
+        console.warn(`⚠️ データ数不一致: 期待値${coordinates.length}、実際${locations.length}`);
       }
 
-      for (let i = 0; i < Math.min(dataCount, coordinates.length); i++) {
-        const weatherData = this._extractWeatherDataFromResponse(response.data, i);
-        results.push(weatherData);
-      }
+      const results = locations
+        .slice(0, coordinates.length)
+        .map(location => this._extractWeatherData(location));
 
       // データが不足している場合はデフォルト値で補完
       while (results.length < coordinates.length) {
@@ -134,42 +125,50 @@ class WeatherAPI {
   }
 
   /**
-   * APIレスポンスから気象データを抽出
+   * 1地点分のAPIレスポンスから気象データを抽出
    *
-   * @param {Object} responseData - Open-Meteo APIレスポンス
-   * @param {number} index - 対象データのインデックス（複数地点取得時）
+   * @param {Object} location - Open-Meteo APIの1地点分レスポンス
    * @returns {Object} 正規化された気象データ
    *
    * データ正規化処理:
-   * - 配列・単一値の両方に対応
+   * - hourly配列は当日0時始まりのため、current.timeと同じ時刻の要素を使用
    * - null/undefinedの安全な処理
    * - デフォルト値による欠損データ補完
    */
-  static _extractWeatherDataFromResponse(responseData, index) {
+  static _extractWeatherData(location) {
+    const hourly = location.hourly;
+    const hourIndex = this._getCurrentHourIndex(location);
+    const valueAt = (series) => (Array.isArray(series) ? series[hourIndex] : undefined) || 0;
+
     return {
-      cape: Array.isArray(responseData.hourly.cape) ?
-        (responseData.hourly.cape[index] ? responseData.hourly.cape[index][0] || 0 : 0) :
-        (responseData.hourly.cape[0] || 0),
-      lifted_index: Array.isArray(responseData.hourly.lifted_index) ?
-        (responseData.hourly.lifted_index[index] ? responseData.hourly.lifted_index[index][0] || 0 : 0) :
-        (responseData.hourly.lifted_index[0] || 0),
-      convective_inhibition: Array.isArray(responseData.hourly.convective_inhibition) ?
-        (responseData.hourly.convective_inhibition[index] ?
-          responseData.hourly.convective_inhibition[index][0] || 0 : 0) :
-        (responseData.hourly.convective_inhibition[0] || 0),
-      temperature: Array.isArray(responseData.current.temperature_2m) ?
-        (responseData.current.temperature_2m[index] || 20) :
-        (responseData.current.temperature_2m || 20),
-      cloud_cover: Array.isArray(responseData.hourly.cloud_cover) ?
-        (responseData.hourly.cloud_cover[index] ? responseData.hourly.cloud_cover[index][0] || 0 : 0) :
-        (responseData.hourly.cloud_cover[0] || 0),
-      cloud_cover_mid: Array.isArray(responseData.hourly.cloud_cover_mid) ?
-        (responseData.hourly.cloud_cover_mid[index] ? responseData.hourly.cloud_cover_mid[index][0] || 0 : 0) :
-        (responseData.hourly.cloud_cover_mid[0] || 0),
-      cloud_cover_high: Array.isArray(responseData.hourly.cloud_cover_high) ?
-        (responseData.hourly.cloud_cover_high[index] ? responseData.hourly.cloud_cover_high[index][0] || 0 : 0) :
-        (responseData.hourly.cloud_cover_high[0] || 0)
+      cape: valueAt(hourly.cape),
+      lifted_index: valueAt(hourly.lifted_index),
+      convective_inhibition: valueAt(hourly.convective_inhibition),
+      temperature: location.current.temperature_2m || 20,
+      cloud_cover: valueAt(hourly.cloud_cover),
+      cloud_cover_mid: valueAt(hourly.cloud_cover_mid),
+      cloud_cover_high: valueAt(hourly.cloud_cover_high)
     };
+  }
+
+  /**
+   * hourly配列のうち現在時刻に対応するインデックスを取得
+   *
+   * @param {Object} location - Open-Meteo APIの1地点分レスポンス
+   * @returns {number} 現在時刻のインデックス（特定できない場合は0）
+   */
+  static _getCurrentHourIndex(location) {
+    const times = location.hourly && location.hourly.time;
+    const currentTime = location.current && location.current.time;
+
+    if (!Array.isArray(times) || typeof currentTime !== 'string') {
+      return 0;
+    }
+
+    // "YYYY-MM-DDTHH" までが一致する要素が現在時刻のデータ
+    const hourPrefix = currentTime.substring(0, 13);
+    const index = times.findIndex(time => typeof time === 'string' && time.startsWith(hourPrefix));
+    return index >= 0 ? index : 0;
   }
 
   /**
