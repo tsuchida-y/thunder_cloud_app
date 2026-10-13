@@ -154,7 +154,7 @@ flowchart LR
 | isActive | bool | 監視対象かどうか |
 | userId | string | 端末 UUID。写真の所有者 ID |
 | userName | string | 既定値「ユーザー」 |
-| lastThunderNotificationAt | timestamp | 直近の通知時刻。重複通知の防止に使用 |
+| lastThunderNotificationAt | timestamp | 直近の通知時刻。55 分以内の再通知を防止 |
 | avatarUrl | string | Storage `avatars/` 配下の URL |
 | appVersion / createdAt / updatedAt | | 管理用 |
 
@@ -163,7 +163,8 @@ flowchart LR
 | フィールド | 型 | 説明 |
 |-----------|----|------|
 | data | map | `{north|south|east|west: {"50km"|"160km"|"250km": 地点データ}}` |
-| timestamp | timestamp | 保存時刻 |
+| timestamp | timestamp | サーバーが最後に確認した時刻（5 分ごとに更新） |
+| fetchedAt | timestamp | Open-Meteo から実際に取得した時刻 |
 | location | map | `{latitude, longitude}` |
 | cacheType | string | `multi_distance_directional`（定期バッチ）/ `standard`（HTTP API 経由） |
 
@@ -270,10 +271,9 @@ HTTP API は夜間モード中、全方向「入道雲なし」の固定レス�
 
 コードを読んで見つかった点です。優先度が高いと思う順に並べています。
 
-0. **【本番で発生中】Open-Meteo の 1 日あたりの上限を超え、気象データが取得できていない**（2026-10-13 に本番ログと Firestore で確認）
-   `cacheWeatherData` のログは全リクエストが `429 Daily API request limit exceeded` です。その結果 `weather_cache` の全 16 件で 4 方向とも中身が空になっており、アプリは天気に関係なく全方向「入道雲なし」を表示します。
-   約 16 ユーザー × 12 地点 = 192 地点を 5 分ごと（日中 12 時間で 144 回）に取得しており、これだけで 1 日 約 27,000 回になります（無料枠は 1 日 10,000 回）。Open-Meteo の `hourly` データは 1 時間単位でしか変わらないため、取得を 1 時間ごとにすれば 約 2,300 回 / 日に収まります。
-   また本番にデプロイされている Functions は 1 ファイル構成の古い `index.js` で（リポジトリに無い `cleanupExpiredLikes` も存在）、このリポジトリの `functions/` とは内容が異なります。
+0. **【本番で発生中・修正は未デプロイ】Open-Meteo の 1 日あたりの上限を超え、気象データが取得できていない**（2026-10-13 に本番ログと Firestore で確認）
+   本番の `cacheWeatherData` は全リクエストが `429 Daily API request limit exceeded` で、`weather_cache` の全 16 件で 4 方向とも中身が空です。アプリは天気に関係なく全方向「入道雲なし」を表示します。約 16 ユーザー × 12 地点を 5 分ごとに取得しており、1 日 約 27,000 回になっていました（無料枠は 1 日 10,000 回）。
+   リポジトリ側は修正済みです（下の「修正済み」参照）が、デプロイするまで本番は直りません。本番にデプロイされている Functions は 1 ファイル構成の古い `index.js` で（リポジトリに無い `cleanupExpiredLikes` も存在）、このリポジトリの `functions/` とは内容が異なる点に注意してください。
 
 1. **セキュリティルールとアプリの認証方式が合っていない**
    ルールは `users` / `photos` に `request.auth` を要求しますが、アプリは Firebase Authentication を使っていません（`pubspec.yaml` に `firebase_auth` なし）。リポジトリのルールをそのままデプロイすると `users` への書き込みや写真投稿が拒否されるはずなので、本番に適用されているルールとの差分を確認してください。あわせて Storage が全開放、`downloads` / `debug` / `_test_connection` も全開放です。
@@ -287,13 +287,7 @@ HTTP API は夜間モード中、全方向「入道雲なし」の固定レス�
 4. **日次バッチのタイムゾーンと処理件数**
    `cleanupExpiredPhotos` / `cleanupWeatherCache` は `timeZone` 未指定のため、日本時間の 1 時 / 3 時に動くとは限りません。また 1 回 100 件までなので、`weather_cache` は増えるペースに削除が追いつかない可能性があります。
 
-5. **入道雲が続く間、5 分ごとに通知が届く**
-   同じ監視周期内の二重送信は防いでいますが、条件が続けば次の周期でまた通知されます。「一度通知したら一定時間は送らない」などの仕様は未定です。
-
-6. **iOS の最低対応バージョン**
-   プロジェクトの設定は iOS 12〜14 ですが、Xcode 27 は iOS 15 未満を対象にしたビルドを受け付けません。
-
-7. **細かな不整合**
+5. **細かな不整合**
    - `AppConstants.appVersion` が `1.0.3`（`pubspec.yaml` は 1.0.4）。
    - `schedule_handlers.js` のコメントに「8 方向」「5km / 10km / 15km」など現行と違う記述が残っている。
    - `likes` コレクションと `downloads` コレクションはルールや読み取りコードだけ残っており、いいねは `photos.likedBy`、ダウンロードは端末保存で実装されている。
@@ -305,6 +299,9 @@ HTTP API は夜間モード中、全方向「入道雲なし」の固定レス�
 - 気象値が当日 0 時のものだった問題 → 現在時刻に対応する `hourly` の要素を使用。
 - Open-Meteo の複数地点レスポンス（地点ごとの配列）を正しく処理できず、毎回 1 地点ずつの取得に落ちていた問題。
 - 通知判定でキャッシュが使われていなかった問題 → ユーザー位置の `weather_cache` を読み、判定できない方向だけ API を呼ぶ。
-- 同一周期の重複通知と夜間の通知 → `monitorThunderClouds` に夜間判定を追加し、`users.lastThunderNotificationAt` で 4 分以内の再送を防止。
+- 重複通知と夜間の通知 → `monitorThunderClouds` に夜間判定を追加し、`users.lastThunderNotificationAt` で 55 分以内の再送を防止（通知は 1 ユーザーあたり最大 1 時間に 1 回）。
+- Open-Meteo の上限超過 → 同じ地点の再取得は 1 時間に 1 回に制限（`WEATHER_FETCH_INTERVAL_MS`）。5 分ごとの実行は残し、取得間隔内は `weather_cache.timestamp` だけ更新する（リリース済みアプリが 5 分より古いキャッシュを無効扱いするため）。実際に取得した時刻は `fetchedAt` に保存。呼び出しは 192 地点 × 12 回 = 約 2,300 回 / 日。
+- 上限超過（429）時に 1 地点ずつ再試行して呼び出しを倍増させていた問題、取得失敗時に空データや既定値（0）でキャッシュを上書きしていた問題。
+- iOS の最低対応バージョンを 15.0 に変更（Xcode 27 は iOS 15 未満のビルドを受け付けない）。
 - 期限切れ写真の Storage 画像が削除されていなかった問題。
 - 投稿失敗が成功扱いになっていた問題、コミュニティの追加読み込みで同じ写真が重複する問題、アプリ更新後にローカル写真が消える問題。
