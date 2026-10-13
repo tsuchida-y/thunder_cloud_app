@@ -102,6 +102,32 @@ class LocalPhotoService {
 
   /*
   ================================================================================
+                                パス解決
+                        保存済みパスを現在のコンテナ基準に解決
+  ================================================================================
+  */
+
+  /// 現在の写真保存ディレクトリのパスを取得
+  static Future<String> _currentPhotosDirPath() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    return '${appDir.path}/$_photosDir';
+  }
+
+  /// 保存済みの絶対パスを実在するパスに解決
+  /// iOSではアプリ更新時にコンテナの絶対パスが変わるため、
+  /// 保存時のパスに存在しない場合は現在の保存ディレクトリ＋ファイル名で探す
+  ///
+  /// [storedPath] メタデータに保存されているパス
+  /// [photosDirPath] 現在の写真保存ディレクトリ
+  static Future<String> _resolveImagePath(String storedPath, String photosDirPath) async {
+    if (await File(storedPath).exists()) {
+      return storedPath;
+    }
+    return '$photosDirPath/${storedPath.split('/').last}';
+  }
+
+  /*
+  ================================================================================
                                 メタデータ管理
                         写真メタデータの保存と削除
   ================================================================================
@@ -165,6 +191,7 @@ class LocalPhotoService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final photosJson = prefs.getStringList(_photosKey) ?? [];
+      final photosDirPath = await _currentPhotosDirPath();
 
       final photos = <Photo>[];
       for (final photoJson in photosJson) {
@@ -175,9 +202,11 @@ class LocalPhotoService {
           // ユーザーIDでフィルタリング
           if (photo.userId == userId) {
             // ファイルが存在するかチェック
-            final file = File(photo.imageUrl);
-            if (await file.exists()) {
-              photos.add(photo);
+            final imagePath = await _resolveImagePath(photo.imageUrl, photosDirPath);
+            if (await File(imagePath).exists()) {
+              photos.add(imagePath == photo.imageUrl
+                  ? photo
+                  : photo.copyWith(imageUrl: imagePath, thumbnailUrl: imagePath));
             } else {
               // ファイルが存在しない場合はメタデータから削除
               await _removePhotoMetadata(photo.id);
@@ -248,7 +277,7 @@ class LocalPhotoService {
 
       // ステップ3: 画像ファイルを削除
       if (imagePathToDelete != null) {
-        final file = File(imagePathToDelete);
+        final file = File(await _resolveImagePath(imagePathToDelete, await _currentPhotosDirPath()));
         if (await file.exists()) {
           await file.delete();
         }
@@ -282,6 +311,7 @@ class LocalPhotoService {
       int validPhotos = 0;
       int invalidPhotos = 0;
       int totalSizeBytes = 0;
+      final photosDirPath = await _currentPhotosDirPath();
 
       for (final photoJson in photosJson) {
         try {
@@ -289,7 +319,7 @@ class LocalPhotoService {
           final photo = Photo.fromMap(photoMap);
           totalPhotos++;
 
-          final file = File(photo.imageUrl);
+          final file = File(await _resolveImagePath(photo.imageUrl, photosDirPath));
           if (await file.exists()) {
             validPhotos++;
             final fileStat = await file.stat();
@@ -338,13 +368,14 @@ class LocalPhotoService {
       final photosJson = prefs.getStringList(_photosKey) ?? [];
       final validPhotos = <String>[];
       int cleanedCount = 0;
+      final photosDirPath = await _currentPhotosDirPath();
 
       for (final photoJson in photosJson) {
         try {
           final photoMap = jsonDecode(photoJson) as Map<String, dynamic>;
           final photo = Photo.fromMap(photoMap);
 
-          final file = File(photo.imageUrl);
+          final file = File(await _resolveImagePath(photo.imageUrl, photosDirPath));
           if (await file.exists()) {
             validPhotos.add(photoJson);
           } else {

@@ -162,10 +162,12 @@ class PhotoService {
   ///
   /// [limit] 取得する写真の最大数
   /// [lastDocument] ページネーション用の最後のドキュメント
+  /// [startAfterTimestamp] ページネーション用の最後の写真の投稿日時（lastDocumentがない場合に使用）
   /// Returns: 写真データのリスト
   static Future<List<Photo>> getPublicPhotos({
     int limit = 20,
     DocumentSnapshot? lastDocument,
+    DateTime? startAfterTimestamp,
   }) async {
     try {
       // ステップ1: 全ての公開写真を取得してからクライアントサイドで期限切れをフィルタリング
@@ -178,6 +180,8 @@ class PhotoService {
 
       if (lastDocument != null) {
         query = query.startAfterDocument(lastDocument);
+      } else if (startAfterTimestamp != null) {
+        query = query.startAfter([Timestamp.fromDate(startAfterTimestamp)]);
       }
 
       final snapshot = await query.get().timeout(
