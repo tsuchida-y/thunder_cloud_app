@@ -1,6 +1,14 @@
 // functions/modules/notification/notification_service.js
 const admin = require('firebase-admin');
 
+// 通知本文に表示する方向名（data.directions はアプリが解析するため英語のまま送る）
+const DIRECTION_LABELS = {
+  north: '北',
+  south: '南',
+  east: '東',
+  west: '西',
+};
+
 class NotificationService {
   constructor() {
     this.messaging = admin.messaging();
@@ -10,11 +18,12 @@ class NotificationService {
    * 入道雲警報を送信
    */
   async sendThunderCloudAlert(fcmToken, directions) {
+    const body = `${directions.map((d) => DIRECTION_LABELS[d] || d).join('、')}の方向に入道雲が発生しています！`;
     const message = {
       token: fcmToken,
       notification: {
         title: '⛈️ 入道雲警報',
-        body: `${directions.join('、')}方向に入道雲が発生しています！`,
+        body,
       },
       data: {
         type: 'thunder_cloud',
@@ -37,7 +46,7 @@ class NotificationService {
             badge: 1,
             alert: {
               title: '⛈️ 入道雲警報',
-              body: `${directions.join('、')}方向に入道雲が発生しています！`,
+              body,
             },
           },
         },
