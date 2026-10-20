@@ -2,6 +2,7 @@ import CoreLocation
 import Flutter
 import UIKit
 import Firebase
+import FirebaseAuth
 import FirebaseMessaging
 import UserNotifications
 
@@ -31,6 +32,8 @@ import UserNotifications
     Messaging.messaging().delegate = self
     // 作った直後にも許可の状態の知らせが来るので、お願いより前に受け取り役を決めておく
     locationManager.delegate = self
+    // 「常に」の人は、大きく移動したときに場所を書く（アプリが閉じていても OS が起こしてくれる）
+    BackgroundLocation.shared.sync()
     // 許可のお願いはしない（はじめての起動の画面でお願いする）。トークンの準備だけ
     application.registerForRemoteNotifications()
 
@@ -130,5 +133,108 @@ import UserNotifications
 
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
     if manager.authorizationStatus == .authorizedAlways { finishAlways(otherwise: "always") }
+    BackgroundLocation.shared.sync()
+  }
+}
+
+/// 位置情報を「常に」にした人の場所を、アプリを閉じているあいだも members に書く（iOS）
+///
+/// - OS の「大きな移動の検知」（数百m〜1km ほど動いたとき）を使う。電池をほとんど使わず、アプリが閉じていても起こしてもらえる
+/// - 前に書いた場所から1km以上動いたときだけ書く。位置は小数第2位（約1km）に丸める
+/// - lastOpenedAt は書かない（サーバーは「開いて10分以内の人には送らない」に使うため）
+/// - Firestore には REST で書く（Flutter 側の Firestore と設定がぶつからないように）。
+///   本人のログインの ID トークンを付けるので、firestore.rules の「本人だけが自分の members を書ける」がそのまま効く
+final class BackgroundLocation: NSObject, CLLocationManagerDelegate {
+  static let shared = BackgroundLocation()
+
+  private let manager = CLLocationManager()
+  private let minMoveMeters: CLLocationDistance = 1000
+  private let lastLatKey = "background_location_lat"
+  private let lastLngKey = "background_location_lng"
+
+  private override init() {
+    super.init()
+    manager.delegate = self
+  }
+
+  /// 「常に」なら見張りを始め、そうでなければ止める
+  func sync() {
+    if manager.authorizationStatus == .authorizedAlways && CLLocationManager.significantLocationChangeMonitoringAvailable() {
+      manager.startMonitoringSignificantLocationChanges()
+    } else {
+      manager.stopMonitoringSignificantLocationChanges()
+    }
+  }
+
+  func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    sync()
+  }
+
+  func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    guard let location = locations.last else { return }
+    let defaults = UserDefaults.standard
+    if defaults.object(forKey: lastLatKey) != nil {
+      let last = CLLocation(latitude: defaults.double(forKey: lastLatKey), longitude: defaults.double(forKey: lastLngKey))
+      if location.distance(from: last) < minMoveMeters { return }
+    }
+    guard let user = Auth.auth().currentUser,
+          let projectId = FirebaseApp.app()?.options.projectID else { return }
+
+    // 書き終わるまでアプリを止めないよう OS にお願いする
+    var task: UIBackgroundTaskIdentifier = .invalid
+    task = UIApplication.shared.beginBackgroundTask { UIApplication.shared.endBackgroundTask(task) }
+    user.getIDToken { [weak self] token, _ in
+      guard let self = self, let token = token else {
+        UIApplication.shared.endBackgroundTask(task)
+        return
+      }
+      self.write(location: location, uid: user.uid, projectId: projectId, idToken: token) { ok in
+        if ok {
+          defaults.set(location.coordinate.latitude, forKey: self.lastLatKey)
+          defaults.set(location.coordinate.longitude, forKey: self.lastLngKey)
+        }
+        UIApplication.shared.endBackgroundTask(task)
+      }
+    }
+  }
+
+  private func round2(_ value: Double) -> Double { (value * 100).rounded() / 100 }
+
+  /// members/{uid} の location だけを書き換える（Firestore REST の commit）
+  private func write(location: CLLocation, uid: String, projectId: String, idToken: String, done: @escaping (Bool) -> Void) {
+    let docName = "projects/\(projectId)/databases/(default)/documents/members/\(uid)"
+    let body: [String: Any] = [
+      "writes": [[
+        "update": [
+          "name": docName,
+          "fields": [
+            "location": ["mapValue": ["fields": [
+              "latitude": ["doubleValue": round2(location.coordinate.latitude)],
+              "longitude": ["doubleValue": round2(location.coordinate.longitude)],
+            ]]],
+            "locationSource": ["stringValue": "background"],
+          ],
+        ],
+        "updateMask": ["fieldPaths": ["location", "locationSource"]],
+        "updateTransforms": [["fieldPath": "locationUpdatedAt", "setToServerValue": "REQUEST_TIME"]],
+        // アプリが作った members があるときだけ書く
+        "currentDocument": ["exists": true],
+      ]],
+    ]
+    guard let url = URL(string: "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents:commit"),
+          let data = try? JSONSerialization.data(withJSONObject: body) else {
+      done(false)
+      return
+    }
+    var request = URLRequest(url: url, timeoutInterval: 20)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+    request.httpBody = data
+    URLSession.shared.dataTask(with: request) { _, response, _ in
+      let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+      if !(200...299).contains(code) { print("BackgroundLocation: 場所を書けませんでした HTTP \(code)") }
+      done((200...299).contains(code))
+    }.resume()
   }
 }

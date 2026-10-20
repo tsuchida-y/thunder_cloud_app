@@ -35,6 +35,17 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // 「常に」の人の場所を、アプリを閉じているあいだも書く定期処理を始める・止める
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "thunder_cloud/background_location")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "sync") {
+                    BackgroundLocation.sync(applicationContext)
+                    result.success(BackgroundLocation.hasAlways(applicationContext))
+                } else {
+                    result.notImplemented()
+                }
+            }
+
         // 位置情報の「使用中」だけをお願いする。
         // geolocator は Android 10 でマニフェストに ACCESS_BACKGROUND_LOCATION があると「常に」も一緒に聞くので、
         // はじめての起動ではこちらを使う（CLAUDE.md:「常に」をいきなりお願いしない）

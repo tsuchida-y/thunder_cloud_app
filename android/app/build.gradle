@@ -69,6 +69,14 @@ android {
 dependencies {
     // 新しいJava APIを古いAndroidバージョンでも使用可能にするライブラリ
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+
+    // 「常に」の人の場所を、アプリを閉じているあいだも members に書く（BackgroundLocation.kt）
+    // Firebase のバージョンは firebase_core（FirebaseSDKVersion）と同じにする。
+    // Firestore は Flutter 側と設定がぶつからないよう SDK を使わず REST で書くので、ログインの SDK だけ使う
+    implementation platform('com.google.firebase:firebase-bom:33.16.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.android.gms:play-services-location:21.2.0'
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
 }
 
 //Flutterプロジェクトの設定

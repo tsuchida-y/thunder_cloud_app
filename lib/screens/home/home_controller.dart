@@ -200,6 +200,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
           });
         }
         _isAlways = await CurrentPlace.isAlways();
+        CurrentPlace.syncBackground();
       } else {
         _gps = null;
       }

@@ -46,6 +46,20 @@ class CurrentPlace {
 
   static const MethodChannel _foreground = MethodChannel('thunder_cloud/location_foreground');
   static const MethodChannel _always = MethodChannel('thunder_cloud/location_always');
+  static const MethodChannel _background = MethodChannel('thunder_cloud/background_location');
+
+  /// 「常に」の人の場所を、アプリを閉じているあいだも members に書く仕組みを、許可に合わせて始める・止める
+  ///
+  /// iOS は AppDelegate.swift（大きな移動の検知）が許可の変化を見て自分で始めるので、Android だけ。
+  /// Android は MainActivity と BackgroundLocation.kt（15分ごとの定期処理）。アプリを開くたびに呼ぶ。
+  static Future<void> syncBackground() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _background.invokeMethod<bool>('sync');
+    } catch (e) {
+      AppLogger.warning('バックグラウンドの位置の更新を設定できませんでした: $e', tag: 'CurrentPlace');
+    }
+  }
 
   /// 「使用中のみ」の許可をお願いする（はじめての起動の画面と、許可がないときの画面から）
   ///
