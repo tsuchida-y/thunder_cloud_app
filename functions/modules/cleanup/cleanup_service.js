@@ -1,32 +1,36 @@
 // functions/modules/cleanup/cleanup_service.js
 const admin = require('firebase-admin');
-const WeatherCache = require('../weather/weather_cache');
-const { WEATHER_CONSTANTS } = require('../../constants');
+const { JMA_NOWCAST, CLOUD_RETENTION_DAYS } = require('../../constants');
 
 class CleanupService {
-  constructor() {
-    this.firestore = admin.firestore();
-    this.weatherCache = new WeatherCache();
+  get firestore() {
+    return admin.firestore();
   }
 
   /**
-   * 気象データキャッシュクリーンアップ
+   * 終わってから日数がたった雲を消す
+   *
+   * 「見えた」記録は reports に雲の場所と時刻を写して残すので、雲そのものは数日で消してよい。
    */
-  async cleanupWeatherCache() {
-    console.log('🧹 気象データキャッシュクリーンアップ開始');
-
+  async cleanupOldClouds(now = new Date()) {
+    const threshold = new Date(now.getTime() - CLOUD_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    let totalDeleted = 0;
     try {
-      const deletedCount = await this.weatherCache.cleanup(
-        WEATHER_CONSTANTS.CACHE_CLEANUP_RETENTION_HOURS,
-        WEATHER_CONSTANTS.CACHE_CLEANUP_BATCH_SIZE
-      );
-
-      console.log(`✅ 気象データキャッシュクリーンアップ完了: ${deletedCount}件削除`);
-      return deletedCount;
+      // status と lastSeenAt の組み合わせの索引を作らずに済むよう、終わった雲を取ってから日付で絞る
+      const snapshot = await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
+        .where('status', '==', 'ended').get();
+      const oldDocs = snapshot.docs.filter((doc) => doc.data().lastSeenAt.toDate() < threshold);
+      for (let i = 0; i < oldDocs.length; i += 450) {
+        const batch = this.firestore.batch();
+        oldDocs.slice(i, i + 450).forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+      }
+      totalDeleted = oldDocs.length;
+      console.log(`🧹 終わった雲を${totalDeleted}件削除しました（${CLOUD_RETENTION_DAYS}日より前）`);
     } catch (error) {
-      console.error('❌ 気象データキャッシュクリーンアップエラー:', error);
-      return 0;
+      console.error('❌ 古い雲の削除に失敗しました:', error);
     }
+    return totalDeleted;
   }
 
   /**

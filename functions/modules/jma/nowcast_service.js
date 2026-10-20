@@ -107,6 +107,8 @@ class NowcastService {
 
   /**
    * 5分ごとの本処理: 雲の一覧を更新する
+   *
+   * @returns {Promise<boolean>} 新しい解析値で雲の一覧を書き換えたら true
    */
   async updateClouds() {
     const statusRef = this.firestore.doc(JMA_NOWCAST.STATUS_DOC_PATH);
@@ -124,7 +126,7 @@ class NowcastService {
       }
       if (status.lastRainTime === times.rain) {
         console.log(`⏭️ [JMA_NOWCAST] 新しい解析値なし（${times.rain}）`);
-        return;
+        return false;
       }
 
       const { clusters, requestCount } = await this.detectClusters(times);
@@ -144,8 +146,10 @@ class NowcastService {
       console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個 ` +
         `（続き${result.updated} 新規${result.created} 見えない${result.hidden} 終了${result.ended}、` +
         `気象庁へのリクエスト${requestCount + 2}回）`);
+      return true;
     } catch (error) {
       await this._recordFailure(statusRef, status, error);
+      return false;
     }
   }
 

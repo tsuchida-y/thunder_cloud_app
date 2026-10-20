@@ -46,6 +46,7 @@
 - docs/実装の進め方.md のステップを1つずつ進める。1ステップが終わったら、何を変えたかと、アプリで確かめる方法を短く書いて止まる。
 - 既存の Firestore のデータ (users, photos など) は、移し替えが要るときは先に方法を説明して確認を取る。
 - Firebase へのデプロイ、ストアへの提出、課金の本番設定は、必ず確認を取ってから行う。
+- v2.0 の公開までは、本番で v1 の Open-Meteo の関数を動かし続ける (今のアプリ 1.0.4 が使っているため)。functions/index.js からは外してあるので、Cloud Functions のデプロイは必ず関数名を指定する (`firebase deploy --only functions:updateNowcastClouds` のように)。Firestore のルールは v1 の部分を本番と同じにしてあり、締め直しは v2.0 の公開時に行う。
 - 説明は表を使わず、平易な文章で書く。
 
 ## Notion をメモリとして使う

@@ -217,7 +217,28 @@ const NOTIFY_RULES = {
   // アプリを開いてからこの時間内の人には送らない（もう画面で見ているため）
   RECENTLY_OPENED_MS: 10 * 60 * 1000,
   JST_OFFSET_MS: 9 * 60 * 60 * 1000,
+  // Plus で見張れる登録済みの場所の数（いまいる場所は別）
+  PLUS_MAX_PLACES: 3,
 };
+
+/**
+ * v2.0 の Firestore の置き場所
+ *
+ * members/{uid}        アプリが書く: 位置、見張る場所、設定、最後に開いた時刻、FCM トークン
+ * member_server/{uid}  サーバーだけが書く: Plus かどうか、通知の記録
+ * reports/{自動ID}     アプリが書く: 「見えた」「見えなかった」の答え
+ * uid は Firebase Authentication の匿名ログインの ID
+ */
+const COLLECTIONS = {
+  MEMBERS: 'members',
+  MEMBER_SERVER: 'member_server',
+  REPORTS: 'reports',
+};
+
+/**
+ * 終わった雲を残しておく日数（夜の画面の「きょう見えた入道雲」に使うので、少なくとも当日分は残す）
+ */
+const CLOUD_RETENTION_DAYS = 3;
 
 /**
  * ヘルパー関数
@@ -308,5 +329,7 @@ module.exports = {
   API_SETTINGS,
   JMA_NOWCAST,
   NOTIFY_RULES,
+  COLLECTIONS,
+  CLOUD_RETENTION_DAYS,
   HelperFunctions
 };

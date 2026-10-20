@@ -57,7 +57,7 @@
           "order": "ASCENDING"
         }
       ]
-        },
+    },
     {
       "collectionGroup": "weather_cache",
       "queryScope": "COLLECTION",
@@ -65,6 +65,20 @@
         {
           "fieldPath": "timestamp",
           "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "reportedAt",
+          "order": "DESCENDING"
         }
       ]
     }
