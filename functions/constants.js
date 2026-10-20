@@ -205,6 +205,21 @@ const JMA_NOWCAST = {
 };
 
 /**
+ * v2.0 の通知のルール（docs/入道雲サーチ_決定事項.md の「3. 通知のルール」）
+ */
+const NOTIFY_RULES = {
+  FREE_RANGE_KM: 30,
+  PLUS_RANGE_KM: 90,
+  // これより遠い雲は「見えるかもしれません」と控えめに書く
+  MAYBE_VISIBLE_KM: 60,
+  MIN_INTERVAL_MS: 30 * 60 * 1000,
+  DAILY_LIMIT: 3,
+  // アプリを開いてからこの時間内の人には送らない（もう画面で見ているため）
+  RECENTLY_OPENED_MS: 10 * 60 * 1000,
+  JST_OFFSET_MS: 9 * 60 * 60 * 1000,
+};
+
+/**
  * ヘルパー関数
  */
 const HelperFunctions = {
@@ -292,5 +307,6 @@ module.exports = {
   LOG_CONSTANTS,
   API_SETTINGS,
   JMA_NOWCAST,
+  NOTIFY_RULES,
   HelperFunctions
 };
