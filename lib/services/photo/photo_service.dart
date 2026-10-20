@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:gal/gal.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../models/lat_lng.dart';
 import 'package:http/http.dart' as http;
 
 import '../../constants/app_constants.dart';

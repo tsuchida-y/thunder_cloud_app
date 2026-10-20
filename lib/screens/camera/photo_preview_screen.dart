@@ -3,10 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../constants/app_constants.dart';
-import '../../main.dart';
+import '../../navigation/app_routes.dart';
 import '../../services/location/location_service.dart';
 import '../../services/photo/local_photo_service.dart';
-import '../../services/photo/photo_service.dart';
 import '../../utils/logger.dart';
 
 /// 撮影した写真のプレビュー画面
@@ -101,11 +100,6 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
             label: 'ローカル保存',
             onPressed: _isSaving ? null : _saveLocally,
           ),
-          _buildActionButton(
-            icon: Icons.cloud_upload,
-            label: '投稿',
-            onPressed: _isSaving ? null : _postPhoto,
-          ),
         ],
       ),
     );
@@ -196,66 +190,6 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     }
   }
 
-  /// 写真のコミュニティ投稿処理
-  /// Firestore投稿→ローカル保存→コミュニティ画面遷移の流れで実行
-  /// 用途：コミュニティ共有＋個人記録の両方を実現
-  Future<void> _postPhoto() async {
-    final startTime = DateTime.now();
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      AppLogger.info('投稿処理開始', tag: 'PhotoPreviewScreen');
-
-      // 位置情報を取得
-      final location = await LocationService.getCurrentLocationAsLatLng();
-      AppLogger.info('位置情報取得: $location', tag: 'PhotoPreviewScreen');
-
-      // ユーザーIDを動的に取得
-      final userId = await AppConstants.getCurrentUserId();
-
-      // 1. Firestoreにコミュニティ投稿として保存
-      final uploaded = await PhotoService.uploadPhoto(
-        imageFile: widget.imageFile,
-        userId: userId,
-        userName: 'ユーザー',
-      );
-      if (!uploaded) {
-        throw Exception('写真をアップロードできませんでした');
-      }
-
-      // 2. 個人記録としてローカルにも保存
-      await LocalPhotoService.savePhotoLocally(
-        imageFile: widget.imageFile,
-        userId: userId,
-        userName: 'ユーザー',
-        latitude: location?.latitude,
-        longitude: location?.longitude,
-        locationName: '撮影地点',
-      );
-
-      if (mounted) {
-        _navigateToCommunity();
-      }
-
-      final duration = DateTime.now().difference(startTime);
-      AppLogger.success('投稿処理完了 (${duration.inMilliseconds}ms)', tag: 'PhotoPreviewScreen');
-    } catch (e) {
-      AppLogger.error('投稿処理エラー', error: e, tag: 'PhotoPreviewScreen');
-
-      if (mounted) {
-        _showErrorDialog('投稿に失敗しました: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
-
   /*
   ================================================================================
                                 ダイアログ表示
@@ -263,36 +197,10 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
   ================================================================================
   */
 
-  /// ローカル保存後のギャラリー画面遷移処理
-  /// 画面スタッククリア→MainScreenのギャラリータブで再作成
+  /// ローカル保存後の画面遷移処理
+  /// プレビュー画面とカメラ画面を閉じてホームに戻る（記録画面への案内はステップ8で作る）
   void _navigateToGallery() {
-    // プレビュー画面とカメラ画面の両方を閉じてMainScreenに戻る
-    Navigator.of(context).popUntil((route) => route.isFirst);
-
-    // MainScreenをギャラリータブで再作成
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const MainScreen(
-          initialTab: AppConstants.navigationIndexGallery,
-        ),
-      ),
-    );
-  }
-
-  /// 投稿後のコミュニティ画面遷移処理
-  /// 画面スタッククリア→MainScreenのコミュニティタブで再作成
-  void _navigateToCommunity() {
-    // プレビュー画面とカメラ画面の両方を閉じてMainScreenに戻る
-    Navigator.of(context).popUntil((route) => route.isFirst);
-
-    // MainScreenをコミュニティタブで再作成
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const MainScreen(
-          initialTab: AppConstants.navigationIndexCommunity,
-        ),
-      ),
-    );
+    AppRoutes.backToHome(context);
   }
 
   /// エラーダイアログの表示処理

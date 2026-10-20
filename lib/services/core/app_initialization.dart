@@ -1,7 +1,7 @@
 import 'dart:developer' as dev;
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../models/lat_lng.dart';
 
 import '../../firebase_options.dart';
 import '../location/location_service.dart';

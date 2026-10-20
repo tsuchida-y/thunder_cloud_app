@@ -1,6 +1,5 @@
 import Flutter
 import UIKit
-import GoogleMaps
 import Firebase
 import FirebaseMessaging
 import UserNotifications
@@ -13,8 +12,6 @@ import UserNotifications
   ) -> Bool {
     // Firebase初期化
     FirebaseApp.configure()
-
-    GMSServices.provideAPIKey("AIzaSyC8q8kr1HYOMNpDPZQ-Mp4UQ6zIzbmGjUw")
 
     GeneratedPluginRegistrant.register(with: self)
 
