@@ -46,6 +46,7 @@ dependencies:
   google_fonts: ^8.2.1
   firebase_auth: ^5.7.0
   geocoding: ^5.0.0
+  flutter_compass: ^0.8.1
 
 dev_dependencies:
   flutter_test:

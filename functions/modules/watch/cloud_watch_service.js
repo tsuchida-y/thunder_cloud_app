@@ -112,6 +112,8 @@ class CloudWatchService {
     const message = appearedMessage(view);
     const result = await this.notifications.sendCloudNotification(member.fcmToken, message, {
       type: 'cloud_appeared',
+      // アプリが「見えた」「見えなかった」の答えをどの雲に結びつけるかに使う
+      cloudId: cloud.id,
       directionName: view.directionName,
       bearingDeg: view.bearingDeg.toFixed(1),
       distanceKm: view.distanceKm.toFixed(1),

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:thunder_cloud_app/models/finder_target.dart';
 import 'package:thunder_cloud_app/models/lat_lng.dart';
+import 'package:thunder_cloud_app/screens/finder/widgets/finder_drawings.dart';
 import 'package:thunder_cloud_app/utils/sky_geometry.dart';
 import 'package:thunder_cloud_app/utils/sun_times.dart';
 import 'package:thunder_cloud_app/utils/time_text.dart';
@@ -61,6 +63,31 @@ void main() {
       final sunrise = DateTime(2026, 10, 21, 5, 10);
       expect(TimeText.morning(sunrise, DateTime(2026, 10, 20, 21)), 'あすの朝 5:10 ごろ');
       expect(TimeText.morning(sunrise, DateTime(2026, 10, 21, 1)), '朝 5:10 ごろ');
+    });
+  });
+
+  group('方角ガイド', () {
+    test('回る角度は -180〜180（正なら右）', () {
+      expect(angleDiff(100, 135), 35);
+      expect(angleDiff(350, 10), 20);
+      expect(angleDiff(10, 350), -20);
+      expect(angleDiff(0, 180).abs(), 180);
+    });
+
+    test('通知のデータから案内する雲を作る', () {
+      final target = FinderTarget.fromNotification({
+        'type': 'cloud_appeared',
+        'cloudId': 'c1',
+        'bearingDeg': '135.0',
+        'distanceKm': '42.0',
+        'elevationDeg': '15.9',
+        'fists': '1.5',
+      })!;
+      expect(target.cloudId, 'c1');
+      expect(target.directionName, '南東');
+      expect(target.fistsLabel, 'こぶし1つ半');
+      expect(target.source, FinderSource.notification);
+      expect(FinderTarget.fromNotification({'type': 'other'}), isNull);
     });
   });
 }

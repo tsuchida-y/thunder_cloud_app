@@ -1,4 +1,9 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+
+import '../../models/finder_target.dart';
 
 import '../../navigation/app_routes.dart';
 import '../../theme/app_colors.dart';
@@ -23,15 +28,29 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController _controller = HomeController();
+  StreamSubscription<RemoteMessage>? _openedSub;
 
   @override
   void initState() {
     super.initState();
     _controller.start();
+    // 通知から開いたときは、方角ガイドを直接開く
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) _openFromNotification(message);
+    });
+    _openedSub = FirebaseMessaging.onMessageOpenedApp.listen(_openFromNotification);
+  }
+
+  void _openFromNotification(RemoteMessage message) {
+    final target = FinderTarget.fromNotification(message.data);
+    if (target == null || !mounted) return;
+    AppRoutes.backToHome(context);
+    AppRoutes.openFinder(context, target);
   }
 
   @override
   void dispose() {
+    _openedSub?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -139,7 +158,7 @@ class _CloudsView extends StatelessWidget {
           PrimaryButton(
             label: '雲の方角を調べる',
             icon: Icons.explore_outlined,
-            onPressed: () => AppRoutes.openFinder(context),
+            onPressed: () => AppRoutes.openFinder(context, FinderTarget.fromView(nearest)),
           ),
           const SizedBox(height: 14),
           CloudListCard(clouds: state.clouds),

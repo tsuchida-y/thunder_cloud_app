@@ -42,6 +42,7 @@ test('範囲内の雲を通知し、通知の記録と最初の通知の時刻�
   assert.equal(sent[0].cloudId, 'c1');
   assert.equal(sent[0].message.title, '南東の空に、入道雲が現れました');
   assert.equal(sent[0].data.type, 'cloud_appeared');
+  assert.equal(sent[0].data.cloudId, 'c1');
 
   const server = firestore.docs.get('member_server/u1');
   assert.deepEqual(server.notification.notifiedCloudIds, ['c1']);

@@ -66,6 +66,16 @@ class CurrentPlace {
     }
   }
 
+  /// 最後に分かった位置（すぐ返る。方角ガイドの偏角など、だいたいの場所で足りるときに使う）
+  static Future<LatLng?> lastKnown() async {
+    try {
+      final last = await Geolocator.getLastKnownPosition();
+      return last == null ? null : LatLng(last.latitude, last.longitude);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 場所の名前（「滝沢市」など）。分からなければ null
   ///
   /// 端末の地名検索（iOS は Apple、Android は Google）を使う。同じ場所（約1km）なら前の結果を使う。
