@@ -113,8 +113,9 @@ class WeatherCache {
    * データ構造例:
    * {
    *   "north": {
-   *     "5km": { coordinates: {}, analysis: {}, cape: 100, ... },
-   *     "10km": { coordinates: {}, analysis: {}, cape: 150, ... }
+   *     "50km": { coordinates: {}, analysis: {}, cape: 100, ... },
+   *     "160km": { coordinates: {}, analysis: {}, cape: 150, ... },
+   *     "250km": { coordinates: {}, analysis: {}, cape: 120, ... }
    *   },
    *   "south": { ... }
    * }
