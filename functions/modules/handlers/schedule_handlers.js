@@ -78,15 +78,15 @@ class ScheduleHandlers {
    *
    * 処理フロー:
    * 1. アクティブユーザー抽出（24時間以内位置更新）
-   * 2. 各ユーザー周辺8方向の入道雲状況チェック
+   * 2. 各ユーザー周辺4方向（東西南北）の入道雲状況チェック
    * 3. キャッシュデータ優先使用（5分以内の新鮮データ）
    * 4. 入道雲検知時の即座通知送信
    * 5. 通知履歴・統計の記録
    *
    * 検知アルゴリズム:
    * - CAPE値、Lifted Index、雲量の複合判定
-   * - 距離別リスクレベル評価（5km, 10km, 15km）
-   * - 方向別脅威度分析（北、北東、東...）
+   * - 距離別リスクレベル評価（50km, 160km, 250km）
+   * - 方向別脅威度分析（北、南、東、西）
    *
    * 通知最適化:
    * - 重複通知の防止
@@ -182,6 +182,13 @@ class ScheduleHandlers {
    */
   async monitorThunderClouds() {
     console.log('🌩️ 入道雲監視開始（5分間隔）');
+
+    // 夜間モードチェック（メイン処理と同じく20時〜8時は通知しない）
+    if (HelperFunctions.isNightMode()) {
+      console.log('🌙 夜間モード（20時〜8時）: 入道雲監視を完全にスキップ');
+      return;
+    }
+
     await this.thunderMonitoring.monitorThunderClouds();
     console.log('✅ 入道雲監視完了');
   }

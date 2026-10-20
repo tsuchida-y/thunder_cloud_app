@@ -326,17 +326,39 @@ class WeatherService {
 
     console.log(`📊 キャッシュ対象ユーザー数: ${users.length}`);
 
-    // 全ユーザーの全座標を収集（重複除去付き）
-    const { uniqueCoordinates } = BatchProcessor.collectUniqueCoordinates(users);
+    // 取得間隔内の地点はAPIを呼ばず、キャッシュの鮮度だけ更新する
+    const usersToFetch = [];
+    const checkedLocations = new Set();
 
-    const totalPoints = users.length * this.CHECK_DIRECTIONS.length * this.CHECK_DISTANCES.length;
+    for (const user of users) {
+      const locationKey = HelperFunctions.generateCacheKey(user.latitude, user.longitude);
+      if (checkedLocations.has(locationKey)) {
+        continue;
+      }
+      checkedLocations.add(locationKey);
+
+      if (!(await this.weatherCache.refreshIfRecentlyFetched(user.latitude, user.longitude))) {
+        usersToFetch.push(user);
+      }
+    }
+
+    console.log(`📍 再取得対象: ${usersToFetch.length}/${checkedLocations.size}地点`);
+
+    if (usersToFetch.length === 0) {
+      return;
+    }
+
+    // 全ユーザーの全座標を収集（重複除去付き）
+    const { uniqueCoordinates } = BatchProcessor.collectUniqueCoordinates(usersToFetch);
+
+    const totalPoints = usersToFetch.length * this.CHECK_DIRECTIONS.length * this.CHECK_DISTANCES.length;
     console.log(`📍 座標最適化: 全${totalPoints}地点 → ${uniqueCoordinates.length}地点（重複除去）`);
 
     // 段階的バッチ処理でキャッシュ用データを取得
     const allBatchResults = await BatchProcessor.processBatchWithStages(uniqueCoordinates, 100);
 
     // 結果をユーザー別・方向別・距離別に整理してキャッシュ保存
-    await this._cacheWeatherDataByUsers(users, uniqueCoordinates, allBatchResults);
+    await this._cacheWeatherDataByUsers(usersToFetch, uniqueCoordinates, allBatchResults);
   }
 
   /**
@@ -407,6 +429,15 @@ class WeatherService {
                 };
               }
             }
+          }
+
+          // 1地点も取得できなかった場合は既存キャッシュを空データで上書きしない
+          const hasAnyData = Object.values(directionalData)
+            .some(directionData => Object.keys(directionData).length > 0);
+
+          if (!hasAnyData) {
+            console.warn(`⚠️ 気象データ未取得のためキャッシュ保存をスキップ: ${locationKey}`);
+            continue;
           }
 
           // Firestoreにキャッシュ保存

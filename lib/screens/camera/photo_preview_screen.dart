@@ -163,7 +163,7 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       final userId = await AppConstants.getCurrentUserId();
 
       // ローカルに保存
-      await LocalPhotoService.savePhotoLocally(
+      final saved = await LocalPhotoService.savePhotoLocally(
         imageFile: widget.imageFile,
         userId: userId,
         userName: 'ユーザー',
@@ -171,6 +171,9 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         longitude: location?.longitude,
         locationName: '撮影地点',
       );
+      if (!saved) {
+        throw Exception('写真を保存できませんでした');
+      }
 
       if (mounted) {
         _navigateToGallery();
@@ -213,11 +216,14 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       final userId = await AppConstants.getCurrentUserId();
 
       // 1. Firestoreにコミュニティ投稿として保存
-      await PhotoService.uploadPhoto(
+      final uploaded = await PhotoService.uploadPhoto(
         imageFile: widget.imageFile,
         userId: userId,
         userName: 'ユーザー',
       );
+      if (!uploaded) {
+        throw Exception('写真をアップロードできませんでした');
+      }
 
       // 2. 個人記録としてローカルにも保存
       await LocalPhotoService.savePhotoLocally(

@@ -87,7 +87,13 @@ class CommunityService {
     AppLogger.info('追加写真読み込み開始', tag: 'CommunityService');
 
     try {
-      final photos = await PhotoService.getPublicPhotos(limit: limit);
+      // 読み込み済みの最後の写真より古い写真だけを取得（先頭ページの再取得による重複を防ぐ）
+      final loadedIds = currentPhotos.map((p) => p.id).toSet();
+      final fetchedPhotos = await PhotoService.getPublicPhotos(
+        limit: limit,
+        startAfterTimestamp: currentPhotos.isNotEmpty ? currentPhotos.last.timestamp : null,
+      );
+      final photos = fetchedPhotos.where((p) => !loadedIds.contains(p.id)).toList();
 
       if (photos.isNotEmpty) {
         // 写真データをキャッシュに追加
@@ -96,7 +102,7 @@ class CommunityService {
         // ユーザー情報の事前読み込みを削除（写真データのuserNameを直接使用）
       }
 
-      final hasMore = photos.length >= limit;
+      final hasMore = photos.isNotEmpty && fetchedPhotos.length >= limit;
 
       AppLogger.success('追加写真読み込み完了: ${photos.length}件', tag: 'CommunityService');
       return PhotoLoadResult(photos: photos, hasMore: hasMore);
