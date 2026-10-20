@@ -9,7 +9,7 @@ import '../services/user/user_id_service.dart';
 /// アプリ全体で使用される定数を管理するクラス
 class AppConstants {
   // ===== アプリ基本情報 =====
-  static const String appVersion = "1.0.3";
+  static const String appVersion = "1.0.4";
 
   // デバッグモード設定（本番では false に設定）
   static const bool isDebugMode = false; // App Store 審査用にfalseに変更
