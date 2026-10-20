@@ -164,6 +164,47 @@ const API_SETTINGS = {
 };
 
 /**
+ * 気象庁ナウキャスト（高解像度降水ナウキャスト・雷ナウキャスト）の設定
+ */
+const JMA_NOWCAST = {
+  BASE_URL: 'https://www.jma.go.jp/bosai/jmatile/data/nowc',
+  TARGET_TIMES_RAIN: 'targetTimes_N1.json', // 降水の解析値（5分ごと）
+  TARGET_TIMES_THUNDER: 'targetTimes_N3.json', // 雷の解析値と予測（10分ごと）
+  ELEMENT_RAIN: 'hrpns',
+  ELEMENT_THUNDER: 'thns',
+  TILE_SIZE: 256,
+
+  // 気象庁のタイルは偶数ズームだけ。z4 で日本全体を見て、雲がありそうな所だけ z6（約2km四方）で調べる
+  COARSE_ZOOM: 4,
+  DETAIL_ZOOM: 6,
+  // 日本付近を覆う z4 のタイル範囲
+  COARSE_TILE_X: [13, 14],
+  COARSE_TILE_Y: [5, 7],
+
+  // 雲とみなす目安（試作で「見えた」「見えなかった」を見ながら調整する）
+  MIN_RAIN_MM_PER_HOUR: 30,
+  MIN_THUNDER_LEVEL: 2,
+  // z4 の見落としを防ぐため、当たりを付けるときは1段階弱い雨から拾う
+  COARSE_MIN_RAIN_MM_PER_HOUR: 20,
+
+  // 前回の雲から15km以内なら同じ雲として追いかける
+  TRACKING_DISTANCE_KM: 15,
+  // 見えなくなってから60分たった雲は終わりとする（そのあと同じ場所に出た雲は別の雲）
+  CLOUD_EXPIRE_MS: 60 * 60 * 1000,
+
+  // 続けて失敗したらエラーとしてログに出す回数（5分ごとなので15分）
+  FAILURE_ALERT_COUNT: 3,
+  // 気象庁の解析時刻がこれより古ければ、データが止まっているとみなす
+  STALE_DATA_MS: 30 * 60 * 1000,
+  REQUEST_TIMEOUT_MS: 15000,
+  PARALLEL_REQUESTS: 6,
+  USER_AGENT: 'NyudogumoSearch/2.0 (thunder-cloud-app)',
+
+  CLOUDS_COLLECTION: 'clouds',
+  STATUS_DOC_PATH: 'system/jma_nowcast',
+};
+
+/**
  * ヘルパー関数
  */
 const HelperFunctions = {
@@ -250,5 +291,6 @@ module.exports = {
   REGIONS,
   LOG_CONSTANTS,
   API_SETTINGS,
+  JMA_NOWCAST,
   HelperFunctions
 };

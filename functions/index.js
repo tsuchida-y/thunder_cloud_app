@@ -21,6 +21,7 @@ const ThunderMonitoring = require('./modules/monitoring/thunder_monitoring'); //
 const CleanupService = require('./modules/cleanup/cleanup_service');         // データクリーンアップ
 const HttpHandlers = require('./modules/handlers/http_handlers');            // HTTP API ハンドラー
 const ScheduleHandlers = require('./modules/handlers/schedule_handlers');     // スケジュールハンドラー
+const NowcastService = require('./modules/jma/nowcast_service');             // 気象庁ナウキャスト（v2.0）
 
 // Firebase Admin SDK を初期化
 admin.initializeApp();
@@ -36,6 +37,7 @@ admin.initializeApp();
 const weatherService = new WeatherService();         // 気象データ処理サービス
 const thunderMonitoring = new ThunderMonitoring();   // 入道雲監視サービス
 const cleanupService = new CleanupService();         // データクリーンアップサービス
+const nowcastService = new NowcastService();         // 気象庁ナウキャストから雲の一覧を作るサービス
 
 // === ハンドラーインスタンス ===
 const httpHandlers = new HttpHandlers(weatherService);
@@ -108,3 +110,17 @@ exports.cleanupExpiredPhotos = onSchedule('0 1 * * *', () => scheduleHandlers.cl
  * 処理内容: メイン監視処理のバックアップとして動作
  */
 exports.monitorThunderClouds = onSchedule('*/5 * * * *', () => scheduleHandlers.monitorThunderClouds());
+
+/**
+ * 気象庁ナウキャストから雲の一覧を更新（v2.0）
+ * スケジュール: 5分間隔（全ユーザー分をまとめて1回だけ気象庁へアクセス）
+ * 処理内容: 強い雨か雷のある塊を取り出し、clouds コレクションに保存する。まだ通知は送らない
+ * v2.0 の公開までは、上の Open-Meteo の関数と並べて動かす
+ */
+exports.updateNowcastClouds = onSchedule({
+  schedule: 'every 5 minutes',
+  timeZone: 'Asia/Tokyo',
+  timeoutSeconds: 120,
+  memory: '512MiB',
+  region: 'asia-northeast1'
+}, () => nowcastService.updateClouds());

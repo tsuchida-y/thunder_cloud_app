@@ -7,7 +7,9 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "node --test \"test/**/*.test.js\"",
+    "try:nowcast": "node scripts/try_nowcast.js"
   },
   "engines": {
     "node": "22"
@@ -16,7 +18,8 @@
   "dependencies": {
     "axios": "^1.9.0",
     "firebase-admin": "^12.7.0",
-    "firebase-functions": "^6.3.2"
+    "firebase-functions": "^6.3.2",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "eslint-config-google": "^0.14.0",
