@@ -15,11 +15,12 @@ class AppTextStyles {
   static TextTheme textTheme(TextTheme base) => GoogleFonts.zenMaruGothicTextTheme(base);
 
   /// ホームの大見出し（「南東の空に、入道雲。」）
-  static TextStyle headline({Color color = AppColors.onSky}) => GoogleFonts.zenOldMincho(
-        fontSize: 32,
+  /// 雲がないとき・夜などは少し小さい 30
+  static TextStyle headline({Color color = AppColors.onSky, double fontSize = 32}) => GoogleFonts.zenOldMincho(
+        fontSize: fontSize,
         fontWeight: FontWeight.w700,
-        height: 1.35,
-        letterSpacing: 32 * 0.04,
+        height: fontSize >= 32 ? 1.35 : 1.4,
+        letterSpacing: fontSize * 0.04,
         color: color,
       );
 

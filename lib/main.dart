@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 
 import 'firebase_options.dart';
 import 'screens/home/home_screen.dart';
-import 'services/core/app_initialization.dart';
 import 'theme/app_theme.dart';
 import 'utils/logger.dart';
 
@@ -45,30 +44,11 @@ void main() async {
 }
 
 /// アプリケーションのルートウィジェット
-class MyApp extends StatefulWidget {
+///
+/// 匿名ログイン・位置・雲の一覧の読み込みは、ホーム（HomeController）が始める。
+/// v1 の起動処理（古い users への書き込み、起動直後の通知の許可）はやめた。
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  @override
-  void initState() {
-    super.initState();
-    _initializeApp();
-  }
-
-  /// アプリ全体の初期化（通知、位置情報、必要なサービスのセットアップなど）
-  Future<void> _initializeApp() async {
-    try {
-      AppLogger.info('アプリケーション初期化開始', tag: 'MyApp');
-      await AppInitializationService.initializeApp();
-      AppLogger.success('アプリケーション初期化完了', tag: 'MyApp');
-    } catch (e) {
-      AppLogger.error('アプリケーション初期化エラー', error: e, tag: 'MyApp');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -43,6 +43,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // 雲の一覧を最後に作った時刻（ホームの「3分前に空を見ました」）。サーバーが書く
+    match /system/jma_nowcast {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // ===== v1（本番と同じ。v2.0 の公開時に締め直す） =====
 
     // テスト接続用（一時的）

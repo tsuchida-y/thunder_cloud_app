@@ -7,29 +7,34 @@ import '../../theme/app_theme.dart';
 /// いちばん大事な操作のボタン（高さ56・角丸28・紺）
 ///
 /// 例: 「雲の方角を調べる」「許可してはじめる」「写真を撮る」
+/// [compact] が true のときはカードの中の小さいボタン（高さ44・影なし、例: 「設定アプリを開く」）。
 class PrimaryButton extends StatelessWidget {
   final String label;
   final IconData? icon;
   final VoidCallback? onPressed;
+  final bool compact;
 
-  const PrimaryButton({super.key, required this.label, this.icon, this.onPressed});
+  const PrimaryButton({super.key, required this.label, this.icon, this.onPressed, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
+    final height = compact ? AppSizes.minTapTarget : AppSizes.buttonHeight;
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.button),
-        boxShadow: const [BoxShadow(color: AppColors.primaryShadow, blurRadius: 24, offset: Offset(0, 8))],
+        borderRadius: BorderRadius.circular(height / 2),
+        boxShadow: compact
+            ? null
+            : const [BoxShadow(color: AppColors.primaryShadow, blurRadius: 24, offset: Offset(0, 8))],
       ),
       child: SizedBox(
-        height: AppSizes.buttonHeight,
+        height: height,
         child: FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
-            textStyle: AppTextStyles.button(),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(height / 2)),
+            textStyle: AppTextStyles.button(fontSize: compact ? 15 : 17),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
