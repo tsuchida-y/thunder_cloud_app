@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/finder_target.dart';
 
 import '../../navigation/app_routes.dart';
+import '../../services/notification/cloud_notifications.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/time_text.dart';
@@ -13,6 +13,7 @@ import '../../widgets/common/app_buttons.dart';
 import '../../widgets/common/sky_card.dart';
 import '../../widgets/common/sky_page.dart';
 import '../../widgets/common/source_note.dart';
+import 'always_allow_sheet.dart';
 import 'home_controller.dart';
 import 'widgets/home_parts.dart';
 import 'widgets/sky_illustrations.dart';
@@ -28,24 +29,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController _controller = HomeController();
-  StreamSubscription<RemoteMessage>? _openedSub;
+  StreamSubscription<FinderTarget>? _openedSub;
 
   @override
   void initState() {
     super.initState();
+    _controller.onAskAlways = _askAlways;
     _controller.start();
     // 通知から開いたときは、方角ガイドを直接開く
-    FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) _openFromNotification(message);
-    });
-    _openedSub = FirebaseMessaging.onMessageOpenedApp.listen(_openFromNotification);
+    _openedSub = CloudNotifications.opened.listen(_openFromNotification);
+    final pending = CloudNotifications.takeLaunchTarget();
+    if (pending != null) WidgetsBinding.instance.addPostFrameCallback((_) => _openFromNotification(pending));
   }
 
-  void _openFromNotification(RemoteMessage message) {
-    final target = FinderTarget.fromNotification(message.data);
-    if (target == null || !mounted) return;
+  void _openFromNotification(FinderTarget target) {
+    if (!mounted) return;
     AppRoutes.backToHome(context);
     AppRoutes.openFinder(context, target);
+  }
+
+  void _askAlways() {
+    if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+    AlwaysAllowSheet.show(context, placeName: _controller.state.placeName, onAllow: _controller.requestAlways);
   }
 
   @override

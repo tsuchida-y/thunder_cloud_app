@@ -40,6 +40,11 @@
         </activity>
 
 
+        <!-- 通知の「見えた」「見えなかった」ボタンを受け取る（flutter_local_notifications） -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -55,7 +60,7 @@
             android:resource="@android:color/white" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="thunder_cloud_channel" />
+            android:value="cloud_appeared" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

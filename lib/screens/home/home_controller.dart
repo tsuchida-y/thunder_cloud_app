@@ -5,11 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
+import '../../services/notification/cloud_notifications.dart';
+import '../../services/sky/report_service.dart';
 import '../../services/sky/sky_repository.dart';
 import '../../utils/logger.dart';
 import '../../utils/sun_times.dart';
@@ -108,6 +111,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   bool _disposed = false;
 
   LocationAccess? _access;
+  bool _isAlways = false;
+  static const String _alwaysAskedKey = 'always_allow_asked';
   LatLng? _gps;
   String? _gpsName;
   bool _notificationsOff = false;
@@ -176,14 +181,14 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
       _listenMember(uid);
+      // 通知のボタンで答えたものを送り、通知の宛先を新しくしておく
+      ReportService.flushPending();
+      CloudNotifications.registerToken();
 
-      var access = await CurrentPlace.access();
-      if (access == LocationAccess.notAsked) {
-        // ステップ6で、はじめての起動の画面（Welcome.html）で聞くように変える
-        access = await CurrentPlace.request();
-      }
+      // 許可のお願いは、はじめての起動の画面（Welcome）と、許可がないときの画面のボタンでだけ行う
+      final access = await CurrentPlace.access();
       _access = access;
-      _notificationsOff = !await _notificationsAllowed();
+      _notificationsOff = !await CloudNotifications.allowed();
 
       if (access == LocationAccess.granted) {
         final gps = await CurrentPlace.position();
@@ -194,6 +199,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
             _recompute();
           });
         }
+        _isAlways = await CurrentPlace.isAlways();
       } else {
         _gps = null;
       }
@@ -208,32 +214,53 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// 「通知をオンにする」
   Future<void> enableNotifications() async {
-    final messaging = FirebaseMessaging.instance;
-    final settings = await messaging.getNotificationSettings();
+    final settings = await FirebaseMessaging.instance.getNotificationSettings();
     if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
-      await messaging.requestPermission();
+      await CloudNotifications.request();
     } else {
       // 一度断った人には、OS の画面からもう一度聞けないので設定アプリを開く
       await CurrentPlace.openAppSettings();
     }
-    _notificationsOff = !await _notificationsAllowed();
+    _notificationsOff = !await CloudNotifications.allowed();
     _recompute();
   }
 
-  /// 「設定アプリを開く」
+  /// 「設定アプリを開く」（まだ聞いていなければ、ここで「使用中」をお願いする）
   Future<void> openLocationSettings() async {
-    if (_access == LocationAccess.off && !await CurrentPlace.openAppSettings()) {
+    if (_access == LocationAccess.notAsked) {
+      _access = await CurrentPlace.request();
+      await refresh();
+      return;
+    }
+    if (!await CurrentPlace.openAppSettings()) {
       await CurrentPlace.openLocationSettings();
     }
   }
 
-  static Future<bool> _notificationsAllowed() async {
-    try {
-      final status = (await FirebaseMessaging.instance.getNotificationSettings()).authorizationStatus;
-      return status == AuthorizationStatus.authorized || status == AuthorizationStatus.provisional;
-    } catch (_) {
-      return true;
+  /// 移動先も見張るお願い（AlwaysAllow.html）を出すときに呼ばれる（ホームが下から出す）
+  VoidCallback? onAskAlways;
+  bool _checkingAlways = false;
+
+  /// 最初の入道雲の通知が届いたあと（member_server.firstNotifiedAt）、「使用中」の人に1回だけ出す
+  Future<void> _maybeAskAlways() async {
+    if (_checkingAlways || _server?['firstNotifiedAt'] == null || _access != LocationAccess.granted || _isAlways) {
+      return;
     }
+    _checkingAlways = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_alwaysAskedKey) == true) return;
+      await prefs.setBool(_alwaysAskedKey, true);
+      onAskAlways?.call();
+    } finally {
+      _checkingAlways = false;
+    }
+  }
+
+  /// 「「常に」にする」
+  Future<void> requestAlways() async {
+    _isAlways = await CurrentPlace.requestAlways();
+    _recompute();
   }
 
   void _listenMember(String uid) {
@@ -341,6 +368,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
     _state = next;
     notifyListeners();
+    if (next.mode != HomeMode.loading && next.mode != HomeMode.noPermission) _maybeAskAlways();
   }
 
   void _rememberSky(List<CloudView> views, DateTime checkedAt) {
