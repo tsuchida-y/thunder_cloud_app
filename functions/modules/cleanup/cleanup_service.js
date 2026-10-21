@@ -1,6 +1,6 @@
 // functions/modules/cleanup/cleanup_service.js
 const admin = require('firebase-admin');
-const { JMA_NOWCAST, CLOUD_RETENTION_DAYS } = require('../../constants');
+const { COLLECTIONS, JMA_NOWCAST, CLOUD_RETENTION_DAYS } = require('../../constants');
 
 class CleanupService {
   get firestore() {
@@ -10,7 +10,8 @@ class CleanupService {
   /**
    * 終わってから日数がたった雲を消す
    *
-   * 「見えた」記録は reports に雲の場所と時刻を写して残すので、雲そのものは数日で消してよい。
+   * 「見えた」記録（reports）には、消す前に雲が見えていた時間（cloudFirstSeenAt, cloudLastSeenAt）を写す。
+   * アプリの記録の画面は「14:20〜15:40」をそこから出すので、雲そのものは数日で消してよい。
    */
   async cleanupOldClouds(now = new Date()) {
     const threshold = new Date(now.getTime() - CLOUD_RETENTION_DAYS * 24 * 60 * 60 * 1000);
@@ -20,6 +21,7 @@ class CleanupService {
       const snapshot = await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
         .where('status', '==', 'ended').get();
       const oldDocs = snapshot.docs.filter((doc) => doc.data().lastSeenAt.toDate() < threshold);
+      await this._copyCloudTimesToReports(oldDocs);
       for (let i = 0; i < oldDocs.length; i += 450) {
         const batch = this.firestore.batch();
         oldDocs.slice(i, i + 450).forEach((doc) => batch.delete(doc.ref));
@@ -31,6 +33,31 @@ class CleanupService {
       console.error('❌ 古い雲の削除に失敗しました:', error);
     }
     return totalDeleted;
+  }
+
+  /**
+   * 消す雲に答えた reports に、雲が見えていた時間を写す
+   */
+  async _copyCloudTimesToReports(cloudDocs) {
+    const times = new Map(cloudDocs.map((doc) => [doc.id, doc.data()]));
+    const ids = [...times.keys()];
+    let copied = 0;
+    // in の問い合わせは30件まで
+    for (let i = 0; i < ids.length; i += 30) {
+      const reports = await this.firestore.collection(COLLECTIONS.REPORTS)
+        .where('cloudId', 'in', ids.slice(i, i + 30)).get();
+      const updates = reports.docs.filter((doc) => !doc.data().cloudFirstSeenAt);
+      for (let j = 0; j < updates.length; j += 450) {
+        const batch = this.firestore.batch();
+        updates.slice(j, j + 450).forEach((doc) => {
+          const cloud = times.get(doc.data().cloudId);
+          batch.update(doc.ref, { cloudFirstSeenAt: cloud.firstSeenAt, cloudLastSeenAt: cloud.lastSeenAt });
+        });
+        await batch.commit();
+      }
+      copied += updates.length;
+    }
+    if (copied > 0) console.log(`🧹 見えた記録${copied}件に、雲が見えていた時間を写しました`);
   }
 
   /**

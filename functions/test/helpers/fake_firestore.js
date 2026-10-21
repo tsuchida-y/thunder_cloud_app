@@ -42,9 +42,10 @@ class FakeFirestore {
       },
       where: (field, op, value) => ({
         async get() {
+          const match = (v) => (op === 'in' ? value.includes(v) : v === value);
           const docs = [...store.docs.entries()]
-            .filter(([path, data]) => path.startsWith(`${name}/`) && data[field] === value)
-            .map(([path, data]) => ({ id: path.split('/').pop(), data: () => data }));
+            .filter(([path, data]) => path.startsWith(`${name}/`) && path.split('/').length === 2 && match(data[field]))
+            .map(([path, data]) => ({ id: path.split('/').pop(), ref: store._ref(path), data: () => data }));
           return { docs };
         },
       }),
@@ -56,6 +57,7 @@ class FakeFirestore {
     return {
       set: (ref, data) => ops.push(() => this.docs.set(ref.path, { ...data })),
       update: (ref, data) => ops.push(() => this.docs.set(ref.path, { ...this.docs.get(ref.path), ...data })),
+      delete: (ref) => ops.push(() => this.docs.delete(ref.path)),
       commit: async () => ops.forEach((op) => op()),
     };
   }

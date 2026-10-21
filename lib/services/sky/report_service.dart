@@ -27,21 +27,62 @@ class ReportService {
     return prefs.getBool(_answeredKey(cloudId)) == true;
   }
 
-  /// ことし「見えた」と答えた日の数（設定の「記録（写真と見えた雲）」の右に出す）
-  static Future<int> seenDaysThisYear() async {
+  /// ことし「見えた」と答えた日の数（設定の「記録（見えた雲）」の右と、記録の画面に出す）
+  static Future<int> seenDaysThisYear() async => countDays(await seenThisYear());
+
+  static int countDays(List<SeenRecord> records) =>
+      records.map((r) => '${r.seenAt.month}-${r.seenAt.day}').toSet().length;
+
+  /// ことし「見えた」と答えた入道雲（新しい順、同じ雲は1つにまとめる）
+  ///
+  /// 雲が見えていた時間は、サーバーが雲を消す前に reports に写す（cloudFirstSeenAt, cloudLastSeenAt）。
+  /// まだ写していない新しい記録は、残っている雲（clouds）から読む。
+  static Future<List<SeenRecord>> seenThisYear() async {
     final uid = MemberService.uid;
-    if (uid == null) return 0;
-    final snap = await FirebaseFirestore.instance.collection('reports').where('uid', isEqualTo: uid).get();
+    if (uid == null) return const [];
+    final db = FirebaseFirestore.instance;
+    final snap = await db.collection('reports').where('uid', isEqualTo: uid).get();
     final year = DateTime.now().year;
-    final days = <String>{};
+
+    final byCloud = <String, SeenRecord>{};
     for (final doc in snap.docs) {
       final data = doc.data();
-      final at = data['reportedAt'];
-      if (data['seen'] != true || at is! Timestamp) continue;
-      final t = at.toDate();
-      if (t.year == year) days.add('${t.month}-${t.day}');
+      final at = data['answeredAt'] ?? data['reportedAt'];
+      final bearing = data['bearingDeg'];
+      final distance = data['distanceKm'];
+      if (data['seen'] != true || at is! Timestamp || bearing is! num || distance is! num) continue;
+      final seenAt = at.toDate();
+      if (seenAt.year != year) continue;
+      final key = (data['cloudId'] as String?) ?? doc.id;
+      final record = SeenRecord(
+        cloudId: data['cloudId'] as String?,
+        seenAt: seenAt,
+        bearingDeg: bearing.toDouble(),
+        distanceKm: distance.toDouble(),
+        from: (data['cloudFirstSeenAt'] as Timestamp?)?.toDate(),
+        to: (data['cloudLastSeenAt'] as Timestamp?)?.toDate(),
+      );
+      final existing = byCloud[key];
+      if (existing == null || record.seenAt.isBefore(existing.seenAt)) byCloud[key] = record;
     }
-    return days.length;
+
+    final records = byCloud.values.toList();
+    for (var i = 0; i < records.length; i++) {
+      final r = records[i];
+      if (r.from != null || r.cloudId == null) continue;
+      try {
+        final cloud = (await db.collection('clouds').doc(r.cloudId).get()).data();
+        final first = cloud?['firstSeenAt'];
+        final last = cloud?['lastSeenAt'];
+        if (first is Timestamp && last is Timestamp) {
+          records[i] = r.withTimes(first.toDate(), last.toDate());
+        }
+      } catch (_) {
+        // 雲がもうなければ、答えた時刻だけを出す
+      }
+    }
+    records.sort((a, b) => b.seenAt.compareTo(a.seenAt));
+    return records;
   }
 
   /// 方角ガイドで答えたとき
@@ -126,4 +167,36 @@ class ReportService {
       AppLogger.warning('答えを送れませんでした: $e', tag: 'ReportService');
     }
   }
+}
+
+/// 「見えた」と答えた入道雲（記録の画面の1行）
+class SeenRecord {
+  final String? cloudId;
+
+  /// 「見えた」と答えた時刻
+  final DateTime seenAt;
+  final double bearingDeg;
+  final double distanceKm;
+
+  /// 雲が見えていた時間（分からなければ null）
+  final DateTime? from;
+  final DateTime? to;
+
+  const SeenRecord({
+    required this.cloudId,
+    required this.seenAt,
+    required this.bearingDeg,
+    required this.distanceKm,
+    this.from,
+    this.to,
+  });
+
+  SeenRecord withTimes(DateTime from, DateTime to) => SeenRecord(
+        cloudId: cloudId,
+        seenAt: seenAt,
+        bearingDeg: bearingDeg,
+        distanceKm: distanceKm,
+        from: from,
+        to: to,
+      );
 }
