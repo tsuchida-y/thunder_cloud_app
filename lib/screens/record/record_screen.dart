@@ -6,7 +6,7 @@ import '../../widgets/common/sky_page.dart';
 
 /// 記録（docs/design/Record.html）
 ///
-/// ステップ3では土台だけ。見えた入道雲の一覧と写真はステップ8で作る。
+/// ステップ3では土台だけ。見えた入道雲の一覧はステップ8で作る（写真と共有は v2.0 では作らない。2026-10-21 決定）。
 class RecordScreen extends StatelessWidget {
   const RecordScreen({super.key});
 

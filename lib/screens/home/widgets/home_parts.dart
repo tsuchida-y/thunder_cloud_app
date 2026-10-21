@@ -43,7 +43,7 @@ class HomeHeader extends StatelessWidget {
           ),
           if (showRecord)
             IconTapButton(
-              icon: Icons.photo_outlined,
+              icon: Icons.event_note_outlined,
               semanticLabel: '記録',
               onPressed: () => AppRoutes.openRecord(context),
             ),

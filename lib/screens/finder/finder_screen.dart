@@ -13,7 +13,6 @@ import '../../widgets/common/app_buttons.dart';
 import '../../widgets/common/page_header.dart';
 import '../../widgets/common/sky_card.dart';
 import '../../widgets/common/sky_page.dart';
-import '../camera_screen.dart';
 import 'calibrate_sheet.dart';
 import 'widgets/finder_drawings.dart';
 
@@ -100,9 +99,6 @@ class _FinderScreenState extends State<FinderScreen> {
     super.dispose();
   }
 
-  void _openCamera() =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CameraScreen()));
-
   void _answer(bool seen) {
     ReportService.send(target, seen: seen);
     setState(() => _answered = true);
@@ -179,9 +175,6 @@ class _FinderScreenState extends State<FinderScreen> {
           ],
         ),
       ),
-      const Spacer(),
-      const SizedBox(height: 18),
-      PrimaryButton(label: '見つけた！写真を撮る', icon: Icons.photo_camera_outlined, onPressed: _openCamera),
     ];
   }
 
@@ -203,8 +196,6 @@ class _FinderScreenState extends State<FinderScreen> {
       const Spacer(),
       const SizedBox(height: 16),
       _ReportCard(answered: _answered, onAnswer: _answer),
-      const SizedBox(height: 16),
-      PrimaryButton(label: '写真を撮る', icon: Icons.photo_camera_outlined, onPressed: _openCamera),
     ];
   }
 }

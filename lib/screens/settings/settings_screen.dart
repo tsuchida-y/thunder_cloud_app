@@ -136,7 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => _editQuietHours(settings.quietHours),
               ),
               SettingsRow.text(
-                '記録（写真と見えた雲）',
+                '記録（見えた雲）',
                 trailing: _seenDays == null ? null : SettingsValue('$_seenDays日'),
                 onTap: () => AppRoutes.openRecord(context),
               ),
