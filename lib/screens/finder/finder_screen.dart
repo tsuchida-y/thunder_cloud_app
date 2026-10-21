@@ -13,6 +13,7 @@ import '../../widgets/common/app_buttons.dart';
 import '../../widgets/common/page_header.dart';
 import '../../widgets/common/sky_card.dart';
 import '../../widgets/common/sky_page.dart';
+import '../../widgets/common/source_note.dart';
 import 'calibrate_sheet.dart';
 import 'widgets/finder_drawings.dart';
 
@@ -175,6 +176,10 @@ class _FinderScreenState extends State<FinderScreen> {
           ],
         ),
       ),
+      // デザインにはないが、気象庁のデータから出した方角なので、画面に出典を出す（CLAUDE.md）
+      const Spacer(),
+      const SizedBox(height: 18),
+      const SourceNote(),
     ];
   }
 
@@ -196,6 +201,8 @@ class _FinderScreenState extends State<FinderScreen> {
       const Spacer(),
       const SizedBox(height: 16),
       _ReportCard(answered: _answered, onAnswer: _answer),
+      const SizedBox(height: 14),
+      const SourceNote(),
     ];
   }
 }

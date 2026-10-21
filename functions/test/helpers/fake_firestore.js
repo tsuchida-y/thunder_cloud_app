@@ -37,7 +37,7 @@ class FakeFirestore {
       async get() {
         const docs = [...store.docs.entries()]
           .filter(([path]) => path.startsWith(`${name}/`) && path.split('/').length === 2)
-          .map(([path, data]) => ({ id: path.split('/').pop(), data: () => data }));
+          .map(([path, data]) => ({ id: path.split('/').pop(), ref: store._ref(path), data: () => data }));
         return { docs };
       },
       where: (field, op, value) => ({

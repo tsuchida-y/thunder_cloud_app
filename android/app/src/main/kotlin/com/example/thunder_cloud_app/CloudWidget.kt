@@ -49,7 +49,8 @@ private object CloudWidgetViews {
         views.setTextViewText(R.id.widget_headline, headline)
         setOptional(views, R.id.widget_sub, sub)
         if (medium) setOptional(views, R.id.widget_detail, detail)
-        setOptional(views, R.id.widget_time, if (plus && time.isNotEmpty()) "$time 時点" else "")
+        // 気象庁のデータから出した中身なので、出典を出す（CLAUDE.md）
+        setOptional(views, R.id.widget_time, if (plus && time.isNotEmpty()) "$time 時点 ・ 出典：気象庁" else "")
         return views
     }
 

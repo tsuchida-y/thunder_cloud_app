@@ -76,3 +76,13 @@ exports.revenuecatWebhook = onRequest({
   region: 'asia-northeast1',
   secrets: [revenuecatWebhookAuth],
 }, (req, res) => handleWebhook(req, res, { authToken: revenuecatWebhookAuth.value() }));
+
+/**
+ * 最後にアプリを開いてから1年たった利用者の情報の削除（プライバシーポリシーの「保存する期間」）
+ * スケジュール: 毎日 4:00（日本時間）
+ */
+exports.cleanupInactiveMembers = onSchedule({
+  schedule: '0 4 * * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+}, () => cleanupService.cleanupInactiveMembers());

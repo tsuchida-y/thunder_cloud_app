@@ -77,9 +77,13 @@ const COLLECTIONS = {
  */
 const CLOUD_RETENTION_DAYS = 3;
 
+// 最後にアプリを開いてからこの日数がたった利用者の情報を消す（プライバシーポリシー）
+const INACTIVE_MEMBER_DAYS = 365;
+
 module.exports = {
   JMA_NOWCAST,
   NOTIFY_RULES,
   COLLECTIONS,
   CLOUD_RETENTION_DAYS,
+  INACTIVE_MEMBER_DAYS,
 };

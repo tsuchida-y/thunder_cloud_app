@@ -60,7 +60,8 @@ struct CloudWidgetView: View {
       Spacer(minLength: 0)
       content
       if entry.plus && !entry.time.isEmpty {
-        Text("\(entry.time) 時点").font(.system(size: 11)).opacity(0.8)
+        // 気象庁のデータから出した中身なので、出典を出す（CLAUDE.md）
+        Text("\(entry.time) 時点 ・ 出典：気象庁").font(.system(size: 10)).opacity(0.8).lineLimit(1).minimumScaleFactor(0.8)
       }
     }
     .foregroundColor(.white)

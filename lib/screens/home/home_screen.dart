@@ -15,6 +15,7 @@ import '../../widgets/common/sky_page.dart';
 import '../../widgets/common/source_note.dart';
 import 'always_allow_sheet.dart';
 import 'home_controller.dart';
+import 'whats_new_sheet.dart';
 import 'widgets/home_parts.dart';
 import 'widgets/sky_illustrations.dart';
 import 'widgets/sky_radar.dart';
@@ -39,7 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
     // 通知から開いたときは、方角ガイドを直接開く
     _openedSub = CloudNotifications.opened.listen(_openFromNotification);
     final pending = CloudNotifications.takeLaunchTarget();
-    if (pending != null) WidgetsBinding.instance.addPostFrameCallback((_) => _openFromNotification(pending));
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openFromNotification(pending));
+    } else {
+      // 1.0.4 から上げた人には、新しくなったことを1回だけ知らせる
+      WhatsNewSheet.takeTurn().then((show) {
+        if (show && mounted) WhatsNewSheet.show(context);
+      });
+    }
   }
 
   void _openFromNotification(FinderTarget target) {

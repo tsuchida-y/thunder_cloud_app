@@ -29,3 +29,25 @@ test('古い雲を消す前に、見えた記録へ雲が見えていた時間�
   assert.equal(r1.cloudLastSeenAt.toDate().toISOString(), '2026-08-12T06:40:00.000Z');
   assert.equal(firestore.docs.get('reports/r2').cloudFirstSeenAt, undefined);
 });
+
+test('1年開いていない利用者の情報を消す。Plus の期間が残っている人と、最近開いた人は消さない', async () => {
+  const firestore = new FakeFirestore();
+  const old = ts('2025-08-01T00:00:00Z');
+  firestore.docs.set('members/gone', { lastOpenedAt: old });
+  firestore.docs.set('member_server/gone', { notification: {} });
+  firestore.docs.set('reports/g1', { uid: 'gone', seen: true });
+  firestore.docs.set('members/paying', { lastOpenedAt: old });
+  firestore.docs.set('member_server/paying', { isPlus: true, plusExpiresAt: ts('2027-01-01T00:00:00Z') });
+  firestore.docs.set('members/active', { lastOpenedAt: ts('2026-08-01T00:00:00Z') });
+
+  const service = new CleanupService();
+  Object.defineProperty(service, 'firestore', { get: () => firestore });
+  const deleted = await service.cleanupInactiveMembers(new Date('2026-10-21T00:00:00Z'));
+
+  assert.equal(deleted, 1);
+  assert.equal(firestore.docs.has('members/gone'), false);
+  assert.equal(firestore.docs.has('member_server/gone'), false);
+  assert.equal(firestore.docs.has('reports/g1'), false);
+  assert.equal(firestore.docs.has('members/paying'), true);
+  assert.equal(firestore.docs.has('members/active'), true);
+});

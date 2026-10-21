@@ -1,6 +1,6 @@
 // functions/modules/cleanup/cleanup_service.js
 const admin = require('firebase-admin');
-const { COLLECTIONS, JMA_NOWCAST, CLOUD_RETENTION_DAYS } = require('../../constants');
+const { COLLECTIONS, JMA_NOWCAST, CLOUD_RETENTION_DAYS, INACTIVE_MEMBER_DAYS } = require('../../constants');
 
 class CleanupService {
   get firestore() {
@@ -33,6 +33,45 @@ class CleanupService {
       console.error('❌ 古い雲の削除に失敗しました:', error);
     }
     return totalDeleted;
+  }
+
+  /**
+   * 最後にアプリを開いてから1年たった利用者の情報を消す（プライバシーポリシーの「保存する期間」）
+   *
+   * members、member_server、その人の reports を消す。Plus の期間が残っている人は消さない。
+   * 「常に」の人のバックグラウンドの位置の更新は lastOpenedAt を変えないので、開いていなければ消える。
+   */
+  async cleanupInactiveMembers(now = new Date()) {
+    const threshold = new Date(now.getTime() - INACTIVE_MEMBER_DAYS * 24 * 60 * 60 * 1000);
+    let deleted = 0;
+    try {
+      const members = await this.firestore.collection(COLLECTIONS.MEMBERS).get();
+      for (const doc of members.docs) {
+        const data = doc.data();
+        const lastOpenedAt = data.lastOpenedAt && data.lastOpenedAt.toDate ? data.lastOpenedAt.toDate() : null;
+        const createdAt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null;
+        const lastSeen = lastOpenedAt || createdAt;
+        if (!lastSeen || lastSeen >= threshold) continue;
+
+        const serverRef = this.firestore.collection(COLLECTIONS.MEMBER_SERVER).doc(doc.id);
+        const server = (await serverRef.get()).data();
+        const plusUntil = server && server.plusExpiresAt && server.plusExpiresAt.toDate ? server.plusExpiresAt.toDate() : null;
+        if (server && server.isPlus && (!plusUntil || plusUntil > now)) continue;
+
+        const reports = await this.firestore.collection(COLLECTIONS.REPORTS).where('uid', '==', doc.id).get();
+        const refs = [doc.ref || this.firestore.collection(COLLECTIONS.MEMBERS).doc(doc.id), serverRef, ...reports.docs.map((r) => r.ref)];
+        for (let i = 0; i < refs.length; i += 450) {
+          const batch = this.firestore.batch();
+          refs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+          await batch.commit();
+        }
+        deleted++;
+      }
+      console.log(`🧹 ${INACTIVE_MEMBER_DAYS}日開いていない利用者${deleted}人の情報を削除しました`);
+    } catch (error) {
+      console.error('❌ 開いていない利用者の削除に失敗しました:', error);
+    }
+    return deleted;
   }
 
   /**
