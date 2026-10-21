@@ -58,6 +58,12 @@ enum SkyGradient {
     [0.0, 0.40, 0.72, 1.0],
   ),
 
+  /// Plus のご案内（下の方まで明るい）
+  plus(
+    [Color(0xFF1C4FA8), Color(0xFF3F86D6), Color(0xFF9CCDF3), Color(0xFFEAF5FF)],
+    [0.0, 0.30, 0.56, 0.78],
+  ),
+
   /// 設定・場所の登録・記録（明るい背景で紺の文字）
   light(
     [Color(0xFFDCEBFA), Color(0xFFF4F8FC), Color(0xFFEEF6FF)],

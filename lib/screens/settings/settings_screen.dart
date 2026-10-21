@@ -26,6 +26,9 @@ class SettingsScreen extends StatefulWidget {
   /// 今のプライバシーポリシー（README と同じ。中身はステップ10で書き直す）
   static final Uri privacyPolicy = Uri.parse('https://tsuchida-y.github.io/thunder_cloud_app/privacy_policy.html');
 
+  /// 利用規約（docs/terms.html。GitHub Pages は main の docs/ を公開するので、main に入ってから開ける）
+  static final Uri termsOfUse = Uri.parse('https://tsuchida-y.github.io/thunder_cloud_app/terms.html');
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -154,6 +157,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingsCard(
             children: [
               SettingsRow.text('データの出典', onTap: () => AppRoutes.openDataSource(context)),
+              SettingsRow.text(
+                '利用規約',
+                onTap: () => launchUrl(SettingsScreen.termsOfUse, mode: LaunchMode.externalApplication),
+              ),
               SettingsRow.text(
                 'プライバシーポリシー',
                 onTap: () => launchUrl(SettingsScreen.privacyPolicy, mode: LaunchMode.externalApplication),

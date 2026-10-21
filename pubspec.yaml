@@ -40,6 +40,8 @@ dependencies:
   geocoding: ^5.0.0
   flutter_compass: ^0.8.1
   url_launcher: ^6.3.2
+  purchases_flutter: ^10.17.0
+  home_widget: ^0.10.0
 
 dev_dependencies:
   flutter_test:

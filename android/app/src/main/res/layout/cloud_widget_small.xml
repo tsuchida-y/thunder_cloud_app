@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/cloud_widget_bg"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <TextView android:id="@+id/widget_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="入道雲" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+
+    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+    <TextView android:id="@+id/widget_headline" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold" android:maxLines="2" />
+
+    <TextView android:id="@+id/widget_sub" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold" />
+
+    <TextView android:id="@+id/widget_time" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textColor="#CCFFFFFF" android:textSize="11sp" />
+</LinearLayout>

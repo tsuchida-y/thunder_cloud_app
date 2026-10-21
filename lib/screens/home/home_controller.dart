@@ -12,8 +12,10 @@ import '../../models/sky_cloud.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
 import '../../services/notification/cloud_notifications.dart';
+import '../../services/plus/plus_service.dart';
 import '../../services/sky/report_service.dart';
 import '../../services/sky/sky_repository.dart';
+import '../../services/widget/sky_widget.dart';
 import '../../utils/logger.dart';
 import '../../utils/sun_times.dart';
 
@@ -181,6 +183,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
       _listenMember(uid);
+      PlusService.configure(uid);
       // 通知のボタンで答えたものを送り、通知の宛先を新しくしておく
       ReportService.flushPending();
       CloudNotifications.registerToken();
@@ -369,7 +372,28 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
     _state = next;
     notifyListeners();
+    _updateWidget(next, MemberService.isPlusActive(_server, now));
     if (next.mode != HomeMode.loading && next.mode != HomeMode.noPermission) _maybeAskAlways();
+  }
+
+  void _updateWidget(HomeState state, bool isPlus) {
+    if (state.mode == HomeMode.loading) return;
+    final nearest = state.clouds.isEmpty ? null : state.clouds.first;
+    SkyWidget.update(
+      isPlus: isPlus,
+      mode: switch (state.mode) {
+        HomeMode.clouds => 'clouds',
+        HomeMode.empty => 'empty',
+        HomeMode.night => 'night',
+        HomeMode.offline => 'offline',
+        _ => 'none',
+      },
+      direction: nearest?.directionName,
+      km: nearest?.roundedKm,
+      fists: nearest?.fistsLabel,
+      place: state.placeName,
+      observedAt: state.observedAt,
+    );
   }
 
   void _rememberSky(List<CloudView> views, DateTime checkedAt) {

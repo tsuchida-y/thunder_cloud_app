@@ -12,11 +12,18 @@
  */
 
 const {onSchedule} = require('firebase-functions/v2/scheduler');
+const {onRequest} = require('firebase-functions/v2/https');
+const {defineSecret} = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
 const NowcastService = require('./modules/jma/nowcast_service');            // 気象庁ナウキャストから雲の一覧を作る
 const { CloudWatchService } = require('./modules/watch/cloud_watch_service'); // 雲の見張りと通知
 const CleanupService = require('./modules/cleanup/cleanup_service');        // データクリーンアップ
+const { handleWebhook } = require('./modules/plus/revenuecat_webhook');     // Plus（RevenueCat）
+
+// RevenueCat の webhook の合言葉（Authorization ヘッダー）。
+// `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH` で登録し、RevenueCat の管理画面にも同じ値を入れる
+const revenuecatWebhookAuth = defineSecret('REVENUECAT_WEBHOOK_AUTH');
 
 // Firebase Admin SDK を初期化
 admin.initializeApp();
@@ -60,3 +67,12 @@ exports.cleanupOldClouds = onSchedule({
  * v1 から本番で動いている関数なので、名前と設定（リージョン・時刻）は v1 のまま
  */
 exports.cleanupExpiredPhotos = onSchedule('0 1 * * *', () => cleanupService.cleanupExpiredPhotos());
+
+/**
+ * Plus の購入・更新・期限切れ（RevenueCat の webhook）
+ * 処理内容: member_server/{uid} の isPlus と plusExpiresAt を書く
+ */
+exports.revenuecatWebhook = onRequest({
+  region: 'asia-northeast1',
+  secrets: [revenuecatWebhookAuth],
+}, (req, res) => handleWebhook(req, res, { authToken: revenuecatWebhookAuth.value() }));

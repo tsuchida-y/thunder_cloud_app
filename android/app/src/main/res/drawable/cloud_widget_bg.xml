@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 入道雲があるとき（Widget.html: #1C4FA8 → #3A7BC8） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#1C4FA8" android:endColor="#3A7BC8" />
+    <corners android:radius="26dp" />
+</shape>
