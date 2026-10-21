@@ -27,6 +27,23 @@ class ReportService {
     return prefs.getBool(_answeredKey(cloudId)) == true;
   }
 
+  /// ことし「見えた」と答えた日の数（設定の「記録（写真と見えた雲）」の右に出す）
+  static Future<int> seenDaysThisYear() async {
+    final uid = MemberService.uid;
+    if (uid == null) return 0;
+    final snap = await FirebaseFirestore.instance.collection('reports').where('uid', isEqualTo: uid).get();
+    final year = DateTime.now().year;
+    final days = <String>{};
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final at = data['reportedAt'];
+      if (data['seen'] != true || at is! Timestamp) continue;
+      final t = at.toDate();
+      if (t.year == year) days.add('${t.month}-${t.day}');
+    }
+    return days.length;
+  }
+
   /// 方角ガイドで答えたとき
   static Future<void> send(FinderTarget target, {required bool seen}) => _send(
         cloudId: target.cloudId,

@@ -142,7 +142,53 @@ class CurrentPlace {
     }
   }
 
+  /// 地名や住所から場所をさがす（見張る場所の登録。地図は使わない）
+  ///
+  /// 端末の地名検索を使う。見つからなければ空のリスト。同じ地名の候補はまとめる。
+  static Future<List<PlaceCandidate>> search(String query) async {
+    final text = query.trim();
+    if (text.isEmpty) return const [];
+    try {
+      final locations = await _geocoding.locationFromAddress(text, locale: _japanese);
+      final candidates = <PlaceCandidate>[];
+      final seen = <String>{};
+      for (final location in locations.take(5)) {
+        final point = LatLng(location.latitude, location.longitude);
+        final marks = await _geocoding.placemarkFromCoordinates(point.latitude, point.longitude, locale: _japanese);
+        final mark = marks.isEmpty ? null : marks.first;
+        final parts = [mark?.administrativeArea, mark?.locality, mark?.subLocality]
+            .whereType<String>()
+            .where((p) => p.isNotEmpty)
+            .toList();
+        final name = parts.isEmpty ? text : parts.toSet().join();
+        if (seen.add(name)) {
+          candidates.add(PlaceCandidate(
+            name: name,
+            shortName: mark?.locality?.isNotEmpty == true ? mark!.locality! : name,
+            location: point,
+          ));
+        }
+      }
+      return candidates;
+    } catch (e) {
+      AppLogger.warning('場所が見つかりませんでした: $e', tag: 'CurrentPlace');
+      return const [];
+    }
+  }
+
   static Future<bool> openAppSettings() => Geolocator.openAppSettings();
 
   static Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+}
+
+/// 場所さがしの候補
+class PlaceCandidate {
+  /// 「岩手県盛岡市内丸」
+  final String name;
+
+  /// 「盛岡市」（登録したときの地名と、名前の最初の案に使う）
+  final String shortName;
+  final LatLng location;
+
+  const PlaceCandidate({required this.name, required this.shortName, required this.location});
 }

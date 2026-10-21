@@ -371,8 +371,7 @@ class _NoPermissionView extends StatelessWidget {
             child: TextLinkButton(
               label: '場所を手で登録する',
               color: AppColors.text,
-              // 場所の登録（Places.html）はステップ7で作る。それまでは設定を開く
-              onPressed: () => AppRoutes.openSettings(context),
+              onPressed: () => AppRoutes.openPlaces(context),
             ),
           ),
         ],

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../models/finder_target.dart';
 import '../screens/finder/finder_screen.dart';
+import '../screens/plus/plus_screen.dart';
 import '../screens/record/record_screen.dart';
+import '../screens/settings/data_source_screen.dart';
+import '../screens/settings/places_screen.dart';
 import '../screens/settings/settings_screen.dart';
 
 /// 画面の行き来
@@ -20,6 +23,15 @@ class AppRoutes {
 
   static Future<void> openRecord(BuildContext context) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RecordScreen()));
+
+  static Future<void> openPlaces(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlacesScreen()));
+
+  static Future<void> openPlus(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlusScreen()));
+
+  static Future<void> openDataSource(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataSourceScreen()));
 
   /// ホームまで戻る（写真を保存したあとなど）
   static void backToHome(BuildContext context) =>

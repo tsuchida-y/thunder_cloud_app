@@ -88,7 +88,7 @@ class MemberService {
     return expiresAt is! Timestamp || expiresAt.toDate().isAfter(now);
   }
 
-  /// 登録した場所（設定の「見張る場所」、ステップ7で作る）
+  /// 登録した場所（設定の「見張る場所」）
   static List<WatchPlace> placesOf(Map<String, dynamic>? member) {
     final places = member?['places'];
     if (places is! List) return const [];
@@ -97,9 +97,26 @@ class MemberService {
         .where((p) => p['latitude'] is num && p['longitude'] is num)
         .map((p) => WatchPlace(
               label: (p['label'] as String?) ?? '登録した場所',
+              name: p['name'] as String?,
               location: LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble()),
             ))
         .toList();
+  }
+
+  /// 登録した場所をまとめて書き換える（サーバーの watchPointsOf が読む。無料は1か所目だけ、Plus は3か所まで）
+  static Future<void> savePlaces(List<WatchPlace> places) async {
+    final id = uid;
+    if (id == null) return;
+    await _db.collection(membersCollection).doc(id).set({
+      'places': places.map((p) => p.toMap()).toList(),
+    }, SetOptions(merge: true));
+  }
+
+  /// 設定（settings）の一部を書き換える。サーバーは notifyAppeared, rangeKm, quietHours を読む
+  static Future<void> updateSettings(Map<String, dynamic> fields) async {
+    final id = uid;
+    if (id == null) return;
+    await _db.collection(membersCollection).doc(id).set({'settings': fields}, SetOptions(merge: true));
   }
 
   static double _round2(double value) => (value * 100).roundToDouble() / 100;
@@ -107,8 +124,63 @@ class MemberService {
 
 /// 登録した場所
 class WatchPlace {
+  /// 利用者がつけた名前（「家」「学校」）
   final String label;
+
+  /// 地名（「盛岡市」）。分からなければ null
+  final String? name;
   final LatLng location;
 
-  const WatchPlace({required this.label, required this.location});
+  const WatchPlace({required this.label, required this.location, this.name});
+
+  /// 位置は「いまいる場所」と同じく小数第2位（約1km）に丸めて残す
+  Map<String, dynamic> toMap() => {
+        'label': label,
+        if (name != null) 'name': name,
+        'latitude': MemberService._round2(location.latitude),
+        'longitude': MemberService._round2(location.longitude),
+      };
+
+  WatchPlace copyWith({String? label}) => WatchPlace(label: label ?? this.label, name: name, location: location);
+}
+
+/// 通知しない時間（日本時間の 0:00 からの分。終わりが始まりより前なら日をまたぐ）
+class QuietHours {
+  final int startMinutes;
+  final int endMinutes;
+
+  const QuietHours(this.startMinutes, this.endMinutes);
+
+  static QuietHours? fromMap(Object? value) {
+    if (value is! Map || value['startMinutes'] is! num || value['endMinutes'] is! num) return null;
+    return QuietHours((value['startMinutes'] as num).toInt(), (value['endMinutes'] as num).toInt());
+  }
+
+  Map<String, dynamic> toMap() => {'startMinutes': startMinutes, 'endMinutes': endMinutes};
+
+  static String clock(int minutes) => '${minutes ~/ 60}:${(minutes % 60).toString().padLeft(2, '0')}';
+
+  /// 「22:00〜6:00」
+  String get label => '${clock(startMinutes)}〜${clock(endMinutes)}';
+}
+
+/// 設定画面で使う、members.settings の中身
+class MemberSettings {
+  final bool notifyAppeared;
+  final bool notifyPreview;
+  final num? rangeKm;
+  final QuietHours? quietHours;
+
+  const MemberSettings({this.notifyAppeared = true, this.notifyPreview = false, this.rangeKm, this.quietHours});
+
+  factory MemberSettings.fromMember(Map<String, dynamic>? member) {
+    final settings = member?['settings'];
+    if (settings is! Map) return const MemberSettings();
+    return MemberSettings(
+      notifyAppeared: settings['notifyAppeared'] != false,
+      notifyPreview: settings['notifyPreview'] == true,
+      rangeKm: settings['rangeKm'] as num?,
+      quietHours: QuietHours.fromMap(settings['quietHours']),
+    );
+  }
 }
