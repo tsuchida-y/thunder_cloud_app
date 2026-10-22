@@ -19,6 +19,7 @@
     "axios": "^1.9.0",
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^6.3.2",
+    "jpeg-js": "^0.4.4",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {

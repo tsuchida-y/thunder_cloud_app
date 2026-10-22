@@ -8,11 +8,13 @@
  * - いまいる場所は、最後にアプリが送ってきた位置。「常に」の許可がない人は、最後に開いた場所になる
  * - Plus かどうかと通知の記録は member_server にある（サーバーだけが書く）
  * - 見張る場所でいま雨が降っているかは、雲を探したときのタイルから調べる（rain_lookup.js）
+ * - 見張る場所の空が一面の曇りか、どこまで見通せるかは、アメダスから調べる（sky_observations.js）
  */
 
 const admin = require('firebase-admin');
 const NotificationService = require('../notification/notification_service');
 const { decideNotification, nextHistory, appearedMessage } = require('../notification/notify_rules');
+const { isOvercast, visibilityKmNear } = require('../jma/sky_observations');
 const { COLLECTIONS, JMA_NOWCAST, NOTIFY_RULES } = require('../../constants');
 
 /**
@@ -56,10 +58,12 @@ class CloudWatchService {
    * いまの雲の一覧で全員を調べ、知らせる人に通知を送る
    *
    * @param {Date} now
-   * @param {import('../jma/rain_lookup').RainLookup|null} rainLookup - なければ雨は調べない
+   * @param {Object} [sky] - 雲を探したときに取った観測（nowcast_service.js の updateClouds の戻り値）
+   * @param {import('../jma/rain_lookup').RainLookup|null} [sky.rainLookup] - なければ雨は調べない
+   * @param {Array|null} [sky.amedasStations] - なければ曇りと視程は調べない
    * @returns {Promise<{checked:number, sent:number, skipped:Object<string,number>}>}
    */
-  async run(now = new Date(), rainLookup = null) {
+  async run(now = new Date(), { rainLookup = null, amedasStations = null } = {}) {
     const cloudSnap = await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
       .where('status', '==', 'active').get();
     const clouds = cloudSnap.docs
@@ -70,6 +74,7 @@ class CloudWatchService {
         latitude: c.center.latitude,
         longitude: c.center.longitude,
         edgePoints: c.edgePoints || [],
+        topHeightKm: typeof c.topHeightKm === 'number' ? c.topHeightKm : null,
         isVisible: true,
       }));
 
@@ -95,7 +100,12 @@ class CloudWatchService {
       const isPlus = isPlusActive(server, now);
       const history = server.notification || {};
       const watchPoints = await Promise.all(watchPointsOf(member, isPlus)
-        .map(async (p) => ({ ...p, raining: await isRaining(p) })));
+        .map(async (p) => ({
+          ...p,
+          raining: await isRaining(p),
+          overcast: amedasStations ? isOvercast(amedasStations, p, now) : false,
+          visibilityKm: amedasStations ? visibilityKmNear(amedasStations, p) : null,
+        })));
       const decision = decideNotification({
         now,
         watchPoints,

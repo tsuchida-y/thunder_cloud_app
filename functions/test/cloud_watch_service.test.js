@@ -127,7 +127,7 @@ test('見えている雲がなければ誰も調べない', async () => {
 test('いまいる場所で雨が降っていれば送らない', async () => {
   const { service, sent } = setup({ members: { u1: member() } });
   const rainLookup = { isRaining: async () => true };
-  const summary = await service.run(now, rainLookup);
+  const summary = await service.run(now, { rainLookup });
   assert.equal(sent.length, 0);
   assert.equal(summary.skipped.raining_here, 1);
 });
@@ -138,9 +138,24 @@ test('雨を調べられなかったときは雨なしとして送る', async ()
   const originalWarn = console.warn;
   console.warn = () => {};
   try {
-    await service.run(now, rainLookup);
+    await service.run(now, { rainLookup });
   } finally {
     console.warn = originalWarn;
   }
   assert.equal(sent.length, 1);
+});
+
+test('近くのアメダスがどこも1時間日が差していなければ送らない', async () => {
+  const { service, sent } = setup({ members: { u1: member() } });
+  const amedasStations = [{ latitude: 39.74, longitude: 141.08, sun1h: 0 }];
+  const summary = await service.run(now, { amedasStations });
+  assert.equal(sent.length, 0);
+  assert.equal(summary.skipped.overcast_here, 1);
+});
+
+test('ひまわりで見積もった高さで、通知の見上げる高さを出す', async () => {
+  const { service, sent } = setup({ clouds: { c1: { ...nearCloud, topHeightKm: 6 } }, members: { u1: member() } });
+  await service.run(now);
+  // 約25km 先で高さ6km なら約13.4°
+  assert.equal(sent[0].data.elevationDeg, '13.4');
 });

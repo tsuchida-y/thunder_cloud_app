@@ -126,3 +126,23 @@ test('雲のふちが10kmより近い雲は知らせず、ほかの雲があれ�
   const close = { id: 'close', latitude: 39.75, longitude: 141.10, isVisible: true };
   assert.equal(decideNotification({ ...base, clouds: [close] }).skip, 'too_close');
 });
+
+test('一面の曇りの場所では知らせない', () => {
+  assert.equal(decideNotification({ ...base, watchPoints: [{ ...home, overcast: true }] }).skip, 'overcast_here');
+});
+
+test('視程より遠い雲は知らせない', () => {
+  // near は約25km 先
+  assert.equal(decideNotification({ ...base, watchPoints: [{ ...home, visibilityKm: 15 }] }).skip, 'beyond_visibility');
+  assert.equal(decideNotification({ ...base, watchPoints: [{ ...home, visibilityKm: 30 }] }).notify.cloud.id, 'near');
+});
+
+test('見上げる高さは、ひまわりで見積もったてっぺんの高さを使う', () => {
+  const low = decideNotification({ ...base, clouds: [{ ...near, topHeightKm: 6 }] }).notify.view;
+  const high = decideNotification({ ...base, clouds: [{ ...near, topHeightKm: 15 }] }).notify.view;
+  assert.ok(low.elevationDeg < high.elevationDeg);
+  // 高さが分からない雲は 12km として計算する
+  const unknown = decideNotification(base).notify.view;
+  const twelve = decideNotification({ ...base, clouds: [{ ...near, topHeightKm: 12 }] }).notify.view;
+  assert.equal(unknown.elevationDeg, twelve.elevationDeg);
+});

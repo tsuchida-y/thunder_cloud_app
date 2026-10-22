@@ -28,7 +28,7 @@ class FinderTarget {
         cloudId: view.cloud.id,
         bearingDeg: view.bearingDeg,
         distanceKm: view.distanceKm,
-        elevationDeg: SkyGeometry.elevationDeg(view.distanceKm),
+        elevationDeg: view.elevationDeg,
         fists: view.fists,
         source: FinderSource.home,
       );

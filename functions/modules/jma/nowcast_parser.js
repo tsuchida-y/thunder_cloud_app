@@ -172,9 +172,14 @@ function summarizeCluster(members, zoom) {
   let maxRain = 0;
   let maxThunder = 0;
   let areaKm2 = 0;
+  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   for (const cell of members) {
     sumX += cell.x;
     sumY += cell.y;
+    bounds.minX = Math.min(bounds.minX, cell.x);
+    bounds.maxX = Math.max(bounds.maxX, cell.x);
+    bounds.minY = Math.min(bounds.minY, cell.y);
+    bounds.maxY = Math.max(bounds.maxY, cell.y);
     maxRain = Math.max(maxRain, cell.rain);
     maxThunder = Math.max(maxThunder, cell.thunder);
     areaKm2 += pixelAreaKm2(pixelToLatLng(cell.x, cell.y, zoom).latitude, zoom);
@@ -188,6 +193,8 @@ function summarizeCluster(members, zoom) {
     areaKm2,
     pixelCount: members.length,
     edgePoints: edgePointsOf(members, zoom),
+    // 塊を囲む四角（全体のピクセル座標）。ひまわりの画像で雲のてっぺんを調べる範囲に使う
+    bounds,
   };
 }
 

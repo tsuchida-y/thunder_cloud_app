@@ -8,7 +8,8 @@ import '../models/lat_lng.dart';
 /// どちらかを変えるときはもう一方も変える。
 ///
 /// - 方角は本当の北から時計回りの角度（0〜360°）。8方位の名前（北・北東…）も返す
-/// - 見上げる高さは、雲のてっぺんを 12,000m と仮定して距離から求める（42km 先なら約16°）
+/// - 見上げる高さは、サーバーがひまわりで見積もったてっぺんの高さ（clouds の topHeightKm）から求める。
+///   分からないときは 12,000m と仮定する（42km 先なら約16°）
 /// - 腕を伸ばしたこぶし1つ ≒ 10° として、こぶしの数（0.5 刻み）で表す
 class SkyGeometry {
   SkyGeometry._();
@@ -44,9 +45,9 @@ class SkyGeometry {
   static String directionName(double bearing) => directionNames[(bearing / 45).round() % 8];
 
   /// 雲のてっぺんを見上げる角度（°）
-  static double elevationDeg(double distance) {
+  static double elevationDeg(double distance, {double topKm = cloudTopKm}) {
     if (distance <= 0) return 90;
-    return _toDeg(math.atan(cloudTopKm / distance));
+    return _toDeg(math.atan(topKm / distance));
   }
 
   /// 見上げる角度をこぶしの数（0.5 刻み、最低 0.5）にする

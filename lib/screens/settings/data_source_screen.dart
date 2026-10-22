@@ -40,6 +40,12 @@ class DataSourceScreen extends StatelessWidget {
                   style: body,
                 ),
                 const SizedBox(height: 10),
+                Text(
+                  '雲の背の高さは気象庁ホームページの「ひまわり」の赤外画像から、空が一面の曇りかと遠くまで見通せるかは'
+                  '「アメダス」の観測から、このアプリが見積もっています。',
+                  style: body,
+                ),
+                const SizedBox(height: 10),
                 Text('気象庁のデータは、このアプリのサーバーが5分ごとにまとめて受け取っています。', style: body),
                 const SizedBox(height: 10),
                 Text(

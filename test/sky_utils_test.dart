@@ -28,6 +28,11 @@ void main() {
       expect(SkyGeometry.fistsLabel(2), 'こぶし2つ');
       expect(SkyGeometry.fistsFromElevation(1), 0.5);
     });
+
+    test('ひまわりで見積もった高さがあればそれで見上げる高さを出す（サーバーと同じ約13.4°）', () {
+      expect(SkyGeometry.elevationDeg(25.24, topKm: 6), closeTo(13.4, 0.1));
+      expect(SkyGeometry.elevationDeg(25.24), SkyGeometry.elevationDeg(25.24, topKm: 12));
+    });
   });
 
   group('SunTimes', () {

@@ -43,8 +43,30 @@ function fakeJma(rainTime, offset = 0) {
   };
 }
 
-function serviceWith(jma, firestore) {
-  const service = new NowcastService(jma);
+// ひまわりとアメダスの代わり。topGray で雲のてっぺんの明るさ（白いほど冷たい）を決める
+function fakeSky({ topGray = 200, fail = false } = {}) {
+  const image = { width: 256, height: 256, data: new Uint8Array(256 * 256 * 4).fill(topGray) };
+  return {
+    himawari: {
+      async getTimeAtOrBefore(time) {
+        if (fail) throw new Error('テスト用のひまわりの失敗');
+        return { basetime: time, validtime: time };
+      },
+      async getInfraredTiles(time, tiles) {
+        return tiles.map((t) => ({ ...t, image }));
+      },
+    },
+    amedas: {
+      async getLatest() {
+        if (fail) throw new Error('テスト用のアメダスの失敗');
+        return { observedAt: new Date(), stations: [] };
+      },
+    },
+  };
+}
+
+function serviceWith(jma, firestore, sky = fakeSky()) {
+  const service = new NowcastService(jma, sky);
   Object.defineProperty(service, 'firestore', { get: () => firestore });
   return service;
 }
@@ -128,4 +150,41 @@ test('気象庁のデータが30分以上更新されていなければ失敗と
   const status = (await firestore.doc('system/jma_nowcast').get()).data();
   assert.equal(status.consecutiveFailures, 1);
   assert.match(status.lastError, /更新されていません/);
+});
+
+test('ひまわりで雲のてっぺんが冷たくない塊は入道雲にしない', async () => {
+  const firestore = new FakeFirestore();
+  // 明るさ 60 は約 +13℃（低い雲）
+  await serviceWith(fakeJma(jmaTime(new Date())), firestore, fakeSky({ topGray: 60 })).updateClouds();
+  assert.equal(firestore.clouds().length, 0);
+  assert.equal((await firestore.doc('system/jma_nowcast').get()).data().lowCloudCount, 1);
+});
+
+test('てっぺんが冷たい塊は、温度と見積もった高さを保存する', async () => {
+  const firestore = new FakeFirestore();
+  // 明るさ 200 は約 -60℃。地上の気温が分からないので 25℃ として (25+60)/6.5 ≒ 13.1km
+  await serviceWith(fakeJma(jmaTime(new Date())), firestore, fakeSky({ topGray: 200 })).updateClouds();
+  const [cloud] = firestore.clouds();
+  assert.equal(cloud.topTempC, -60.3);
+  assert.equal(cloud.topHeightKm, 13.1);
+});
+
+test('ひまわりとアメダスが取れなくても、ナウキャストだけで続ける', async () => {
+  const firestore = new FakeFirestore();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  let result;
+  try {
+    result = await serviceWith(fakeJma(jmaTime(new Date())), firestore, fakeSky({ fail: true })).updateClouds();
+  } finally {
+    console.warn = originalWarn;
+  }
+  const [cloud] = firestore.clouds();
+  assert.equal(cloud.topTempC, null);
+  assert.equal(cloud.topHeightKm, null);
+  assert.equal(result.amedasStations, null);
+  const status = (await firestore.doc('system/jma_nowcast').get()).data();
+  assert.equal(status.consecutiveFailures, 0);
+  assert.equal(status.himawariFailures, 1);
+  assert.equal(status.amedasFailures, 1);
 });

@@ -46,6 +46,62 @@ const JMA_NOWCAST = {
 };
 
 /**
+ * 気象庁ホームページのひまわりの赤外画像（バンド13）の設定
+ *
+ * 強い雨か雷の塊のうち、雲のてっぺんが冷たい（背が高い）ものだけを入道雲とし、てっぺんの高さも見積もる。
+ * 雲の場所はナウキャストで決め、ひまわりは「背の高い雲か」と「高さ」にだけ使う。
+ * 選んだ理由と、ほかのデータと比べた結果は docs/検知の精度を上げるデータの比較.md
+ */
+const HIMAWARI = {
+  BASE_URL: 'https://www.jma.go.jp/bosai/himawari/data/satimg',
+  TARGET_TIMES: 'targetTimes_jp.json',
+  AREA: 'jp',
+  BAND: 'B13',
+  PRODUCT: 'TBB',
+  // ナウキャストの z6 と同じタイルの並び（1ピクセル約2km）
+  ZOOM: 6,
+  // 白黒の明るさ（0〜255、冷たいほど白い）を温度（℃）に直す式: 温度 = OFFSET - 明るさ / SCALE
+  // 気象庁は対応表を出していないので、晴れたアメダス地点の気温（明るさ約38で約+25℃）と、
+  // 雲頂強調画像の赤（約-73℃）の明るさ（約225）の2点から見積もった（2026-10-22）。誤差は数℃ある
+  GRAY_TO_TEMP_OFFSET: 45,
+  GRAY_TO_TEMP_SCALE: 1.9,
+  // てっぺんがこれより冷たい塊を入道雲とする（夏なら高さ約7〜8km。見えた/見えなかったで調整する）
+  MAX_TOP_TEMP_C: -20,
+  // 衛星から斜めに見るずれ（背の高い雲は北へ10km ほどずれて写る）と、時刻のずれの分、塊のまわりを広く見る
+  SEARCH_MARGIN_PIXELS: 6,
+  // 雲の中の気温は1km 上がるごとにこれだけ下がるとして、地上の気温との差から高さを出す
+  LAPSE_RATE_C_PER_KM: 6.5,
+  MIN_TOP_KM: 6,
+  MAX_TOP_KM: 16,
+  // 地上の気温が分からないときに使う値
+  DEFAULT_SURFACE_TEMP_C: 25,
+};
+
+/**
+ * 気象庁ホームページのアメダスの設定
+ *
+ * 見張る場所の空が一面の曇りか（日照時間）と、遠くまで見通せるか（視程）を調べる。
+ * 雲のてっぺんの高さを出すための地上の気温にも使う。
+ */
+const AMEDAS = {
+  BASE_URL: 'https://www.jma.go.jp/bosai/amedas',
+  LATEST_TIME: 'data/latest_time.txt',
+  STATION_TABLE: 'const/amedastable.json',
+  // 地点の一覧はめったに変わらないので、この時間は覚えておく
+  STATION_TABLE_TTL_MS: 24 * 60 * 60 * 1000,
+  // 見張る場所からこの距離までの地点の日照を見る
+  SUNSHINE_RADIUS_KM: 20,
+  // 太陽がこれより低いと、晴れていても日照計が日照なしになるので、日照は使わない
+  SUNSHINE_MIN_SUN_ALTITUDE_DEG: 15,
+  // 視程は気象台など約150地点だけなので、この距離までのいちばん近い地点を使う
+  VISIBILITY_RADIUS_KM: 40,
+  // 視程計はこれ以上を同じ値（20km）で出すので、これ未満のときだけ使う
+  VISIBILITY_MAX_M: 20000,
+  // 雲のてっぺんの高さを出すときの地上の気温は、この距離までのいちばん近い地点を使う
+  TEMP_RADIUS_KM: 50,
+};
+
+/**
  * v2.0 の通知のルール（docs/入道雲サーチ_決定事項.md の「3. 通知のルール」）
  */
 const NOTIFY_RULES = {
@@ -88,6 +144,8 @@ const INACTIVE_MEMBER_DAYS = 365;
 
 module.exports = {
   JMA_NOWCAST,
+  HIMAWARI,
+  AMEDAS,
   NOTIFY_RULES,
   COLLECTIONS,
   CLOUD_RETENTION_DAYS,

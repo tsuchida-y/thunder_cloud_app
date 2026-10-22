@@ -58,11 +58,12 @@ function sunTimesForUtcDate(date, latitude, longitude, altitudeDeg = SUNRISE_ALT
  *
  * 日本の日の出・日の入りは UTC の同じ日付に収まる（日の出は前日の 19〜22 時 UTC になることもある）ので、
  * 前後の日も含めて「いまを挟む日の出と日の入り」があるかを調べる。
+ * altitudeDeg を渡すと、太陽がその高さより上にあるかを返す（アメダスの日照を使えるかの判定に使う）。
  */
-function isDaytime(now, latitude, longitude) {
+function isDaytime(now, latitude, longitude, altitudeDeg = CIVIL_TWILIGHT_DEG) {
   for (const offset of [-1, 0, 1]) {
     const day = new Date(now.getTime() + offset * DAY_MS);
-    const { sunrise, sunset } = sunTimesForUtcDate(day, latitude, longitude, CIVIL_TWILIGHT_DEG);
+    const { sunrise, sunset } = sunTimesForUtcDate(day, latitude, longitude, altitudeDeg);
     if (sunrise && sunset && sunrise <= now && now < sunset) return true;
   }
   return false;

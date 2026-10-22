@@ -7,6 +7,8 @@
  * - アプリを開いてから10分以内の人には送らない
  * - 範囲は無料 30km、Plus 90km。60km より遠い雲は「見えるかもしれません」
  * - 見張る場所で雨が降っていたら（雲の下か曇り空なので）その場所では知らせない
+ * - 見張る場所の空が一面の曇り（アメダスの日照）なら、その場所では知らせない
+ * - 見張る場所の視程（アメダス）より遠い雲は、かすんで見えないので知らせない
  * - 雲のいちばん近い所が10kmより近い雲は、真下か近すぎて形が見えないので知らせない
  *   （1つの雲に1回なので、離れてから知らせる）
  *
@@ -50,8 +52,9 @@ function isInQuietHours(now, quietHours) {
 /**
  * @param {Object} params
  * @param {Date} params.now
- * @param {Array<{label:string,latitude:number,longitude:number,raining?:boolean}>} params.watchPoints
- *   - 見張る場所。raining はいまその場所で雨が降っているか
+ * @param {Array<{label:string,latitude:number,longitude:number,raining?:boolean,overcast?:boolean,
+ *   visibilityKm?:number|null}>} params.watchPoints
+ *   - 見張る場所。raining はいま雨が降っているか、overcast は一面の曇りか、visibilityKm は見通せる距離（null は制限なし）
  * @param {boolean} params.isPlus
  * @param {number} [params.rangeKm] - 設定の範囲（Plus でなければ 30km に抑える）
  * @param {{startMinutes:number,endMinutes:number}|null} [params.quietHours]
@@ -85,15 +88,23 @@ function decideNotification(params) {
   // 雨の降っている場所は雲の下か曇り空で、入道雲の形が見えない
   const dryPoints = daytimePoints.filter((p) => !p.raining);
   if (dryPoints.length === 0) return { skip: 'raining_here' };
+  // 一面の曇り空も、入道雲は雲に隠れて見えない
+  const openPoints = dryPoints.filter((p) => !p.overcast);
+  if (openPoints.length === 0) return { skip: 'overcast_here' };
 
   const notified = new Set(history.notifiedCloudIds || []);
   let best = null;
   let tooClose = false;
+  let hazy = false;
   for (const cloud of clouds) {
     if (!cloud.isVisible || notified.has(cloud.id)) continue;
-    for (const point of dryPoints) {
+    for (const point of openPoints) {
       const view = describeCloud(point, cloud);
       if (view.distanceKm > rangeKm) continue;
+      if (typeof point.visibilityKm === 'number' && view.distanceKm > point.visibilityKm) {
+        hazy = true;
+        continue;
+      }
       if (nearestDistanceKm(point, cloud) < NOTIFY_RULES.MIN_DISTANCE_KM) {
         tooClose = true;
         continue;
@@ -104,7 +115,8 @@ function decideNotification(params) {
     }
   }
   if (best) return { notify: best };
-  return { skip: tooClose ? 'too_close' : 'no_cloud_in_range' };
+  if (tooClose) return { skip: 'too_close' };
+  return { skip: hazy ? 'beyond_visibility' : 'no_cloud_in_range' };
 }
 
 /**

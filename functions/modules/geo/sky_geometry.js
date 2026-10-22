@@ -2,7 +2,8 @@
  * 利用者から見た雲の方角・距離・見上げる高さ
  *
  * - 方角は本当の北から時計回りの角度（0〜360°）。8方位の名前（北・北東…）も返す
- * - 見上げる高さは、雲のてっぺんを 12,000m と仮定して距離から求める（42km 先なら約16°）
+ * - 見上げる高さは、ひまわりで見積もったてっぺんの高さ（topHeightKm）から求める。
+ *   分からないときは 12,000m と仮定する（42km 先なら約16°）
  * - 腕を伸ばしたこぶし1つ ≒ 10° として、こぶしの数（0.5 刻み）で表す
  */
 
@@ -59,9 +60,9 @@ function directionName(bearing) {
 /**
  * 雲のてっぺんを見上げる角度（°）
  */
-function elevationDeg(distance) {
+function elevationDeg(distance, topKm = CLOUD_TOP_KM) {
   if (distance <= 0) return 90;
-  return toDeg(Math.atan(CLOUD_TOP_KM / distance));
+  return toDeg(Math.atan(topKm / distance));
 }
 
 /**
@@ -87,7 +88,7 @@ function fistsLabel(fists) {
 function describeCloud(from, cloud) {
   const distance = distanceKm(from, cloud);
   const bearing = bearingDeg(from, cloud);
-  const elevation = elevationDeg(distance);
+  const elevation = elevationDeg(distance, typeof cloud.topHeightKm === 'number' ? cloud.topHeightKm : CLOUD_TOP_KM);
   const fists = fistsFromElevation(elevation);
   return {
     distanceKm: distance,

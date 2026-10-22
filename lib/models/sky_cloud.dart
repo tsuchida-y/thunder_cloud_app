@@ -29,12 +29,16 @@ class SkyCloud {
   final DateTime lastSeenAt;
   final bool isVisible;
 
+  /// ひまわりで見積もったてっぺんの高さ (km)。分からなければ null（12km として計算する）
+  final double? topHeightKm;
+
   const SkyCloud({
     required this.id,
     required this.center,
     required this.firstSeenAt,
     required this.lastSeenAt,
     required this.isVisible,
+    this.topHeightKm,
   });
 
   static SkyCloud? fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -52,6 +56,7 @@ class SkyCloud {
       firstSeenAt: first.toDate(),
       lastSeenAt: last.toDate(),
       isVisible: data?['isVisible'] == true,
+      topHeightKm: (data?['topHeightKm'] as num?)?.toDouble(),
     );
   }
 
@@ -65,13 +70,17 @@ class CloudView {
   final double distanceKm;
   final double bearingDeg;
   final String directionName;
+  final double elevationDeg;
   final double fists;
 
   CloudView(this.cloud, LatLng point)
       : distanceKm = SkyGeometry.distanceKm(point, cloud.center),
         bearingDeg = SkyGeometry.bearingDeg(point, cloud.center),
         directionName = SkyGeometry.directionName(SkyGeometry.bearingDeg(point, cloud.center)),
-        fists = SkyGeometry.fistsFromElevation(SkyGeometry.elevationDeg(SkyGeometry.distanceKm(point, cloud.center)));
+        elevationDeg = SkyGeometry.elevationDeg(SkyGeometry.distanceKm(point, cloud.center),
+            topKm: cloud.topHeightKm ?? SkyGeometry.cloudTopKm),
+        fists = SkyGeometry.fistsFromElevation(SkyGeometry.elevationDeg(SkyGeometry.distanceKm(point, cloud.center),
+            topKm: cloud.topHeightKm ?? SkyGeometry.cloudTopKm));
 
   String get fistsLabel => SkyGeometry.fistsLabel(fists);
 

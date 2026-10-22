@@ -7,9 +7,12 @@
  * 1. 最新の解析時刻を調べる。前回と同じなら何もしない
  * 2. z4 のタイル（日本全体で数枚）で、強い雨か雷がありそうな場所に当たりを付ける
  * 3. 当たりの場所だけ z6 のタイル（1ピクセル約2km）を取り、強い雨か雷のある塊を取り出す
+ * 3'. ひまわりの赤外画像で塊のてっぺんの温度を調べ、背の高い（冷たい）塊だけを入道雲とする。
+ *     アメダスの地上の気温との差から、てっぺんの高さも見積もる。
+ *     ひまわりかアメダスが取れないときは、ナウキャストだけで今までどおり続ける（入道雲を知らせられなくなるよりよいため）
  * 4. 前回までの雲と結びつけて Firestore の clouds に保存する
  * 5. 結果と失敗の回数を system/jma_nowcast に残す（続けて失敗したらエラーのログを出す）
- * 6. 取ったタイルから、見張る場所で雨が降っているかを調べる道具（RainLookup）を返す
+ * 6. 見張りで使うもの（雨を調べる RainLookup と、アメダスの観測値）を返す
  */
 
 const admin = require('firebase-admin');
@@ -17,11 +20,16 @@ const JmaClient = require('./jma_client');
 const { rainFromColor, thunderFromColor, collectPixels, extractClusters } = require('./nowcast_parser');
 const { trackClouds } = require('./cloud_tracker');
 const { RainLookup } = require('./rain_lookup');
-const { JMA_NOWCAST } = require('../../constants');
+const HimawariClient = require('./himawari_client');
+const AmedasClient = require('./amedas_client');
+const { coldestTopTempC, topHeightKm, isTallEnough, surfaceTempNear } = require('./sky_observations');
+const { JMA_NOWCAST, HIMAWARI } = require('../../constants');
 
 class NowcastService {
-  constructor(jmaClient = new JmaClient()) {
+  constructor(jmaClient = new JmaClient(), { himawari = new HimawariClient(), amedas = new AmedasClient() } = {}) {
     this.jma = jmaClient;
+    this.himawari = himawari;
+    this.amedas = amedas;
   }
 
   get firestore() {
@@ -32,7 +40,9 @@ class NowcastService {
    * 気象庁のデータから雲の塊を取り出す（Firestore には書かない）
    *
    * @returns {Promise<{times:{rain:string,thunder:string|null}, clusters:Array, requestCount:number,
-   *   rainLookup:RainLookup}>}
+   *   rainLookup:RainLookup, lowClusterCount:number, amedasStations:Array|null,
+   *   errors:{himawari:Error|null, amedas:Error|null}}>}
+   *   clusters は背の高い塊だけ。lowClusterCount は背が低いので外した塊の数
    */
   async detectClusters(times = null) {
     const latest = times || await this.jma.getLatestAnalysisTimes();
@@ -105,16 +115,84 @@ class NowcastService {
       }
     }
 
-    const clusters = extractClusters(rainPixels, thunderPixels, JMA_NOWCAST.DETAIL_ZOOM);
+    const allClusters = extractClusters(rainPixels, thunderPixels, JMA_NOWCAST.DETAIL_ZOOM);
     const rainLookup = new RainLookup(this.jma, latest.rain, coarseRain, rainTiles);
-    return { times: latest, clusters, requestCount, rainLookup };
+    const sky = await this._observeSky(latest.rain, allClusters);
+    return {
+      times: latest,
+      clusters: sky.clusters,
+      lowClusterCount: allClusters.length - sky.clusters.length,
+      requestCount: requestCount + sky.requestCount,
+      rainLookup,
+      amedasStations: sky.amedasStations,
+      errors: sky.errors,
+    };
+  }
+
+  /**
+   * ひまわりで塊のてっぺんの温度を調べ、背の高い塊だけに高さを付けて返す
+   */
+  async _observeSky(rainTime, clusters) {
+    const errors = { himawari: null, amedas: null };
+    let requestCount = 0;
+
+    let amedasStations = null;
+    try {
+      amedasStations = (await this.amedas.getLatest()).stations;
+      requestCount += 2;
+    } catch (error) {
+      errors.amedas = error;
+    }
+    if (clusters.length === 0) return { clusters, amedasStations, errors, requestCount };
+
+    const images = new Map();
+    try {
+      const time = await this.himawari.getTimeAtOrBefore(rainTime);
+      requestCount += 1;
+      if (!time) throw new Error(`ひまわりの画像に ${rainTime} より前の時刻がありません`);
+      const lagMs = JmaClient.parseTime(rainTime).getTime() - JmaClient.parseTime(time.validtime).getTime();
+      if (lagMs > JMA_NOWCAST.STALE_DATA_MS) {
+        throw new Error(`ひまわりの画像が更新されていません（最新 ${time.validtime}）`);
+      }
+      // 塊を囲む四角（まわりも含む）にかかるタイル
+      const size = JMA_NOWCAST.TILE_SIZE;
+      const margin = HIMAWARI.SEARCH_MARGIN_PIXELS;
+      const keys = new Set();
+      for (const { bounds } of clusters) {
+        for (let x = Math.floor((bounds.minX - margin) / size); x <= Math.floor((bounds.maxX + margin) / size); x++) {
+          for (let y = Math.floor((bounds.minY - margin) / size); y <= Math.floor((bounds.maxY + margin) / size); y++) {
+            keys.add(`${x},${y}`);
+          }
+        }
+      }
+      const tiles = [...keys].map((key) => {
+        const [x, y] = key.split(',').map(Number);
+        return { x, y };
+      });
+      for (const t of await this.himawari.getInfraredTiles(time, tiles)) images.set(`${t.x},${t.y}`, t.image);
+      requestCount += tiles.length;
+    } catch (error) {
+      errors.himawari = error;
+    }
+
+    const result = [];
+    for (const cluster of clusters) {
+      const topTempC = images.size > 0 ? coldestTopTempC(cluster.bounds, images) : null;
+      if (!isTallEnough(topTempC)) continue;
+      result.push({
+        ...cluster,
+        topTempC,
+        topHeightKm: topTempC === null ? null : topHeightKm(topTempC, surfaceTempNear(amedasStations, cluster)),
+      });
+    }
+    return { clusters: result, amedasStations, errors, requestCount };
   }
 
   /**
    * 5分ごとの本処理: 雲の一覧を更新する
    *
-   * @returns {Promise<{rainLookup:RainLookup}|null>} 新しい解析値で雲の一覧を書き換えたら、
-   *   見張りで使う RainLookup。書き換えなかったら null
+   * @returns {Promise<{rainLookup:RainLookup, amedasStations:Array|null}|null>}
+   *   新しい解析値で雲の一覧を書き換えたら、見張りで使うもの。書き換えなかったら null
    */
   async updateClouds() {
     const statusRef = this.firestore.doc(JMA_NOWCAST.STATUS_DOC_PATH);
@@ -135,8 +213,11 @@ class NowcastService {
         return null;
       }
 
-      const { clusters, requestCount, rainLookup } = await this.detectClusters(times);
+      const detected = await this.detectClusters(times);
+      const { clusters, requestCount, rainLookup, amedasStations } = detected;
       const result = await this._saveClouds(clusters, observedAt);
+      const himawariFailures = this._countSubFailure('HIMAWARI', status.himawariFailures, detected.errors.himawari);
+      const amedasFailures = this._countSubFailure('AMEDAS', status.amedasFailures, detected.errors.amedas);
 
       await statusRef.set({
         lastRainTime: times.rain,
@@ -146,13 +227,16 @@ class NowcastService {
         consecutiveFailures: 0,
         lastError: null,
         visibleCloudCount: clusters.length,
+        lowCloudCount: detected.lowClusterCount,
         lastRequestCount: requestCount + 2,
+        himawariFailures,
+        amedasFailures,
       }, { merge: true });
 
-      console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個 ` +
+      console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個、背が低いので外した塊${detected.lowClusterCount}個 ` +
         `（続き${result.updated} 新規${result.created} 見えない${result.hidden} 終了${result.ended}、` +
         `気象庁へのリクエスト${requestCount + 2}回）`);
-      return { rainLookup };
+      return { rainLookup, amedasStations };
     } catch (error) {
       await this._recordFailure(statusRef, status, error);
       return null;
@@ -181,6 +265,9 @@ class NowcastService {
       maxThunderLevel: cluster.maxThunderLevel,
       areaKm2: Math.round(cluster.areaKm2 * 10) / 10,
       pixelCount: cluster.pixelCount,
+      // ひまわりで見たてっぺんの温度（℃）と、見積もった高さ (km)。ひまわりが取れなかったときは null
+      topTempC: typeof cluster.topTempC === 'number' ? Math.round(cluster.topTempC * 10) / 10 : null,
+      topHeightKm: typeof cluster.topHeightKm === 'number' ? Math.round(cluster.topHeightKm * 10) / 10 : null,
       // 雲のふち。Firestore は配列の入れ子を持てないので {latitude, longitude} の並びにする
       edgePoints: (cluster.edgePoints || []).map((p) => ({
         latitude: Math.round(p.latitude * 1000) / 1000,
@@ -213,6 +300,22 @@ class NowcastService {
     }
 
     return { updated: updated.length, created: created.length, hidden: hidden.length, ended: ended.length };
+  }
+
+  /**
+   * ひまわり・アメダスの続けての失敗を数える。ナウキャストだけで続けられるので、失敗としては数えない。
+   * 続けて失敗したらエラーのログを出す（Cloud Logging でこの文字列を条件にすれば、止まったことに気づける）
+   */
+  _countSubFailure(name, previous, error) {
+    if (!error) return 0;
+    const failures = (previous || 0) + 1;
+    if (failures >= JMA_NOWCAST.FAILURE_ALERT_COUNT) {
+      console.error(`🚨 [${name}_FAILING] ${name} の取得が${failures}回続けて失敗しています（ナウキャストだけで続けます）:`,
+        error);
+    } else {
+      console.warn(`⚠️ [${name}] ${name} の取得に失敗しました（${failures}回目、ナウキャストだけで続けます）:`, error);
+    }
+    return failures;
   }
 
   async _recordFailure(statusRef, status, error) {
