@@ -71,7 +71,7 @@ class _QuietHoursSheetState extends State<QuietHoursSheet> {
             const SizedBox(height: 14),
             Text('通知しない時間', style: AppTextStyles.headline(color: AppColors.text, fontSize: 22)),
             const SizedBox(height: 6),
-            Text('夜（日没〜日の出）は自動で休みます', style: AppTextStyles.note()),
+            Text('空が暗いあいだ（夜）は自動で休みます', style: AppTextStyles.note()),
             const SizedBox(height: 14),
             SettingsCard(
               children: [

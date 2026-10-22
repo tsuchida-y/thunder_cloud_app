@@ -8,7 +8,7 @@ const {
   fistsLabel,
   describeCloud,
 } = require('../modules/geo/sky_geometry');
-const { sunTimesForUtcDate, isDaytime, nextSunrise } = require('../modules/geo/sun_times');
+const { sunTimesForUtcDate, isDaytime, nextSunrise, SUNRISE_ALTITUDE_DEG } = require('../modules/geo/sun_times');
 
 const takizawa = { latitude: 39.735, longitude: 141.077 };
 
@@ -45,17 +45,24 @@ const nearMinutes = (actual, expected, minutes) =>
   Math.abs(actual.getTime() - expected.getTime()) <= minutes * 60 * 1000;
 
 test('東京の日の出・日の入りが国立天文台の値と1分以内で合う', () => {
-  const sunrise = nextSunrise(jst('2026-10-20T03:00:00'), tokyo.latitude, tokyo.longitude);
+  const sunrise = nextSunrise(jst('2026-10-20T03:00:00'), tokyo.latitude, tokyo.longitude, SUNRISE_ALTITUDE_DEG);
   const { sunset } = sunTimesForUtcDate(new Date('2026-10-20T00:00:00Z'), tokyo.latitude, tokyo.longitude);
   assert.ok(nearMinutes(sunrise, jst('2026-10-20T05:51:00'), 1), sunrise.toISOString());
   assert.ok(nearMinutes(sunset, jst('2026-10-20T17:00:00'), 1), sunset.toISOString());
 });
 
-test('昼か夜かを判定する', () => {
+// 東京 2026-10-20 の市民薄明: はじまり 5:25ごろ、終わり 17:26ごろ（日の出 5:51、日の入り 17:00）
+test('昼か夜かは、市民薄明（空が明るいあいだ）で判定する', () => {
   const { latitude, longitude } = tokyo;
-  assert.equal(isDaytime(jst('2026-10-20T05:40:00'), latitude, longitude), false);
-  assert.equal(isDaytime(jst('2026-10-20T06:00:00'), latitude, longitude), true);
-  assert.equal(isDaytime(jst('2026-10-20T16:50:00'), latitude, longitude), true);
-  assert.equal(isDaytime(jst('2026-10-20T17:10:00'), latitude, longitude), false);
+  assert.equal(isDaytime(jst('2026-10-20T05:10:00'), latitude, longitude), false);
+  assert.equal(isDaytime(jst('2026-10-20T05:40:00'), latitude, longitude), true); // 日の出前でも明るい
+  assert.equal(isDaytime(jst('2026-10-20T12:00:00'), latitude, longitude), true);
+  assert.equal(isDaytime(jst('2026-10-20T17:10:00'), latitude, longitude), true); // 日の入り後でも明るい
+  assert.equal(isDaytime(jst('2026-10-20T17:40:00'), latitude, longitude), false);
   assert.equal(isDaytime(jst('2026-10-20T23:00:00'), latitude, longitude), false);
+});
+
+test('次に明るくなる時刻は、市民薄明のはじまり', () => {
+  const dawn = nextSunrise(jst('2026-10-20T21:00:00'), tokyo.latitude, tokyo.longitude);
+  assert.ok(nearMinutes(dawn, jst('2026-10-21T05:26:00'), 3), dawn.toISOString());
 });

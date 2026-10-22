@@ -535,7 +535,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     });
   }
 
-  /// きょうの日の出から日の入りまでに範囲にあった雲のうち、いちばん近いもの
+  /// きょうの空が明るいあいだ（市民薄明）に範囲にあった雲のうち、いちばん近いもの
   TodaysCloud? _todaysCloud(DateTime now, LatLng point, double rangeKm) {
     final day = SunTimes.forLocalDay(now, point.latitude, point.longitude);
     final clouds = _todaysClouds;

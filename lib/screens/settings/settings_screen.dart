@@ -119,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               SettingsRow.text(
                 '通知しない時間',
-                subtitle: '夜（日没〜日の出）は自動で休みます',
+                subtitle: '空が暗いあいだ（夜）は自動で休みます',
                 trailing: SettingsValue(settings.quietHours?.label ?? 'なし'),
                 onTap: () => _editQuietHours(settings.quietHours),
               ),

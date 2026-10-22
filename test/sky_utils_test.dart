@@ -45,6 +45,9 @@ void main() {
     test('昼と夜、次の日の出', () {
       expect(SunTimes.isDaytime(DateTime.utc(2026, 10, 20, 3), lat, lng), isTrue); // 12時
       expect(SunTimes.isDaytime(DateTime.utc(2026, 10, 20, 12), lat, lng), isFalse); // 21時
+      // 夜は市民薄明の終わりから（日の入り 17:00 のあとも 17:26 ごろまでは明るい）
+      expect(SunTimes.isDaytime(DateTime.utc(2026, 10, 20, 8, 10), lat, lng), isTrue); // 17:10
+      expect(SunTimes.isDaytime(DateTime.utc(2026, 10, 20, 8, 40), lat, lng), isFalse); // 17:40
       final next = SunTimes.nextSunrise(DateTime.utc(2026, 10, 20, 12), lat, lng)!;
       expect(next.isAfter(DateTime.utc(2026, 10, 20, 20)), isTrue);
       expect(next.isBefore(DateTime.utc(2026, 10, 20, 21)), isTrue);
