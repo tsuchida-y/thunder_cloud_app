@@ -207,7 +207,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       } else {
         _gps = null;
       }
-      await MemberService.recordOpened(location: _gps);
+      MemberService.recordOpened(location: _gps, clearLocation: access != LocationAccess.granted);
 
       _listenSky();
       _recompute();
@@ -270,6 +270,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   void _listenMember(String uid) {
     _memberSub ??= MemberService.watchMember(uid).listen((doc) {
       _member = doc.data();
+      if (!doc.metadata.isFromCache) MemberService.ensureDefaultSettings(_member);
       _recompute();
     }, onError: (Object e) => AppLogger.warning('members を読めません: $e', tag: 'HomeController'));
     _serverSub ??= MemberService.watchServer(uid).listen((doc) {

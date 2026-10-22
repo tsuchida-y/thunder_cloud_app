@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../models/lat_lng.dart';
+import '../../models/sky_cloud.dart';
 import '../../navigation/app_routes.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
+import '../../services/sky/sky_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_theme.dart';
@@ -32,7 +35,10 @@ class _PlacesScreenState extends State<PlacesScreen> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _serverSub;
   Map<String, dynamic>? _member;
   Map<String, dynamic>? _server;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cloudSub;
+  List<SkyCloud> _clouds = const [];
   String? _currentName;
+  LatLng? _currentPoint;
   bool _locationOff = false;
 
   final TextEditingController _query = TextEditingController();
@@ -47,6 +53,10 @@ class _PlacesScreenState extends State<PlacesScreen> {
     if (uid != null) {
       _memberSub = MemberService.watchMember(uid).listen((doc) => setState(() => _member = doc.data()));
       _serverSub = MemberService.watchServer(uid).listen((doc) => setState(() => _server = doc.data()));
+      // 見張っている場所のいまの空を出して、本当に見張っていると分かるようにする
+      _cloudSub = SkyRepository.watchActiveClouds().listen((snap) {
+        setState(() => _clouds = snap.docs.map(SkyCloud.fromDoc).whereType<SkyCloud>().toList());
+      });
     }
     _loadCurrent();
   }
@@ -59,13 +69,19 @@ class _PlacesScreenState extends State<PlacesScreen> {
     }
     final point = await CurrentPlace.lastKnown();
     final name = point == null ? null : await CurrentPlace.placeName(point);
-    if (mounted) setState(() => _currentName = name);
+    if (mounted) {
+      setState(() {
+        _currentPoint = point;
+        _currentName = name;
+      });
+    }
   }
 
   @override
   void dispose() {
     _memberSub?.cancel();
     _serverSub?.cancel();
+    _cloudSub?.cancel();
     _query.dispose();
     _queryFocus.dispose();
     super.dispose();
@@ -74,6 +90,37 @@ class _PlacesScreenState extends State<PlacesScreen> {
   bool get _isPlus => MemberService.isPlusActive(_server, DateTime.now());
   List<WatchPlace> get _places => MemberService.placesOf(_member);
   int get _maxPlaces => _isPlus ? PlacesScreen.plusMaxPlaces : PlacesScreen.freeMaxPlaces;
+
+  /// いまいる場所を見張っているか（位置情報が使えて、場所が分かっている）
+  bool get _currentWatched => !_locationOff && (_currentPoint != null || _member?['location'] != null);
+
+  /// 登録した i 番目の場所を見張っているか（サーバーの watchPointsOf と同じ決まり）
+  ///
+  /// Plus は3か所まで、いまいる場所といっしょに見張る。無料は、いまいる場所が分からないときだけ1か所目を見張る。
+  bool _placeWatched(int index) {
+    if (_isPlus) return index < PlacesScreen.plusMaxPlaces;
+    return !_currentWatched && index == 0;
+  }
+
+  /// その場所のいまの空（「いま、南東 ・ 25km に入道雲」）
+  String _skyAt(LatLng point) {
+    final range = SkyRules.rangeKm(isPlus: _isPlus, settingKm: MemberSettings.fromMember(_member).rangeKm);
+    final views = _clouds
+        .where((c) => c.isVisible)
+        .map((c) => c.viewFrom(point))
+        .where((v) => v.distanceKm <= range)
+        .toList()
+      ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    if (views.isEmpty) return 'いま、入道雲は見えていません';
+    return 'いま、${views.first.directionName} ・ ${views.first.roundedKm}km に入道雲';
+  }
+
+  /// 行の補足（地名、見張っているか、いまの空）
+  String _statusLine(String? name, {required bool watched, LatLng? point}) {
+    final head = [if (name != null && name.isNotEmpty) name, watched ? '見張っています' : 'いまは見張っていません'].join(' ・ ');
+    if (!watched || point == null) return head;
+    return '$head\n${_skyAt(point)}';
+  }
 
   Future<void> _search() async {
     setState(() {
@@ -188,12 +235,14 @@ class _PlacesScreenState extends State<PlacesScreen> {
               children: [
                 SettingsRow(
                   title: Text('いまいる場所', style: AppTextStyles.item()),
-                  subtitle: _locationOff ? '位置情報がオフです' : (_currentName ?? ''),
+                  subtitle: _locationOff
+                      ? '位置情報がオフです ・ いまは見張っていません'
+                      : _statusLine(_currentName, watched: _currentWatched, point: _currentPoint),
                 ),
                 for (var i = 0; i < places.length; i++)
                   SettingsRow(
                     title: Text(places[i].label, style: AppTextStyles.item()),
-                    subtitle: places[i].name,
+                    subtitle: _statusLine(places[i].name, watched: _placeWatched(i), point: places[i].location),
                     trailing: TextButton(
                       onPressed: () => _change(i),
                       style: TextButton.styleFrom(
@@ -206,6 +255,17 @@ class _PlacesScreenState extends State<PlacesScreen> {
                   ),
               ],
             ),
+            if (!_isPlus && _currentWatched && places.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  '無料プランでは、いまいる場所が分かるあいだは、登録した場所は見張りません。'
+                  '位置情報がオフのときに、かわりに見張ります。いっしょに見張るのは Plus の機能です。',
+                  style: AppTextStyles.note(),
+                ),
+              ),
+            ],
             if (remaining > 0) ...[
               const SizedBox(height: 14),
               _AddPlaceButton(remaining: remaining, onPressed: () => _queryFocus.requestFocus()),

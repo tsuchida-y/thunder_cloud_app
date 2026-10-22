@@ -43,6 +43,7 @@ class MemberService {
       await _db.collection(membersCollection).doc(user.uid).set({
         'createdAt': FieldValue.serverTimestamp(),
         'platform': Platform.isIOS ? 'ios' : 'android',
+        'settings': {'quietHours': MemberSettings.defaultQuietHours.toMap()},
         // v1 の利用者が v2.0 に上げたときの手がかり。新しく入れた人にはない
         if (prefs.getString(_legacyUserIdKey) != null) 'legacyUserId': prefs.getString(_legacyUserIdKey),
       }, SetOptions(merge: true));
@@ -55,24 +56,39 @@ class MemberService {
   /// アプリを開いたことと、いまいる場所を残す
   ///
   /// サーバーは「開いて10分以内の人には通知しない」ために lastOpenedAt を見る。
-  static Future<void> recordOpened({LatLng? location}) async {
+  /// [clearLocation] が true（位置情報がオフ）のときは、前の位置を消す。残っていると、サーバーが
+  /// 登録した場所の代わりに古い位置を見張り続けてしまうため（watchPointsOf は位置があればそれを使う）。
+  /// 通信できないときは端末に残り、つながったときに送られる。送り終わるのは待たない。
+  static void recordOpened({LatLng? location, bool clearLocation = false}) {
     final id = uid;
     if (id == null) return;
-    try {
-      await _db.collection(membersCollection).doc(id).set({
-        'lastOpenedAt': FieldValue.serverTimestamp(),
-        if (location != null) ...{
-          'location': {
-            'latitude': _round2(location.latitude),
-            'longitude': _round2(location.longitude),
-          },
-          'locationUpdatedAt': FieldValue.serverTimestamp(),
+    _db.collection(membersCollection).doc(id).set({
+      'lastOpenedAt': FieldValue.serverTimestamp(),
+      if (location != null) ...{
+        'location': {
+          'latitude': _round2(location.latitude),
+          'longitude': _round2(location.longitude),
         },
-      }, SetOptions(merge: true));
-    } catch (e) {
-      // 通信できないときは端末に残り、つながったときに送られる
+        'locationUpdatedAt': FieldValue.serverTimestamp(),
+      } else if (clearLocation) ...{
+        'location': FieldValue.delete(),
+        'locationUpdatedAt': FieldValue.delete(),
+      },
+    }, SetOptions(merge: true)).catchError((Object e) {
       AppLogger.warning('members の更新に失敗: $e', tag: 'MemberService');
-    }
+    });
+  }
+
+  /// まだ一度も「通知しない時間」を決めていない人に、初めの値（22:00〜6:00）を入れる
+  ///
+  /// 「なし」を選んだ人は quietHours が null で入っているので、上書きしない。
+  static void ensureDefaultSettings(Map<String, dynamic>? member) {
+    if (member == null) return;
+    final settings = member['settings'];
+    if (settings is Map && settings.containsKey('quietHours')) return;
+    updateSettings({'quietHours': MemberSettings.defaultQuietHours.toMap()}).catchError((Object e) {
+      AppLogger.warning('通知しない時間の初めの値を書けませんでした: $e', tag: 'MemberService');
+    });
   }
 
   static Stream<DocumentSnapshot<Map<String, dynamic>>> watchMember(String id) =>
@@ -166,6 +182,9 @@ class QuietHours {
 
 /// 設定画面で使う、members.settings の中身
 class MemberSettings {
+  /// 通知しない時間の初めの値（2026-10-22、tsuchida さんの希望で初めからオン。夜は別に自動で休む）
+  static const QuietHours defaultQuietHours = QuietHours(22 * 60, 6 * 60);
+
   final bool notifyAppeared;
   final num? rangeKm;
   final QuietHours? quietHours;
