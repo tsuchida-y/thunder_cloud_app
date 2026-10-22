@@ -7,7 +7,7 @@ import FirebaseMessaging
 import UserNotifications
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, MessagingDelegate, CLLocationManagerDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, MessagingDelegate, CLLocationManagerDelegate {
   /// 通知のカテゴリとボタン（サーバーの functions/modules/notification/notification_service.js と同じ名前）
   private static let cloudCategory = "CLOUD_REPORT"
   private static let seenAction = "seen"
@@ -25,7 +25,7 @@ import UserNotifications
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     FirebaseApp.configure()
-    GeneratedPluginRegistrant.register(with: self)
+    // プラグインとチャンネルの登録は didInitializeImplicitFlutterEngine で行う（UIScene の起動の仕組み。iOS 27 で必須）
 
     UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     registerCloudCategory()
@@ -37,18 +37,24 @@ import UserNotifications
     // 許可のお願いはしない（はじめての起動の画面でお願いする）。トークンの準備だけ
     application.registerForRemoteNotifications()
 
-    if let controller = window?.rootViewController as? FlutterViewController {
-      let channel = FlutterMethodChannel(name: "thunder_cloud/location_always", binaryMessenger: controller.binaryMessenger)
-      channel.setMethodCallHandler { [weak self] call, result in
-        if call.method == "requestAlways" {
-          self?.requestAlways(result: result)
-        } else {
-          result(FlutterMethodNotImplemented)
-        }
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  /// Flutter のエンジンができたとき（UIScene の起動の仕組みでは、ここでプラグインとチャンネルを登録する）
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    let channel = FlutterMethodChannel(
+      name: "thunder_cloud/location_always",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      if call.method == "requestAlways" {
+        self?.requestAlways(result: result)
+      } else {
+        result(FlutterMethodNotImplemented)
       }
     }
-
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {

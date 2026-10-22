@@ -43,7 +43,7 @@ class CloudNotifications {
     return target;
   }
 
-  /// アプリの起動時に1回呼ぶ
+  /// アプリの起動時に1回呼ぶ（画面を出すのを待たせないよう、終わりを待たずに呼んでよい）
   static Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
@@ -57,11 +57,25 @@ class CloudNotifications {
         _launchTarget = data == null ? null : FinderTarget.fromNotification(data);
       }
     } else {
+      FirebaseMessaging.onMessageOpenedApp.listen((m) => _openFromData(m.data));
       // アプリを開いているときに届いた通知も出す
       await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(alert: true, sound: true);
-      final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) _launchTarget = FinderTarget.fromNotification(initial.data);
-      FirebaseMessaging.onMessageOpenedApp.listen((m) => _openFromData(m.data));
+      // UIScene の起動の仕組み（iOS 27 で必須）では、プラグインの登録がアプリの起動の知らせより後になり、
+      // getInitialMessage が返ってこないことがある。待ちすぎないよう2秒で打ち切る
+      try {
+        final initial = await FirebaseMessaging.instance.getInitialMessage().timeout(const Duration(seconds: 2));
+        final target = initial == null ? null : FinderTarget.fromNotification(initial.data);
+        if (target != null) {
+          // ホームがもう聞いていれば流し、まだなら取りに来るまで持っておく
+          if (_opened.hasListener) {
+            _opened.add(target);
+          } else {
+            _launchTarget = target;
+          }
+        }
+      } on TimeoutException {
+        AppLogger.warning('通知から起動したかが分かりませんでした', tag: 'CloudNotifications');
+      }
     }
 
     // Android はアプリを開いているときもデータだけが届くので、自分で出す

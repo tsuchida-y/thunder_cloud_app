@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -33,7 +34,8 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await CloudNotifications.initialize();
+  // 通知の準備は画面を出すのと並べて進める（iOS で返事が遅いことがあるため、待たない）
+  unawaited(CloudNotifications.initialize());
 
   final prefs = await SharedPreferences.getInstance();
   runApp(MyApp(showWelcome: !WelcomeScreen.isDone(prefs)));
