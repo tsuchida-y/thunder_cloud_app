@@ -20,6 +20,11 @@ import UserNotifications
   private let locationManager = CLLocationManager()
   private var alwaysResult: FlutterResult?
 
+  /// 通知そのものを押したときのデータ。アプリ（Dart）が takeTap で取りに来るまで持っておく。
+  /// UIScene の起動の仕組みでは、firebase_messaging が通知を押したことを受け取れないので、自分で渡す
+  private var pendingTap: [String: String]?
+  private var tapChannel: FlutterMethodChannel?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -55,6 +60,21 @@ import UserNotifications
         result(FlutterMethodNotImplemented)
       }
     }
+
+    // 通知を押したこと（lib/services/notification/cloud_notifications.dart と同じ名前）
+    let tap = FlutterMethodChannel(
+      name: "thunder_cloud/notification_tap",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    tap.setMethodCallHandler { [weak self] call, result in
+      if call.method == "takeTap" {
+        result(self?.pendingTap)
+        self?.pendingTap = nil
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    tapChannel = tap
   }
 
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -83,7 +103,21 @@ import UserNotifications
   ) {
     let action = response.actionIdentifier
     guard action == AppDelegate.seenAction || action == AppDelegate.notSeenAction else {
-      // 通知そのものを押したときは、これまでどおり firebase_messaging に渡す（方角ガイドを開く）
+      if action == UNNotificationDefaultActionIdentifier {
+        // 通知そのものを押した: データを持っておき、アプリに取りに来てもらう（方角ガイドを開く）。
+        // 閉じていたアプリが起動したときは、まだアプリが聞いていないので、起動したあとに取りに来る
+        var data: [String: String] = [:]
+        for (key, value) in response.notification.request.content.userInfo {
+          guard let key = key as? String, key != "aps" else { continue }
+          if let text = value as? String {
+            data[key] = text
+          } else if let number = value as? NSNumber {
+            data[key] = number.stringValue
+          }
+        }
+        pendingTap = data
+        tapChannel?.invokeMethod("tapped", arguments: nil)
+      }
       super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
       return
     }

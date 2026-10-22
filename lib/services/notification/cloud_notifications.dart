@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -28,6 +29,9 @@ class CloudNotifications {
 
   static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
   static final StreamController<FinderTarget> _opened = StreamController<FinderTarget>.broadcast();
+
+  /// iOS: 通知を押したことを AppDelegate.swift から受け取る（UIScene の起動の仕組みでは firebase_messaging に届かないため）
+  static const MethodChannel _iosTap = MethodChannel('thunder_cloud/notification_tap');
   static bool _initialized = false;
   static StreamSubscription<String>? _tokenSub;
 
@@ -57,25 +61,16 @@ class CloudNotifications {
         _launchTarget = data == null ? null : FinderTarget.fromNotification(data);
       }
     } else {
-      FirebaseMessaging.onMessageOpenedApp.listen((m) => _openFromData(m.data));
+      // UIScene の起動の仕組み（iOS 27 で必須）では、firebase_messaging の onMessageOpenedApp と
+      // getInitialMessage に通知を押したことが届かない（2026-10-23 に実機で確かめた）。
+      // AppDelegate.swift が押された通知のデータを持っておくので、知らせが来たときと起動したときに取りに行く
+      _iosTap.setMethodCallHandler((call) async {
+        if (call.method == 'tapped') await _takeIosTap();
+      });
       // アプリを開いているときに届いた通知も出す
       await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(alert: true, sound: true);
-      // UIScene の起動の仕組み（iOS 27 で必須）では、プラグインの登録がアプリの起動の知らせより後になり、
-      // getInitialMessage が返ってこないことがある。待ちすぎないよう2秒で打ち切る
-      try {
-        final initial = await FirebaseMessaging.instance.getInitialMessage().timeout(const Duration(seconds: 2));
-        final target = initial == null ? null : FinderTarget.fromNotification(initial.data);
-        if (target != null) {
-          // ホームがもう聞いていれば流し、まだなら取りに来るまで持っておく
-          if (_opened.hasListener) {
-            _opened.add(target);
-          } else {
-            _launchTarget = target;
-          }
-        }
-      } on TimeoutException {
-        AppLogger.warning('通知から起動したかが分かりませんでした', tag: 'CloudNotifications');
-      }
+      // 閉じていたアプリを通知で開いたとき
+      await _takeIosTap();
     }
 
     // Android はアプリを開いているときもデータだけが届くので、自分で出す
@@ -129,6 +124,22 @@ class CloudNotifications {
           .then((_) => ReportService.flushPending());
     } else {
       _openFromData(data);
+    }
+  }
+
+  static Future<void> _takeIosTap() async {
+    try {
+      final data = await _iosTap.invokeMapMethod<String, dynamic>('takeTap');
+      final target = data == null ? null : FinderTarget.fromNotification(data);
+      if (target == null) return;
+      // ホームがもう聞いていれば流し、まだなら取りに来るまで持っておく
+      if (_opened.hasListener) {
+        _opened.add(target);
+      } else {
+        _launchTarget = target;
+      }
+    } catch (e) {
+      AppLogger.warning('押された通知を受け取れませんでした: $e', tag: 'CloudNotifications');
     }
   }
 
