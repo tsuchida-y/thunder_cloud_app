@@ -122,7 +122,8 @@ class _PlusScreenState extends State<PlusScreen> {
           Semantics(
             header: true,
             child: Text(
-              'もっと遠くの入道雲を、\nもっと早く。',
+              // 予告通知をやめたので「もっと早く」は外した（2026-10-22、docs/将来の検討.md）
+              'もっと遠くの入道雲まで、\n見張る。',
               style: AppTextStyles.headline(fontSize: 28).copyWith(height: 1.4),
             ),
           ),
@@ -224,7 +225,6 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const features = [
-      (Icons.notifications_active_outlined, '30分前に予告', '出そうなときに先にお知らせ'),
       (Icons.radar_rounded, '90km先まで見張る', '無料は30kmまで'),
       (Icons.place_outlined, 'いまいる場所＋3か所', '家や学校、職場の空も見張る'),
       (Icons.widgets_outlined, 'ホーム画面のウィジェット', 'アプリを開かずに方角と距離が分かる'),

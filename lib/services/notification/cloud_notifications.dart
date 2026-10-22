@@ -94,7 +94,7 @@ class CloudNotifications {
           channelDescription: '入道雲が見える範囲に現れたときのお知らせ',
           importance: Importance.high,
           priority: Priority.high,
-          // 同じ雲の通知は1つにまとめる（予告→現れましたの書き換え）
+          // 同じ雲の通知は1つにまとめる
           tag: cloudId,
           category: AndroidNotificationCategory.recommendation,
           actions: const [

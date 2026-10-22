@@ -94,21 +94,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (v) => MemberService.updateSettings({'notifyAppeared': v}),
                 ),
               ),
-              SettingsRow(
-                title: Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
-                  children: [Text('出そうなときも先に知らせる', style: AppTextStyles.item()), const PlusBadge()],
-                ),
-                subtitle: '30分前くらいにお知らせします',
-                trailing: SkySwitch(
-                  value: isPlus && settings.notifyPreview,
-                  semanticLabel: '出そうなときも先に知らせる',
-                  // 無料プランでは Plus のご案内を開く
-                  onChanged: (v) =>
-                      isPlus ? MemberService.updateSettings({'notifyPreview': v}) : AppRoutes.openPlus(context),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -239,7 +224,7 @@ class _RangeSelector extends StatelessWidget {
   }
 }
 
-/// 「Plus で、もっと遠く・もっと早く」
+/// 「Plus で、もっと遠くまで見張る」（予告通知をやめたので「もっと早く」は外した。2026-10-22）
 class _PlusBanner extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -258,7 +243,7 @@ class _PlusBanner extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('Plus で、もっと遠く・もっと早く', style: AppTextStyles.button(fontSize: 15)),
+                child: Text('Plus で、もっと遠くまで見張る', style: AppTextStyles.button(fontSize: 15)),
               ),
               Text('7日間無料', style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 13, height: 1.2)),
             ],

@@ -167,18 +167,16 @@ class QuietHours {
 /// 設定画面で使う、members.settings の中身
 class MemberSettings {
   final bool notifyAppeared;
-  final bool notifyPreview;
   final num? rangeKm;
   final QuietHours? quietHours;
 
-  const MemberSettings({this.notifyAppeared = true, this.notifyPreview = false, this.rangeKm, this.quietHours});
+  const MemberSettings({this.notifyAppeared = true, this.rangeKm, this.quietHours});
 
   factory MemberSettings.fromMember(Map<String, dynamic>? member) {
     final settings = member?['settings'];
     if (settings is! Map) return const MemberSettings();
     return MemberSettings(
       notifyAppeared: settings['notifyAppeared'] != false,
-      notifyPreview: settings['notifyPreview'] == true,
       rangeKm: settings['rangeKm'] as num?,
       quietHours: QuietHours.fromMap(settings['quietHours']),
     );
