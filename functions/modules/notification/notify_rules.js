@@ -109,9 +109,14 @@ function nextHistory(history, cloudId, now) {
 /**
  * 「現れました」の通知の文面（docs/design/Notify.html の文言）
  */
-function appearedMessage(view) {
+/** いまいる場所の見張りの名前（cloud_watch_service.js の watchPointsOf と同じ） */
+const CURRENT_PLACE_LABEL = 'いまいる場所';
+
+function appearedMessage(view, pointLabel = null) {
   const km = Math.round(view.distanceKm);
-  const title = `${view.directionName}の空に、入道雲が現れました`;
+  // 登録した場所の雲は「家の北の空に」のように場所の名前を付ける（場所の見せ方_画面一覧.png の「通知（場所名つき）」）
+  const place = pointLabel && pointLabel !== CURRENT_PLACE_LABEL ? `${pointLabel}の` : '';
+  const title = `${place}${view.directionName}の空に、入道雲が現れました`;
   const body = view.distanceKm > NOTIFY_RULES.MAYBE_VISIBLE_KM
     ? `約${km}km先なので、見えるかもしれません。${view.fistsLabel}の高さを見上げてみて。`
     : `約${km}km先。${view.fistsLabel}の高さを見上げてみて。`;

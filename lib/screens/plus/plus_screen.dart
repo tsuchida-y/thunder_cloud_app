@@ -122,8 +122,8 @@ class _PlusScreenState extends State<PlusScreen> {
           Semantics(
             header: true,
             child: Text(
-              // 予告通知をやめたので「もっと早く」は外した（2026-10-22、docs/将来の検討.md）
-              'もっと遠くの入道雲まで、\n見張る。',
+              // 場所の見せ方_画面一覧.png（2026-10-22）
+              'もっと遠くまで、\nいくつもの空を。',
               style: AppTextStyles.headline(fontSize: 28).copyWith(height: 1.4),
             ),
           ),
@@ -225,8 +225,9 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const features = [
+      (Icons.place_outlined, 'いまいる場所＋3か所', '家や学校、職場の空も見張って、ホームで切り替え'),
       (Icons.radar_rounded, '90km先まで見張る', '無料は30kmまで'),
-      (Icons.place_outlined, 'いまいる場所＋3か所', '家や学校、職場の空も見張る'),
+      // 画像では「ウィジェットと写真の共有」だが、写真と共有は v2.0 で外した（2026-10-21 決定）ので、ウィジェットだけ
       (Icons.widgets_outlined, 'ホーム画面のウィジェット', 'アプリを開かずに方角と距離が分かる'),
     ];
     return DecoratedBox(

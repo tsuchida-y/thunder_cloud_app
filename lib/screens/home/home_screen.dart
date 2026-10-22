@@ -13,6 +13,7 @@ import '../../widgets/common/app_buttons.dart';
 import '../../widgets/common/sky_card.dart';
 import '../../widgets/common/sky_page.dart';
 import '../../widgets/common/source_note.dart';
+import '../settings/add_place_sheet.dart';
 import 'always_allow_sheet.dart';
 import 'home_controller.dart';
 import 'whats_new_sheet.dart';
@@ -56,6 +57,15 @@ class _HomeScreenState extends State<HomeScreen> {
     AppRoutes.openFinder(context, target);
   }
 
+  /// チップの「＋」。Plus は「場所を追加」を開き、無料は Plus の案内を開く
+  Future<void> _addSpot() async {
+    if (!_controller.state.isPlus) {
+      AppRoutes.openPlus(context);
+      return;
+    }
+    await AddPlaceSheet.show(context, places: _controller.places, maxPlaces: SpotHeader.plusMaxPlaces);
+  }
+
   void _askAlways() {
     if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
     AlwaysAllowSheet.show(context, placeName: _controller.state.placeName, onAllow: _controller.requestAlways);
@@ -75,11 +85,12 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, _) {
         final state = _controller.state;
         final now = DateTime.now();
+        final header = SpotHeader(state: state, onSelect: _controller.selectSpot, onAdd: _addSpot);
         return switch (state.mode) {
           HomeMode.loading => _LoadingView(state: state),
-          HomeMode.clouds => _CloudsView(state: state, now: now),
-          HomeMode.empty => _EmptyView(state: state, now: now),
-          HomeMode.night => _NightView(state: state, now: now),
+          HomeMode.clouds => _CloudsView(state: state, now: now, header: header, onSelectSpot: _controller.selectSpot),
+          HomeMode.empty => _EmptyView(state: state, now: now, header: header, onSelectSpot: _controller.selectSpot),
+          HomeMode.night => _NightView(state: state, now: now, header: header),
           HomeMode.offline => _OfflineView(state: state, now: now, onRetry: _controller.retry),
           HomeMode.noPermission => _NoPermissionView(state: state, controller: _controller),
         };
@@ -87,6 +98,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+/// 見出しの上の札の頭（「滝沢市 ・ 」「家（盛岡市） ・ 」）
+String _badgePlace(HomeState state) => state.placeName == null ? '' : '${state.placeName} ・ ';
 
 /// 「3分前に空を見ました ・ 出典：気象庁」
 class _SkyFooter extends StatelessWidget {
@@ -134,8 +148,10 @@ class _LoadingView extends StatelessWidget {
 class _CloudsView extends StatelessWidget {
   final HomeState state;
   final DateTime now;
+  final Widget header;
+  final ValueChanged<String> onSelectSpot;
 
-  const _CloudsView({required this.state, required this.now});
+  const _CloudsView({required this.state, required this.now, required this.header, required this.onSelectSpot});
 
   @override
   Widget build(BuildContext context) {
@@ -148,11 +164,11 @@ class _CloudsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeHeader(label: HomeHeader.skyOf(state.placeName)),
+          header,
           const SizedBox(height: 14),
           HomeHeadline(
             badge: StatusBadge(
-              text: nearest.maybeVisible ? '見えるかもしれません' : 'いま、見えています',
+              text: '${_badgePlace(state)}${nearest.maybeVisible ? '見えるかもしれません' : 'いま、見えています'}',
               icon: Icons.flare_rounded,
               foreground: AppColors.accent,
               background: Colors.white,
@@ -174,9 +190,11 @@ class _CloudsView extends StatelessWidget {
             onPressed: () => AppRoutes.openFinder(context, FinderTarget.fromView(nearest)),
           ),
           const SizedBox(height: 14),
-          CloudListCard(clouds: state.clouds),
+          CloudListCard(clouds: state.clouds, others: state.otherSpotClouds, onSelectSpot: onSelectSpot),
           const SizedBox(height: 14),
           _SkyFooter(state: state, now: now),
+          const SizedBox(height: 6),
+          const RecordLink(),
         ],
       ),
     );
@@ -187,8 +205,10 @@ class _CloudsView extends StatelessWidget {
 class _EmptyView extends StatelessWidget {
   final HomeState state;
   final DateTime now;
+  final Widget header;
+  final ValueChanged<String> onSelectSpot;
 
-  const _EmptyView({required this.state, required this.now});
+  const _EmptyView({required this.state, required this.now, required this.header, required this.onSelectSpot});
 
   @override
   Widget build(BuildContext context) {
@@ -197,11 +217,11 @@ class _EmptyView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeHeader(label: HomeHeader.skyOf(state.placeName)),
+          header,
           const SizedBox(height: 16),
           HomeHeadline(
             badge: StatusBadge(
-              text: '空を見守っています',
+              text: '${_badgePlace(state)}空を見守っています',
               foreground: AppColors.text,
               background: Colors.white.withValues(alpha: 0.85),
             ),
@@ -211,8 +231,14 @@ class _EmptyView extends StatelessWidget {
           const SizedBox(height: 40),
           Center(child: SkyRadar(clouds: const [], rangeKm: state.rangeKm, size: 280, showAllDirections: false)),
           const Spacer(),
+          if (state.otherSpotClouds.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            CloudListCard(clouds: const [], others: state.otherSpotClouds, onSelectSpot: onSelectSpot),
+          ],
           const SizedBox(height: 16),
           _SkyFooter(state: state, now: now),
+          const SizedBox(height: 6),
+          const RecordLink(),
         ],
       ),
     );
@@ -223,8 +249,9 @@ class _EmptyView extends StatelessWidget {
 class _NightView extends StatelessWidget {
   final HomeState state;
   final DateTime now;
+  final Widget header;
 
-  const _NightView({required this.state, required this.now});
+  const _NightView({required this.state, required this.now, required this.header});
 
   @override
   Widget build(BuildContext context) {
@@ -236,13 +263,13 @@ class _NightView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeHeader(label: HomeHeader.skyOf(state.placeName), showRecord: false),
+          header,
           const SizedBox(height: 16),
           HomeHeadline(
-            badge: const StatusBadge(
-              text: '見張りはお休み中',
-              foreground: Color(0xFF14295A),
-              background: Color(0xFFBFE3FF),
+            badge: StatusBadge(
+              text: '${_badgePlace(state)}見張りはお休み中',
+              foreground: const Color(0xFF14295A),
+              background: const Color(0xFFBFE3FF),
             ),
             title: 'いまは夜。\n空が暗くて見えません。',
             body: '$resume明るくなったら見張りを再開します。夜のあいだは通知しません。',

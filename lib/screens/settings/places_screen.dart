@@ -12,14 +12,17 @@ import '../../services/sky/sky_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/common/app_buttons.dart';
 import '../../widgets/common/page_header.dart';
 import '../../widgets/common/settings_parts.dart';
 import '../../widgets/common/sky_page.dart';
+import 'add_place_sheet.dart';
 
-/// 見張る場所（docs/design/Places.html）
+/// 見張る場所（docs/design/Places.html と、場所の見せ方_画面一覧.png の「見張る場所（設定からも）」）
 ///
 /// 地名の検索だけで登録する（地図は使わない。決定事項 2026-10-20）。
-/// 無料は1か所（「いまいる場所」が分からないときに見張る）、Plus は3か所まで（「いまいる場所」に加えて見張る）。
+/// 無料は1か所（「いまいる場所」が分からないときに見張る）、Plus は3か所まで（「いまいる場所」に加えて見張り、
+/// ホームの上のチップで切り替えて見られる）。
 class PlacesScreen extends StatefulWidget {
   const PlacesScreen({super.key});
 
@@ -33,18 +36,15 @@ class PlacesScreen extends StatefulWidget {
 class _PlacesScreenState extends State<PlacesScreen> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _memberSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _serverSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cloudSub;
   Map<String, dynamic>? _member;
   Map<String, dynamic>? _server;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cloudSub;
   List<SkyCloud> _clouds = const [];
   String? _currentName;
   LatLng? _currentPoint;
   bool _locationOff = false;
 
   final TextEditingController _query = TextEditingController();
-  final FocusNode _queryFocus = FocusNode();
-  List<PlaceCandidate>? _results;
-  bool _searching = false;
 
   @override
   void initState() {
@@ -83,7 +83,6 @@ class _PlacesScreenState extends State<PlacesScreen> {
     _serverSub?.cancel();
     _cloudSub?.cancel();
     _query.dispose();
-    _queryFocus.dispose();
     super.dispose();
   }
 
@@ -102,84 +101,42 @@ class _PlacesScreenState extends State<PlacesScreen> {
     return !_currentWatched && index == 0;
   }
 
-  /// その場所のいまの空（「いま、南東 ・ 25km に入道雲」）
-  String _skyAt(LatLng point) {
+  /// その場所に、いま見える範囲の雲があるか
+  bool _hasCloudAt(LatLng point) {
     final range = SkyRules.rangeKm(isPlus: _isPlus, settingKm: MemberSettings.fromMember(_member).rangeKm);
-    final views = _clouds
-        .where((c) => c.isVisible)
-        .map((c) => c.viewFrom(point))
-        .where((v) => v.distanceKm <= range)
-        .toList()
-      ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
-    if (views.isEmpty) return 'いま、入道雲は見えていません';
-    return 'いま、${views.first.directionName} ・ ${views.first.roundedKm}km に入道雲';
+    return _clouds.where((c) => c.isVisible).any((c) => c.viewFrom(point).distanceKm <= range);
   }
 
-  /// 行の補足（地名、見張っているか、いまの空）
-  String _statusLine(String? name, {required bool watched, LatLng? point}) {
-    final head = [if (name != null && name.isNotEmpty) name, watched ? '見張っています' : 'いまは見張っていません'].join(' ・ ');
-    if (!watched || point == null) return head;
-    return '$head\n${_skyAt(point)}';
+  Future<void> _openAdd({String query = ''}) async {
+    await AddPlaceSheet.show(context, places: _places, maxPlaces: _maxPlaces, initialQuery: query);
+    _query.clear();
   }
 
-  Future<void> _search() async {
-    setState(() {
-      _searching = true;
-      _results = null;
-    });
-    final results = await CurrentPlace.search(_query.text);
-    if (mounted) {
-      setState(() {
-        _searching = false;
-        _results = results;
-      });
-    }
-  }
-
-  Future<void> _add(PlaceCandidate candidate) async {
-    final label = await _askLabel(initial: candidate.shortName);
+  Future<void> _rename(int index) async {
+    final places = [..._places];
+    final label = await _askLabel(initial: places[index].label);
     if (label == null) return;
-    final places = [..._places, WatchPlace(label: label, name: candidate.shortName, location: candidate.location)];
-    await MemberService.savePlaces(places.take(_maxPlaces).toList());
-    if (!mounted) return;
-    setState(() {
-      _results = null;
-      _query.clear();
-    });
-    FocusScope.of(context).unfocus();
+    places[index] = places[index].copyWith(label: label);
+    await MemberService.savePlaces(places);
   }
 
-  Future<void> _change(int index) async {
-    final action = await showModalBottomSheet<String>(
+  Future<void> _delete(int index) async {
+    final places = [..._places];
+    final ok = await showDialog<bool>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (context) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: SettingsCard(
-            children: [
-              SettingsRow.text('名前を変える', onTap: () => Navigator.of(context).pop('rename')),
-              SettingsRow(
-                title: Text('この場所を消す', style: AppTextStyles.item(color: AppColors.accent)),
-                onTap: () => Navigator.of(context).pop('delete'),
-              ),
-            ],
-          ),
-        ),
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
+        title: Text('「${places[index].label}」を消しますか？', style: AppTextStyles.pageTitle()),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('やめる')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('消す')),
+        ],
       ),
     );
-    final places = [..._places];
-    if (action == 'delete') {
-      places.removeAt(index);
-      await MemberService.savePlaces(places);
-    } else if (action == 'rename') {
-      final label = await _askLabel(initial: places[index].label);
-      if (label == null) return;
-      places[index] = places[index].copyWith(label: label);
-      await MemberService.savePlaces(places);
-    }
+    if (ok != true) return;
+    places.removeAt(index);
+    await MemberService.savePlaces(places);
   }
 
   /// 場所の名前（「家」「学校」）をたずねる。やめたら null
@@ -228,30 +185,27 @@ class _PlacesScreenState extends State<PlacesScreen> {
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text('いまいる場所に加えて、よく行く場所を3か所まで見張れます。', style: note),
+              child: Text('いまいる場所に加えて、よく行く場所を3か所まで見張れます。ホームの上のチップで切り替えて見られます。', style: note),
             ),
             const SizedBox(height: 14),
             SettingsCard(
               children: [
-                SettingsRow(
-                  title: Text('いまいる場所', style: AppTextStyles.item()),
-                  subtitle: _locationOff
-                      ? '位置情報がオフです ・ いまは見張っていません'
-                      : _statusLine(_currentName, watched: _currentWatched, point: _currentPoint),
+                _PlaceRow(
+                  icon: Icons.my_location_rounded,
+                  label: 'いまいる場所',
+                  placeName: _locationOff ? '位置情報がオフです' : _currentName,
+                  watched: _currentWatched,
+                  hasCloud: _currentPoint != null && _hasCloudAt(_currentPoint!),
                 ),
                 for (var i = 0; i < places.length; i++)
-                  SettingsRow(
-                    title: Text(places[i].label, style: AppTextStyles.item()),
-                    subtitle: _statusLine(places[i].name, watched: _placeWatched(i), point: places[i].location),
-                    trailing: TextButton(
-                      onPressed: () => _change(i),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                        minimumSize: const Size(AppSizes.minTapTarget, AppSizes.minTapTarget),
-                        textStyle: AppTextStyles.body(color: AppColors.accent).copyWith(fontSize: 14),
-                      ),
-                      child: const Text('変更'),
-                    ),
+                  _PlaceRow(
+                    icon: _iconFor(places[i].label),
+                    label: places[i].label,
+                    placeName: places[i].name,
+                    watched: _placeWatched(i),
+                    hasCloud: _hasCloudAt(places[i].location),
+                    onRename: () => _rename(i),
+                    onDelete: () => _delete(i),
                   ),
               ],
             ),
@@ -268,15 +222,42 @@ class _PlacesScreenState extends State<PlacesScreen> {
             ],
             if (remaining > 0) ...[
               const SizedBox(height: 14),
-              _AddPlaceButton(remaining: remaining, onPressed: () => _queryFocus.requestFocus()),
+              _AddPlaceButton(remaining: remaining, onPressed: _openAdd),
               const SizedBox(height: 14),
-              _SearchCard(
-                controller: _query,
-                focusNode: _queryFocus,
-                searching: _searching,
-                results: _results,
-                onSearch: _search,
-                onPick: _add,
+              SettingsCard(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('場所をさがす', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _query,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (text) => _openAdd(query: text),
+                          style: AppTextStyles.body().copyWith(height: 1.3),
+                          decoration: InputDecoration(
+                            hintText: '市町村名や住所',
+                            filled: true,
+                            fillColor: const Color(0xFFF7FAFD),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.switchOff, width: 1.5),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppColors.switchOff, width: 1.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
             const Spacer(),
@@ -299,6 +280,80 @@ class _PlacesScreenState extends State<PlacesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  static IconData _iconFor(String label) => switch (label) {
+        '家' => Icons.home_outlined,
+        '学校' => Icons.school_outlined,
+        '職場' => Icons.work_outline_rounded,
+        '実家' => Icons.cottage_outlined,
+        _ => Icons.place_outlined,
+      };
+}
+
+/// 見張る場所の1行（「家」「盛岡市 ・ 見えています」「変更」「ごみ箱」）
+class _PlaceRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? placeName;
+  final bool watched;
+  final bool hasCloud;
+  final VoidCallback? onRename;
+  final VoidCallback? onDelete;
+
+  const _PlaceRow({
+    required this.icon,
+    required this.label,
+    required this.placeName,
+    required this.watched,
+    required this.hasCloud,
+    this.onRename,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final note = AppTextStyles.note().copyWith(height: 1.4);
+    final status = !watched
+        ? TextSpan(text: '見張っていません', style: note)
+        : hasCloud
+            ? TextSpan(text: '見えています', style: note.copyWith(color: AppColors.accent, fontWeight: FontWeight.w700))
+            : TextSpan(text: '静かな空', style: note);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.text),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: AppTextStyles.item()),
+                const SizedBox(height: 2),
+                Text.rich(TextSpan(children: [
+                  if (placeName != null && placeName!.isNotEmpty) TextSpan(text: '$placeName ・ ', style: note),
+                  status,
+                ])),
+              ],
+            ),
+          ),
+          if (onRename != null)
+            TextButton(
+              onPressed: onRename,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.accent,
+                minimumSize: const Size(AppSizes.minTapTarget, AppSizes.minTapTarget),
+                textStyle: AppTextStyles.body(color: AppColors.accent)
+                    .copyWith(fontSize: 14, decoration: TextDecoration.underline),
+              ),
+              child: const Text('変更'),
+            ),
+          if (onDelete != null)
+            IconTapButton(icon: Icons.delete_outline_rounded, semanticLabel: '$label を消す', onPressed: onDelete),
+        ],
       ),
     );
   }
@@ -352,81 +407,4 @@ class _DashedRRectPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedRRectPainter oldDelegate) => false;
-}
-
-/// 「場所をさがす」
-class _SearchCard extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool searching;
-  final List<PlaceCandidate>? results;
-  final VoidCallback onSearch;
-  final ValueChanged<PlaceCandidate> onPick;
-
-  const _SearchCard({
-    required this.controller,
-    required this.focusNode,
-    required this.searching,
-    required this.results,
-    required this.onSearch,
-    required this.onPick,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.switchOff, width: 1.5),
-    );
-    return SettingsCard(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('場所をさがす', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 10),
-              TextField(
-                controller: controller,
-                focusNode: focusNode,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => onSearch(),
-                style: AppTextStyles.body().copyWith(height: 1.3),
-                decoration: InputDecoration(
-                  hintText: '市町村名や住所',
-                  filled: true,
-                  fillColor: const Color(0xFFF7FAFD),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: border.copyWith(borderSide: const BorderSide(color: AppColors.accent, width: 1.5)),
-                  suffixIcon: IconButton(
-                    onPressed: onSearch,
-                    tooltip: 'さがす',
-                    icon: const Icon(Icons.search_rounded, color: AppColors.textSub),
-                  ),
-                ),
-              ),
-              if (searching) ...[
-                const SizedBox(height: 12),
-                const Center(child: SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2))),
-              ] else if (results != null && results!.isEmpty) ...[
-                const SizedBox(height: 10),
-                Text('見つかりませんでした。別の書き方でさがしてください。', style: AppTextStyles.note()),
-              ],
-            ],
-          ),
-        ),
-        if (results != null)
-          for (final candidate in results!)
-            SettingsRow.text(
-              candidate.name,
-              trailing: const Icon(Icons.add_rounded, color: AppColors.accent),
-              onTap: () => onPick(candidate),
-            ),
-      ],
-    );
-  }
 }

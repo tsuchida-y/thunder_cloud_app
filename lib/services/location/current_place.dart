@@ -165,6 +165,7 @@ class CurrentPlace {
           candidates.add(PlaceCandidate(
             name: name,
             shortName: mark?.locality?.isNotEmpty == true ? mark!.locality! : name,
+            region: mark?.administrativeArea,
             location: point,
           ));
         }
@@ -188,7 +189,10 @@ class PlaceCandidate {
 
   /// 「盛岡市」（登録したときの地名と、名前の最初の案に使う）
   final String shortName;
+
+  /// 「岩手県」（候補の右に出す）。分からなければ null
+  final String? region;
   final LatLng location;
 
-  const PlaceCandidate({required this.name, required this.shortName, required this.location});
+  const PlaceCandidate({required this.name, required this.shortName, required this.location, this.region});
 }

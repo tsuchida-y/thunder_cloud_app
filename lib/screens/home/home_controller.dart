@@ -50,11 +50,67 @@ class TodaysCloud {
   const TodaysCloud({required this.from, required this.to, required this.directionName, required this.distanceKm});
 }
 
+/// ホームの上のチップで切り替える、見張っている場所（場所の見せ方_画面一覧.png）
+class WatchSpot {
+  /// 'now'（いまいる場所）か 'place0'〜'place2'（登録した場所）
+  final String id;
+
+  /// チップの文字（「いま」「家」）
+  final String label;
+
+  /// 地名（「滝沢市」「盛岡市」）。分からなければ null
+  final String? placeName;
+  final LatLng point;
+  final bool isCurrent;
+
+  const WatchSpot({
+    required this.id,
+    required this.label,
+    required this.placeName,
+    required this.point,
+    required this.isCurrent,
+  });
+
+  /// 見出しの上の札に出す名前（「滝沢市」「家（盛岡市）」）
+  String get badgeName {
+    if (isCurrent) return placeName ?? 'いまいる場所';
+    return placeName == null || placeName == label ? label : '$label（$placeName）';
+  }
+}
+
+/// チップ1つ分（その場所に雲があるか）
+class SpotChip {
+  final WatchSpot spot;
+  final bool hasCloud;
+
+  const SpotChip(this.spot, this.hasCloud);
+}
+
+/// いま選んでいない場所に出ている雲（ホームの一覧の「家 ・ 北 ・ 55km」の行）
+class OtherSpotCloud {
+  final WatchSpot spot;
+  final CloudView view;
+
+  const OtherSpotCloud(this.spot, this.view);
+}
+
 class HomeState {
   final HomeMode mode;
 
-  /// 「滝沢市の空」の「滝沢市」。分からなければ null
+  /// 見出しの上の札に出す、いま選んでいる場所の名前（「滝沢市」「家（盛岡市）」）。分からなければ null
   final String? placeName;
+
+  /// ホームの上のチップ（見張っている場所）と、いま選んでいる場所
+  final List<SpotChip> spots;
+  final String? selectedSpotId;
+
+  /// いま選んでいない場所に出ている雲
+  final List<OtherSpotCloud> otherSpotClouds;
+
+  final bool isPlus;
+
+  /// 登録した場所の数（Plus の「＋」を出すか決める）
+  final int placeCount;
 
   /// 見える範囲の雲（近い順）
   final List<CloudView> clouds;
@@ -76,6 +132,11 @@ class HomeState {
   const HomeState({
     required this.mode,
     this.placeName,
+    this.spots = const [],
+    this.selectedSpotId,
+    this.otherSpotClouds = const [],
+    this.isPlus = false,
+    this.placeCount = 0,
     this.clouds = const [],
     this.rangeKm = SkyRules.freeRangeKm,
     this.observedAt,
@@ -241,6 +302,17 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  String? _selectedSpotId;
+
+  /// 登録した場所（「場所を追加」に渡す）
+  List<WatchPlace> get places => MemberService.placesOf(_member);
+
+  /// ホームの上のチップで場所を切り替える
+  void selectSpot(String id) {
+    _selectedSpotId = id;
+    _recompute();
+  }
+
   /// 移動先も見張るお願い（AlwaysAllow.html）を出すときに呼ばれる（ホームが下から出す）
   VoidCallback? onAskAlways;
   bool _checkingAlways = false;
@@ -315,21 +387,58 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// 見張る場所: いまいる場所。分からなければ登録した1か所目（サーバーの watchPointsOf と同じ）
-  ({LatLng point, String? name})? _watchPoint() {
-    if (_gps != null) return (point: _gps!, name: _gpsName);
+  /// 見張っている場所の一覧（サーバーの watchPointsOf と同じ決まり）
+  ///
+  /// いまいる場所が分かればそれ。Plus は登録した場所を3か所まで足す。
+  /// 無料は、いまいる場所が分からないときだけ登録した1か所目。
+  List<WatchSpot> _spots(bool isPlus) {
+    final spots = <WatchSpot>[];
+    if (_gps != null) {
+      spots.add(WatchSpot(id: 'now', label: 'いま', placeName: _gpsName, point: _gps!, isCurrent: true));
+    }
     final places = MemberService.placesOf(_member);
-    if (places.isEmpty) return null;
-    return (point: places.first.location, name: places.first.label);
+    final watched = isPlus ? places.take(3) : (spots.isEmpty ? places.take(1) : const <WatchPlace>[]);
+    var i = 0;
+    for (final place in watched) {
+      spots.add(WatchSpot(
+        id: 'place$i',
+        label: place.label,
+        placeName: place.name,
+        point: place.location,
+        isCurrent: false,
+      ));
+      i++;
+    }
+    return spots;
   }
+
+  /// ある場所から見える範囲の雲（近い順）
+  List<CloudView> _viewsAt(LatLng point, double rangeKm) => (_activeClouds ?? const <SkyCloud>[])
+      .where((c) => c.isVisible)
+      .map((c) => c.viewFrom(point))
+      .where((v) => v.distanceKm <= rangeKm)
+      .toList()
+    ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
 
   void _recompute() {
     if (_disposed) return;
     final now = DateTime.now();
-    final watch = _watchPoint();
+    final isPlus = MemberService.isPlusActive(_server, now);
     final rangeKm = SkyRules.rangeKm(
-      isPlus: MemberService.isPlusActive(_server, now),
+      isPlus: isPlus,
       settingKm: (_member?['settings'] as Map?)?['rangeKm'] as num?,
     );
+    final spots = _spots(isPlus);
+    final selected = spots.isEmpty
+        ? null
+        : spots.firstWhere((s) => s.id == _selectedSpotId, orElse: () => spots.first);
+    final watch = selected == null ? null : (point: selected.point, name: selected.badgeName);
+    final chips = [for (final s in spots) SpotChip(s, _viewsAt(s.point, rangeKm).isNotEmpty)];
+    final others = [
+      for (final s in spots)
+        if (s.id != selected?.id && _viewsAt(s.point, rangeKm).isNotEmpty) OtherSpotCloud(s, _viewsAt(s.point, rangeKm).first),
+    ];
+    final placeCount = MemberService.placesOf(_member).length;
 
     HomeState next;
     if (_signInFailed) {
@@ -343,6 +452,10 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       next = HomeState(
         mode: HomeMode.night,
         placeName: watch.name,
+        spots: chips,
+        selectedSpotId: selected!.id,
+        isPlus: isPlus,
+        placeCount: placeCount,
         nextSunrise: SunTimes.nextSunrise(now, watch.point.latitude, watch.point.longitude),
         todaysCloud: _todaysCloud(now, watch.point, rangeKm),
       );
@@ -351,12 +464,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     } else if (_activeClouds == null) {
       next = HomeState(mode: HomeMode.loading, placeName: watch.name);
     } else {
-      final views = _activeClouds!
-          .where((c) => c.isVisible)
-          .map((c) => c.viewFrom(watch.point))
-          .where((v) => v.distanceKm <= rangeKm)
-          .toList()
-        ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+      final views = _viewsAt(watch.point, rangeKm);
       final observedAt = _observedAt ??
           (_activeClouds!.isEmpty
               ? null
@@ -364,16 +472,22 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       next = HomeState(
         mode: views.isEmpty ? HomeMode.empty : HomeMode.clouds,
         placeName: watch.name,
+        spots: chips,
+        selectedSpotId: selected!.id,
+        otherSpotClouds: others,
+        isPlus: isPlus,
+        placeCount: placeCount,
         clouds: views,
         rangeKm: rangeKm,
         observedAt: observedAt,
       );
-      _rememberSky(views, observedAt ?? now);
+      // 「最後に見た空」とウィジェットは、いまいる場所（なければ1つ目の場所）のもの
+      if (selected.id == spots.first.id) _rememberSky(views, observedAt ?? now);
     }
 
     _state = next;
     notifyListeners();
-    _updateWidget(next, MemberService.isPlusActive(_server, now));
+    if (next.selectedSpotId == null || next.selectedSpotId == spots.first.id) _updateWidget(next, isPlus);
     if (next.mode != HomeMode.loading && next.mode != HomeMode.noPermission) _maybeAskAlways();
   }
 

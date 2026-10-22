@@ -101,3 +101,10 @@ test('通知の文面（Notify.html の文言、60kmより遠いときは控え�
   const farView = decideNotification({ ...base, isPlus: true, clouds: [far] }).notify.view;
   assert.match(appearedMessage(farView).body, /^約\d+km先なので、見えるかもしれません。/);
 });
+
+test('登録した場所の雲は、通知の題に場所の名前を付ける', () => {
+  const view = { distanceKm: 55, directionName: '北', fistsLabel: 'こぶし1つ' };
+  assert.equal(appearedMessage(view, '家').title, '家の北の空に、入道雲が現れました');
+  assert.equal(appearedMessage(view, 'いまいる場所').title, '北の空に、入道雲が現れました');
+  assert.equal(appearedMessage(view).title, '北の空に、入道雲が現れました');
+});
