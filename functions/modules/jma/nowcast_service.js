@@ -9,12 +9,14 @@
  * 3. 当たりの場所だけ z6 のタイル（1ピクセル約2km）を取り、強い雨か雷のある塊を取り出す
  * 4. 前回までの雲と結びつけて Firestore の clouds に保存する
  * 5. 結果と失敗の回数を system/jma_nowcast に残す（続けて失敗したらエラーのログを出す）
+ * 6. 取ったタイルから、見張る場所で雨が降っているかを調べる道具（RainLookup）を返す
  */
 
 const admin = require('firebase-admin');
 const JmaClient = require('./jma_client');
 const { rainFromColor, thunderFromColor, collectPixels, extractClusters } = require('./nowcast_parser');
 const { trackClouds } = require('./cloud_tracker');
+const { RainLookup } = require('./rain_lookup');
 const { JMA_NOWCAST } = require('../../constants');
 
 class NowcastService {
@@ -29,7 +31,8 @@ class NowcastService {
   /**
    * 気象庁のデータから雲の塊を取り出す（Firestore には書かない）
    *
-   * @returns {Promise<{times:{rain:string,thunder:string|null}, clusters:Array, requestCount:number}>}
+   * @returns {Promise<{times:{rain:string,thunder:string|null}, clusters:Array, requestCount:number,
+   *   rainLookup:RainLookup}>}
    */
   async detectClusters(times = null) {
     const latest = times || await this.jma.getLatestAnalysisTimes();
@@ -84,8 +87,9 @@ class NowcastService {
     });
     const rainPixels = [];
     const thunderPixels = [];
+    let rainTiles = [];
     if (detailTiles.length > 0) {
-      const rainTiles = await this.jma.getAnalysisTiles(
+      rainTiles = await this.jma.getAnalysisTiles(
         latest.rain, JMA_NOWCAST.ELEMENT_RAIN, JMA_NOWCAST.DETAIL_ZOOM, detailTiles);
       requestCount += detailTiles.length;
       for (const t of rainTiles) {
@@ -102,13 +106,15 @@ class NowcastService {
     }
 
     const clusters = extractClusters(rainPixels, thunderPixels, JMA_NOWCAST.DETAIL_ZOOM);
-    return { times: latest, clusters, requestCount };
+    const rainLookup = new RainLookup(this.jma, latest.rain, coarseRain, rainTiles);
+    return { times: latest, clusters, requestCount, rainLookup };
   }
 
   /**
    * 5分ごとの本処理: 雲の一覧を更新する
    *
-   * @returns {Promise<boolean>} 新しい解析値で雲の一覧を書き換えたら true
+   * @returns {Promise<{rainLookup:RainLookup}|null>} 新しい解析値で雲の一覧を書き換えたら、
+   *   見張りで使う RainLookup。書き換えなかったら null
    */
   async updateClouds() {
     const statusRef = this.firestore.doc(JMA_NOWCAST.STATUS_DOC_PATH);
@@ -126,10 +132,10 @@ class NowcastService {
       }
       if (status.lastRainTime === times.rain) {
         console.log(`⏭️ [JMA_NOWCAST] 新しい解析値なし（${times.rain}）`);
-        return false;
+        return null;
       }
 
-      const { clusters, requestCount } = await this.detectClusters(times);
+      const { clusters, requestCount, rainLookup } = await this.detectClusters(times);
       const result = await this._saveClouds(clusters, observedAt);
 
       await statusRef.set({
@@ -146,10 +152,10 @@ class NowcastService {
       console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個 ` +
         `（続き${result.updated} 新規${result.created} 見えない${result.hidden} 終了${result.ended}、` +
         `気象庁へのリクエスト${requestCount + 2}回）`);
-      return true;
+      return { rainLookup };
     } catch (error) {
       await this._recordFailure(statusRef, status, error);
-      return false;
+      return null;
     }
   }
 
@@ -175,6 +181,11 @@ class NowcastService {
       maxThunderLevel: cluster.maxThunderLevel,
       areaKm2: Math.round(cluster.areaKm2 * 10) / 10,
       pixelCount: cluster.pixelCount,
+      // 雲のふち。Firestore は配列の入れ子を持てないので {latitude, longitude} の並びにする
+      edgePoints: (cluster.edgePoints || []).map((p) => ({
+        latitude: Math.round(p.latitude * 1000) / 1000,
+        longitude: Math.round(p.longitude * 1000) / 1000,
+      })),
       lastSeenAt: seenAt,
       isVisible: true,
       updatedAt: now,

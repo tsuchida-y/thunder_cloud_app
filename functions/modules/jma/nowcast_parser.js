@@ -187,7 +187,24 @@ function summarizeCluster(members, zoom) {
     maxThunderLevel: maxThunder,
     areaKm2,
     pixelCount: members.length,
+    edgePoints: edgePointsOf(members, zoom),
   };
+}
+
+/**
+ * 塊のふちのピクセル（上下左右のどれかが塊の外）の中心を緯度経度で返す
+ *
+ * 見張る場所から雲のいちばん近い所までの距離に使う。多すぎるときは等間隔に間引く。
+ */
+function edgePointsOf(members, zoom) {
+  const inCluster = new Set(members.map((cell) => `${cell.x},${cell.y}`));
+  const edges = members.filter((cell) =>
+    !inCluster.has(`${cell.x + 1},${cell.y}`) || !inCluster.has(`${cell.x - 1},${cell.y}`) ||
+    !inCluster.has(`${cell.x},${cell.y + 1}`) || !inCluster.has(`${cell.x},${cell.y - 1}`));
+  const step = Math.max(1, Math.ceil(edges.length / JMA_NOWCAST.MAX_EDGE_POINTS));
+  return edges
+    .filter((_, index) => index % step === 0)
+    .map((cell) => pixelToLatLng(cell.x, cell.y, zoom));
 }
 
 module.exports = {

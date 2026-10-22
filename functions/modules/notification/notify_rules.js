@@ -6,12 +6,15 @@
  * - 空が暗いあいだ（市民薄明の終わりから次のはじまりまで。sun_times.js）と、その人が決めた「通知しない時間」は鳴らさない
  * - アプリを開いてから10分以内の人には送らない
  * - 範囲は無料 30km、Plus 90km。60km より遠い雲は「見えるかもしれません」
+ * - 見張る場所で雨が降っていたら（雲の下か曇り空なので）その場所では知らせない
+ * - 雲のいちばん近い所が10kmより近い雲は、真下か近すぎて形が見えないので知らせない
+ *   （1つの雲に1回なので、離れてから知らせる）
  *
  * Firestore には触れず、渡された値だけで決める（データの持ち方が変わってもそのまま使えるように）。
  */
 
 const { NOTIFY_RULES } = require('../../constants');
-const { describeCloud } = require('../geo/sky_geometry');
+const { describeCloud, nearestDistanceKm } = require('../geo/sky_geometry');
 const { isDaytime } = require('../geo/sun_times');
 
 /**
@@ -47,13 +50,15 @@ function isInQuietHours(now, quietHours) {
 /**
  * @param {Object} params
  * @param {Date} params.now
- * @param {Array<{label:string,latitude:number,longitude:number}>} params.watchPoints - 見張る場所
+ * @param {Array<{label:string,latitude:number,longitude:number,raining?:boolean}>} params.watchPoints
+ *   - 見張る場所。raining はいまその場所で雨が降っているか
  * @param {boolean} params.isPlus
  * @param {number} [params.rangeKm] - 設定の範囲（Plus でなければ 30km に抑える）
  * @param {{startMinutes:number,endMinutes:number}|null} [params.quietHours]
  * @param {Date|null} [params.lastOpenedAt]
  * @param {Object} params.history - {notifiedCloudIds, lastNotifiedAt, dailyCount, dailyDate}
- * @param {Array<{id:string,latitude:number,longitude:number,isVisible:boolean}>} params.clouds
+ * @param {Array<{id:string,latitude:number,longitude:number,isVisible:boolean,edgePoints?:Array}>} params.clouds
+ *   - edgePoints は雲のふちの点（いちばん近い所までの距離に使う）
  * @returns {{notify: Object}|{skip: string}} 知らせるときは雲と見え方、知らせないときは理由
  */
 function decideNotification(params) {
@@ -77,19 +82,29 @@ function decideNotification(params) {
   const daytimePoints = watchPoints.filter((p) => isDaytime(now, p.latitude, p.longitude));
   if (daytimePoints.length === 0) return { skip: 'night' };
 
+  // 雨の降っている場所は雲の下か曇り空で、入道雲の形が見えない
+  const dryPoints = daytimePoints.filter((p) => !p.raining);
+  if (dryPoints.length === 0) return { skip: 'raining_here' };
+
   const notified = new Set(history.notifiedCloudIds || []);
   let best = null;
+  let tooClose = false;
   for (const cloud of clouds) {
     if (!cloud.isVisible || notified.has(cloud.id)) continue;
-    for (const point of daytimePoints) {
+    for (const point of dryPoints) {
       const view = describeCloud(point, cloud);
       if (view.distanceKm > rangeKm) continue;
+      if (nearestDistanceKm(point, cloud) < NOTIFY_RULES.MIN_DISTANCE_KM) {
+        tooClose = true;
+        continue;
+      }
       if (!best || view.distanceKm < best.view.distanceKm) {
         best = { cloud, point, view, maybeVisible: view.distanceKm > NOTIFY_RULES.MAYBE_VISIBLE_KM };
       }
     }
   }
-  return best ? { notify: best } : { skip: 'no_cloud_in_range' };
+  if (best) return { notify: best };
+  return { skip: tooClose ? 'too_close' : 'no_cloud_in_range' };
 }
 
 /**

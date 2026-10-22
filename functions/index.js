@@ -46,7 +46,7 @@ exports.updateNowcastClouds = onSchedule({
 }, async () => {
   const updated = await nowcastService.updateClouds();
   if (updated) {
-    await cloudWatchService.run();
+    await cloudWatchService.run(new Date(), updated.rainLookup);
   }
 });
 

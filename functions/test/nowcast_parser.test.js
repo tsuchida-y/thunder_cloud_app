@@ -71,3 +71,13 @@ test('つながったピクセルを1つの塊にまとめ、離れたものは�
   const thunderOnly = clusters.find((c) => c.maxRainMmPerHour === 0);
   assert.equal(thunderOnly.maxThunderLevel, 3);
 });
+
+test('塊のふちの点を返す（3×3 の塊なら真ん中を除く8点）', () => {
+  const rain = [];
+  for (let x = 0; x < 3; x++) for (let y = 0; y < 3; y++) rain.push({ x: 1000 + x, y: 2000 + y, value: 30 });
+  const [cluster] = extractClusters(rain, [], 6);
+  assert.equal(cluster.edgePoints.length, 8);
+  const middle = pixelToLatLng(1001, 2001, 6);
+  const isMiddle = (p) => p.latitude === middle.latitude && p.longitude === middle.longitude;
+  assert.equal(cluster.edgePoints.some(isMiddle), false);
+});

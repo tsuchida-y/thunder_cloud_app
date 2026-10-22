@@ -108,3 +108,21 @@ test('登録した場所の雲は、通知の題に場所の名前を付ける',
   assert.equal(appearedMessage(view, 'いまいる場所').title, '北の空に、入道雲が現れました');
   assert.equal(appearedMessage(view).title, '北の空に、入道雲が現れました');
 });
+
+test('見張る場所で雨が降っていたら知らせない（雨のない登録した場所では知らせる）', () => {
+  assert.equal(decideNotification({ ...base, watchPoints: [{ ...home, raining: true }] }).skip, 'raining_here');
+  const place = { label: '家', latitude: 39.70, longitude: 141.10 };
+  const result = decideNotification({ ...base, watchPoints: [{ ...home, raining: true }, place] });
+  assert.equal(result.notify.point.label, '家');
+});
+
+test('雲のふちが10kmより近い雲は知らせず、ほかの雲があればそちらを知らせる', () => {
+  // 中心は約25km先だが、ふちが home から約5km
+  const wide = { ...near, id: 'wide', edgePoints: [{ latitude: 39.70, longitude: 141.11 }, near] };
+  assert.equal(decideNotification({ ...base, clouds: [wide] }).skip, 'too_close');
+  const other = { id: 'other', latitude: 39.90, longitude: 141.10, isVisible: true };
+  assert.equal(decideNotification({ ...base, clouds: [wide, other] }).notify.cloud.id, 'other');
+  // ふちの点がない古い雲は中心までの距離で決める
+  const close = { id: 'close', latitude: 39.75, longitude: 141.10, isVisible: true };
+  assert.equal(decideNotification({ ...base, clouds: [close] }).skip, 'too_close');
+});

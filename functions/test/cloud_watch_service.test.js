@@ -123,3 +123,24 @@ test('見えている雲がなければ誰も調べない', async () => {
   assert.equal(summary.checked, 0);
   assert.equal(sent.length, 0);
 });
+
+test('いまいる場所で雨が降っていれば送らない', async () => {
+  const { service, sent } = setup({ members: { u1: member() } });
+  const rainLookup = { isRaining: async () => true };
+  const summary = await service.run(now, rainLookup);
+  assert.equal(sent.length, 0);
+  assert.equal(summary.skipped.raining_here, 1);
+});
+
+test('雨を調べられなかったときは雨なしとして送る', async () => {
+  const { service, sent } = setup({ members: { u1: member() } });
+  const rainLookup = { isRaining: async () => { throw new Error('テスト用の失敗'); } };
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    await service.run(now, rainLookup);
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(sent.length, 1);
+});

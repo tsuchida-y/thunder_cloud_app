@@ -23,6 +23,10 @@ const JMA_NOWCAST = {
   MIN_THUNDER_LEVEL: 2,
   // z4 の見落としを防ぐため、当たりを付けるときは1段階弱い雨から拾う
   COARSE_MIN_RAIN_MM_PER_HOUR: 20,
+  // 見張る場所でこれ以上の雨が降っていたら、雲の下か曇り空なので知らせない
+  RAIN_HERE_MM_PER_HOUR: 1,
+  // 雲の端（いちばん近い所）を出すために残す点の数の上限（Firestore の1件を大きくしすぎないため）
+  MAX_EDGE_POINTS: 300,
 
   // 前回の雲から15km以内なら同じ雲として追いかける
   TRACKING_DISTANCE_KM: 15,
@@ -49,6 +53,8 @@ const NOTIFY_RULES = {
   PLUS_RANGE_KM: 90,
   // これより遠い雲は「見えるかもしれません」と控えめに書く
   MAYBE_VISIBLE_KM: 60,
+  // 雲の端がこれより近いと、真下か近すぎて形が見えないので知らせない（離れてから知らせる）
+  MIN_DISTANCE_KM: 10,
   MIN_INTERVAL_MS: 30 * 60 * 1000,
   DAILY_LIMIT: 3,
   // アプリを開いてからこの時間内の人には送らない（もう画面で見ているため）

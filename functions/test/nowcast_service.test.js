@@ -59,7 +59,9 @@ test('雲の塊を見つけて clouds に保存し、次の回は同じ雲とし
   const t2 = jmaTime(new Date());
 
   const jma1 = fakeJma(t1);
-  await serviceWith(jma1, firestore).updateClouds();
+  const result = await serviceWith(jma1, firestore).updateClouds();
+  // 見張りで雨を調べる道具を返す
+  assert.equal(typeof result.rainLookup.isRaining, 'function');
   // z4 で当たりを付けた z6 のタイルは1枚だけ
   assert.deepEqual(jma1.requests.filter((r) => r.zoom === 6), [{ element: 'hrpns', zoom: 6, count: 1 }]);
 
@@ -69,6 +71,8 @@ test('雲の塊を見つけて clouds に保存し、次の回は同じ雲とし
   assert.equal(clouds[0].isVisible, true);
   assert.equal(clouds[0].maxRainMmPerHour, 30);
   assert.equal(clouds[0].pixelCount, 3);
+  // 3ピクセルの塊は全部がふち
+  assert.equal(clouds[0].edgePoints.length, 3);
 
   const status = (await firestore.doc('system/jma_nowcast').get()).data();
   assert.equal(status.lastRainTime, t1);
@@ -77,7 +81,7 @@ test('雲の塊を見つけて clouds に保存し、次の回は同じ雲とし
 
   // 同じ解析時刻なら何もしない
   const jmaSame = fakeJma(t1);
-  await serviceWith(jmaSame, firestore).updateClouds();
+  assert.equal(await serviceWith(jmaSame, firestore).updateClouds(), null);
   assert.equal(jmaSame.requests.length, 0);
 
   // 少し動いても（数km）同じ雲として続く

@@ -7,6 +7,7 @@
  * - 見張る場所: 無料は「いまいる場所」（なければ登録した1か所目）、Plus は「いまいる場所」＋登録した場所3か所まで
  * - いまいる場所は、最後にアプリが送ってきた位置。「常に」の許可がない人は、最後に開いた場所になる
  * - Plus かどうかと通知の記録は member_server にある（サーバーだけが書く）
+ * - 見張る場所でいま雨が降っているかは、雲を探したときのタイルから調べる（rain_lookup.js）
  */
 
 const admin = require('firebase-admin');
@@ -54,15 +55,23 @@ class CloudWatchService {
   /**
    * いまの雲の一覧で全員を調べ、知らせる人に通知を送る
    *
+   * @param {Date} now
+   * @param {import('../jma/rain_lookup').RainLookup|null} rainLookup - なければ雨は調べない
    * @returns {Promise<{checked:number, sent:number, skipped:Object<string,number>}>}
    */
-  async run(now = new Date()) {
+  async run(now = new Date(), rainLookup = null) {
     const cloudSnap = await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
       .where('status', '==', 'active').get();
     const clouds = cloudSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
       .filter((c) => c.isVisible)
-      .map((c) => ({ id: c.id, latitude: c.center.latitude, longitude: c.center.longitude, isVisible: true }));
+      .map((c) => ({
+        id: c.id,
+        latitude: c.center.latitude,
+        longitude: c.center.longitude,
+        edgePoints: c.edgePoints || [],
+        isVisible: true,
+      }));
 
     const summary = { checked: 0, sent: 0, skipped: {} };
     if (clouds.length === 0) {
@@ -75,6 +84,7 @@ class CloudWatchService {
       this.firestore.collection(COLLECTIONS.MEMBER_SERVER).get(),
     ]);
     const servers = new Map(serverSnap.docs.map((doc) => [doc.id, doc.data()]));
+    const isRaining = this._rainChecker(rainLookup);
 
     for (const memberDoc of memberSnap.docs) {
       const member = memberDoc.data();
@@ -84,9 +94,11 @@ class CloudWatchService {
       const server = servers.get(memberDoc.id) || {};
       const isPlus = isPlusActive(server, now);
       const history = server.notification || {};
+      const watchPoints = await Promise.all(watchPointsOf(member, isPlus)
+        .map(async (p) => ({ ...p, raining: await isRaining(p) })));
       const decision = decideNotification({
         now,
-        watchPoints: watchPointsOf(member, isPlus),
+        watchPoints,
         isPlus,
         rangeKm: member.settings?.rangeKm,
         quietHours: member.settings?.quietHours || null,
@@ -106,6 +118,30 @@ class CloudWatchService {
     console.log(`📣 [CLOUD_WATCH] 雲${clouds.length}個、調べた人${summary.checked}人、通知${summary.sent}件、` +
       `送らなかった理由 ${JSON.stringify(summary.skipped)}`);
     return summary;
+  }
+
+  /**
+   * 見張る場所で雨が降っているかを返す関数を作る（同じ場所は1回だけ調べる）
+   *
+   * 気象庁のタイルが取れなかったときは、雨なしとして今までどおり知らせる（通知が止まるよりよいため）
+   */
+  _rainChecker(rainLookup) {
+    if (!rainLookup) return async () => false;
+    const cache = new Map();
+    let warned = false;
+    return (point) => {
+      const key = `${point.latitude.toFixed(3)},${point.longitude.toFixed(3)}`;
+      if (!cache.has(key)) {
+        cache.set(key, rainLookup.isRaining(point.latitude, point.longitude).catch((error) => {
+          if (!warned) {
+            console.warn('⚠️ [CLOUD_WATCH] 見張る場所の雨を調べられませんでした（雨なしとして続けます）:', error);
+            warned = true;
+          }
+          return false;
+        }));
+      }
+      return cache.get(key);
+    };
   }
 
   async _send(uid, member, { cloud, point, view }, server, now) {

@@ -27,6 +27,17 @@ function distanceKm(from, to) {
 }
 
 /**
+ * 雲のいちばん近い所（ふちの点）までの距離 (km)。ふちの点がなければ中心までの距離
+ *
+ * @param {{latitude:number,longitude:number}} from
+ * @param {{latitude:number,longitude:number,edgePoints?:Array<{latitude:number,longitude:number}>}} cloud
+ */
+function nearestDistanceKm(from, cloud) {
+  const points = cloud.edgePoints && cloud.edgePoints.length > 0 ? cloud.edgePoints : [cloud];
+  return Math.min(...points.map((p) => distanceKm(from, p)));
+}
+
+/**
  * from から見た to の方角（本当の北から時計回り、0〜360°）
  */
 function bearingDeg(from, to) {
@@ -90,6 +101,7 @@ function describeCloud(from, cloud) {
 
 module.exports = {
   distanceKm,
+  nearestDistanceKm,
   bearingDeg,
   directionName,
   elevationDeg,
