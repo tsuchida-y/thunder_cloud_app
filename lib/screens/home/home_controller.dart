@@ -398,18 +398,22 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     }
     final places = MemberService.placesOf(_member);
     final watched = isPlus ? places.take(3) : (spots.isEmpty ? places.take(1) : const <WatchPlace>[]);
-    var i = 0;
     for (final place in watched) {
       spots.add(WatchSpot(
-        id: 'place$i',
+        id: placeSpotId(place),
         label: place.label,
         placeName: place.name,
         point: place.location,
         isCurrent: false,
       ));
-      i++;
     }
     return spots;
+  }
+
+  /// 登録した場所の ID。並び順ではなく位置から作るので、ほかの場所を消してもずれない（ウィジェットが覚えておく）
+  static String placeSpotId(WatchPlace place) {
+    final map = place.toMap();
+    return 'place_${map['latitude']}_${map['longitude']}';
   }
 
   /// ある場所から見える範囲の雲（近い順）
@@ -487,27 +491,41 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
     _state = next;
     notifyListeners();
-    if (next.selectedSpotId == null || next.selectedSpotId == spots.first.id) _updateWidget(next, isPlus);
+    _updateWidget(next, spots, isPlus, rangeKm, now);
     if (next.mode != HomeMode.loading && next.mode != HomeMode.noPermission) _maybeAskAlways();
   }
 
-  void _updateWidget(HomeState state, bool isPlus) {
-    if (state.mode == HomeMode.loading) return;
-    final nearest = state.clouds.isEmpty ? null : state.clouds.first;
+  /// ウィジェットに、見張っているすべての場所の空を渡す（ウィジェットごとに見る場所を選べる）
+  void _updateWidget(HomeState state, List<WatchSpot> spots, bool isPlus, double rangeKm, DateTime now) {
+    if (state.mode == HomeMode.loading || state.mode == HomeMode.noPermission) return;
+    final offline = state.mode == HomeMode.offline;
     SkyWidget.update(
       isPlus: isPlus,
-      mode: switch (state.mode) {
-        HomeMode.clouds => 'clouds',
-        HomeMode.empty => 'empty',
-        HomeMode.night => 'night',
-        HomeMode.offline => 'offline',
-        _ => 'none',
-      },
-      direction: nearest?.directionName,
-      km: nearest?.roundedKm,
-      fists: nearest?.fistsLabel,
-      place: state.placeName,
       observedAt: state.observedAt,
+      spots: [
+        for (final spot in spots)
+          () {
+            final daytime = _forceDaytime || SunTimes.isDaytime(now, spot.point.latitude, spot.point.longitude);
+            final views = daytime && !offline ? _viewsAt(spot.point, rangeKm) : const <CloudView>[];
+            final nearest = views.isEmpty ? null : views.first;
+            return WidgetSpot(
+              id: spot.id,
+              label: spot.label,
+              placeName: spot.placeName,
+              mode: !daytime
+                  ? 'night'
+                  : offline
+                      ? 'offline'
+                      : _activeClouds == null
+                          ? 'none'
+                          : (nearest == null ? 'empty' : 'clouds'),
+              direction: nearest?.directionName,
+              bearingDeg: nearest?.bearingDeg,
+              km: nearest?.roundedKm,
+              fists: nearest?.fistsLabel,
+            );
+          }(),
+      ],
     );
   }
 

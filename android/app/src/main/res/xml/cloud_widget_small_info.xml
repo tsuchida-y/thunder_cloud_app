@@ -7,4 +7,6 @@
     android:targetCellHeight="2"
     android:resizeMode="none"
     android:updatePeriodMillis="0"
+    android:configure="io.github.tsuchida.thunder_cloud_app.CloudWidgetConfigureActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:widgetCategory="home_screen" />

@@ -42,6 +42,13 @@
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
 
+        <!-- ホーム画面のウィジェット（Plus、CloudWidget.kt）。置くときに見る場所を選ぶ画面 -->
+        <activity android:name=".CloudWidgetConfigureActivity" android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <!-- ホーム画面のウィジェット（Plus、CloudWidget.kt） -->
         <receiver android:name=".CloudWidgetSmall" android:exported="false" android:label="入道雲（小）">
             <intent-filter>

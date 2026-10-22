@@ -4,23 +4,27 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/cloud_widget_bg"
-    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:padding="16dp">
 
-    <TextView android:id="@+id/widget_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="入道雲" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+    <ImageView android:id="@+id/widget_compass" android:layout_width="96dp" android:layout_height="96dp"
+        android:layout_marginEnd="16dp" android:contentDescription="雲の方角" android:visibility="gone" />
 
-    <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+        <TextView android:id="@+id/widget_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="入道雲" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" />
 
-    <TextView android:id="@+id/widget_headline" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold" android:maxLines="2" />
+        <TextView android:id="@+id/widget_headline" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:maxLines="2" />
 
-    <TextView android:id="@+id/widget_sub" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:textColor="#FFFFFF" android:textSize="15sp" />
+        <TextView android:id="@+id/widget_sub" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="13sp" />
 
-    <TextView android:id="@+id/widget_detail" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:textColor="#FFFFFF" android:textSize="13sp" />
+        <TextView android:id="@+id/widget_detail" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="13sp" />
 
-    <TextView android:id="@+id/widget_time" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:textColor="#CCFFFFFF" android:textSize="11sp" />
+        <TextView android:id="@+id/widget_time" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="#CCFFFFFF" android:textSize="10sp" android:maxLines="1" />
+    </LinearLayout>
 </LinearLayout>

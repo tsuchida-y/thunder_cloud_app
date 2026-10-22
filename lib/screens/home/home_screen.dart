@@ -6,6 +6,7 @@ import '../../models/finder_target.dart';
 
 import '../../navigation/app_routes.dart';
 import '../../services/notification/cloud_notifications.dart';
+import '../../services/widget/sky_widget.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/time_text.dart';
@@ -32,6 +33,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final HomeController _controller = HomeController();
   StreamSubscription<FinderTarget>? _openedSub;
+  StreamSubscription<String>? _widgetSub;
 
   @override
   void initState() {
@@ -40,6 +42,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller.start();
     // 通知から開いたときは、方角ガイドを直接開く
     _openedSub = CloudNotifications.opened.listen(_openFromNotification);
+    // ウィジェットをタップして開いたときは、その場所に切り替える
+    SkyWidget.launchedSpotId().then((id) {
+      if (id != null && mounted) _controller.selectSpot(id);
+    });
+    _widgetSub = SkyWidget.clickedSpotIds.listen((id) {
+      if (!mounted) return;
+      AppRoutes.backToHome(context);
+      _controller.selectSpot(id);
+    });
     final pending = CloudNotifications.takeLaunchTarget();
     if (pending != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openFromNotification(pending));
@@ -74,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _openedSub?.cancel();
+    _widgetSub?.cancel();
     _controller.dispose();
     super.dispose();
   }

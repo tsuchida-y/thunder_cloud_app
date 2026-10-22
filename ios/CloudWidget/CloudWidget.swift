@@ -1,49 +1,144 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
-/// ホーム画面のウィジェット（docs/design/Widget.html、Plus の機能）
+/// ホーム画面のウィジェット（docs/design/Widget.html と 場所の見せ方_画面一覧.png、Plus の機能）
 ///
-/// アプリがホームで計算した結果（lib/services/widget/sky_widget.dart）を App Group の UserDefaults から読むだけ。
+/// アプリが見張っているすべての場所の空（lib/services/widget/sky_widget.dart の spots）を App Group から読み、
+/// ウィジェットごとに選んだ場所（長押し > ウィジェットを編集）の分だけを出す。選んでいなければ最初の場所（いま）。
 /// 中身はアプリを開いたときに新しくなるので、いつの空かが分かるよう「15:21 時点」を出す。
-/// タップするとアプリのホームが開く。
+/// タップすると、その場所に切り替えたホームが開く（thundercloud://spot?id=…）。
 ///
 /// 使い方: Xcode で File > New > Target > Widget Extension（名前 CloudWidget）を足し、
 /// できたひな形のファイルをこのファイルに置き換える。アプリとウィジェットの両方に
-/// App Group「group.com.tsuchida.thundercloud」を付ける（docs/残りの作業と確認事項.md）。
+/// App Group「group.com.tsuchida.thundercloud」を付ける（docs/お願いしたい作業の手順.md の3）。
 
 private let appGroupId = "group.com.tsuchida.thundercloud"
+
+// MARK: - アプリが書いた中身
+
+/// 1つの場所の空（sky_widget.dart の WidgetSpot.toJson と同じ形）
+struct SpotData: Decodable {
+  let id: String
+  let label: String
+  let placeName: String
+  let mode: String
+  let direction: String
+  let bearingDeg: Double
+  let km: Int
+  let fists: String
+
+  /// 「家（盛岡市）」
+  var title: String { placeName.isEmpty || placeName == label ? label : "\(label)（\(placeName)）" }
+}
+
+enum SharedSky {
+  static var defaults: UserDefaults? { UserDefaults(suiteName: appGroupId) }
+
+  static func spots() -> [SpotData] {
+    guard let raw = defaults?.string(forKey: "spots"), let data = raw.data(using: .utf8) else { return [] }
+    return (try? JSONDecoder().decode([SpotData].self, from: data)) ?? []
+  }
+
+  static var isPlus: Bool { defaults?.string(forKey: "plus") == "1" }
+  static var time: String { defaults?.string(forKey: "time") ?? "" }
+}
+
+// MARK: - 見る場所を選ぶ設定
+
+struct SpotEntity: AppEntity {
+  let id: String
+  let title: String
+
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "場所"
+  static var defaultQuery = SpotQuery()
+
+  var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(title)") }
+}
+
+struct SpotQuery: EntityQuery {
+  private func all() -> [SpotEntity] {
+    let spots = SharedSky.spots().map { SpotEntity(id: $0.id, title: $0.title) }
+    // アプリをまだ開いていないときも、いまいる場所は選べるようにする
+    return spots.isEmpty ? [SpotEntity(id: "now", title: "いま")] : spots
+  }
+
+  func entities(for identifiers: [String]) async throws -> [SpotEntity] {
+    all().filter { identifiers.contains($0.id) }
+  }
+
+  func suggestedEntities() async throws -> [SpotEntity] { all() }
+
+  func defaultResult() async -> SpotEntity? { all().first }
+}
+
+struct SelectSpotIntent: WidgetConfigurationIntent {
+  static var title: LocalizedStringResource = "見る場所"
+  static var description = IntentDescription("ウィジェットで見る場所を選びます。タップすると、その場所のホームが開きます。")
+
+  @Parameter(title: "場所")
+  var spot: SpotEntity?
+}
+
+// MARK: - タイムライン
 
 struct SkyEntry: TimelineEntry {
   let date: Date
   let plus: Bool
-  let mode: String
-  let direction: String
-  let km: String
-  let fists: String
-  let place: String
   let time: String
+  let spot: SpotData?
 
-  static let placeholder = SkyEntry(date: Date(), plus: true, mode: "clouds", direction: "南東", km: "42",
-                                    fists: "こぶし1つ半", place: "滝沢市", time: "15:21")
+  static let placeholder = SkyEntry(
+    date: Date(), plus: true, time: "15:21",
+    spot: SpotData(id: "now", label: "いま", placeName: "滝沢市", mode: "clouds", direction: "南東",
+                   bearingDeg: 135, km: 42, fists: "こぶし1つ半"))
 
-  static func load() -> SkyEntry {
-    let data = UserDefaults(suiteName: appGroupId)
-    func value(_ key: String) -> String { data?.string(forKey: key) ?? "" }
-    return SkyEntry(date: Date(), plus: value("plus") == "1", mode: value("mode"), direction: value("direction"),
-                    km: value("km"), fists: value("fists"), place: value("place"), time: value("time"))
+  static func load(spotId: String?) -> SkyEntry {
+    let spots = SharedSky.spots()
+    let spot = spots.first { $0.id == spotId } ?? spots.first
+    return SkyEntry(date: Date(), plus: SharedSky.isPlus, time: SharedSky.time, spot: spot)
   }
 }
 
-struct SkyProvider: TimelineProvider {
+struct SkyProvider: AppIntentTimelineProvider {
   func placeholder(in context: Context) -> SkyEntry { .placeholder }
 
-  func getSnapshot(in context: Context, completion: @escaping (SkyEntry) -> Void) {
-    completion(context.isPreview ? .placeholder : .load())
+  func snapshot(for configuration: SelectSpotIntent, in context: Context) async -> SkyEntry {
+    context.isPreview ? .placeholder : .load(spotId: configuration.spot?.id)
   }
 
-  func getTimeline(in context: Context, completion: @escaping (Timeline<SkyEntry>) -> Void) {
+  func timeline(for configuration: SelectSpotIntent, in context: Context) async -> Timeline<SkyEntry> {
     // アプリが新しい中身を書いたときに描き直してもらうので、自分からは更新しない
-    completion(Timeline(entries: [.load()], policy: .never))
+    Timeline(entries: [.load(spotId: configuration.spot?.id)], policy: .never)
+  }
+}
+
+// MARK: - 見た目
+
+/// 小さな方位の丸（北が上、雲の方角に点）
+struct CompassView: View {
+  let bearingDeg: Double?
+
+  var body: some View {
+    GeometryReader { geo in
+      let size = min(geo.size.width, geo.size.height)
+      let r = size / 2
+      ZStack {
+        Circle().fill(Color.white.opacity(0.18))
+        Circle().stroke(Color.white.opacity(0.6), lineWidth: max(1, size * 0.025))
+        Text("N").font(.system(size: size * 0.16, weight: .bold)).foregroundColor(.white)
+          .position(x: r, y: size * 0.17)
+        Circle().fill(Color.white).frame(width: size * 0.11, height: size * 0.11).position(x: r, y: r)
+        if let bearing = bearingDeg {
+          let a = bearing * .pi / 180
+          let d = r * 0.6
+          Circle().fill(Color.white).frame(width: size * 0.22, height: size * 0.22)
+            .position(x: r + CGFloat(sin(a)) * d, y: r - CGFloat(cos(a)) * d)
+        }
+      }
+      .frame(width: size, height: size)
+    }
+    .accessibilityLabel("雲の方角")
   }
 }
 
@@ -51,21 +146,38 @@ struct CloudWidgetView: View {
   @Environment(\.widgetFamily) private var family
   let entry: SkyEntry
 
-  private var hasCloud: Bool { entry.plus && entry.mode == "clouds" }
+  private var spot: SpotData? { entry.spot }
+  private var hasCloud: Bool { entry.plus && spot?.mode == "clouds" }
+  private var bearing: Double? { hasCloud && (spot?.bearingDeg ?? -1) >= 0 ? spot?.bearingDeg : nil }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(family == .systemMedium && !entry.place.isEmpty ? "入道雲 ・ \(entry.place)" : "入道雲")
-        .font(.system(size: 12, weight: .bold))
-      Spacer(minLength: 0)
-      content
-      if entry.plus && !entry.time.isEmpty {
-        // 気象庁のデータから出した中身なので、出典を出す（CLAUDE.md）
-        Text("\(entry.time) 時点 ・ 出典：気象庁").font(.system(size: 10)).opacity(0.8).lineLimit(1).minimumScaleFactor(0.8)
+    Group {
+      if family == .systemMedium {
+        HStack(spacing: 16) {
+          if entry.plus { CompassView(bearingDeg: bearing).frame(width: 96, height: 96) }
+          VStack(alignment: .leading, spacing: 2) {
+            Text(mediumHeading).font(.system(size: 12, weight: .bold)).lineLimit(1)
+            content
+            footer
+          }
+          Spacer(minLength: 0)
+        }
+      } else {
+        VStack(alignment: .leading, spacing: 2) {
+          HStack(alignment: .top) {
+            Text(spot?.label ?? "入道雲").font(.system(size: 12, weight: .bold)).lineLimit(1)
+            Spacer(minLength: 0)
+            if hasCloud { CompassView(bearingDeg: bearing).frame(width: 40, height: 40) }
+          }
+          Spacer(minLength: 0)
+          content
+          footer
+        }
       }
     }
     .foregroundColor(.white)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    .widgetURL(URL(string: "thundercloud://spot?id=\(spot?.id ?? "now")&homeWidget"))
     .containerBackground(for: .widget) {
       LinearGradient(
         colors: hasCloud
@@ -75,21 +187,34 @@ struct CloudWidgetView: View {
     }
   }
 
+  /// 中の見出し「いま ・ 滝沢市」
+  private var mediumHeading: String {
+    guard let spot = spot else { return "入道雲" }
+    return spot.placeName.isEmpty ? spot.label : "\(spot.label) ・ \(spot.placeName)"
+  }
+
+  @ViewBuilder private var footer: some View {
+    // 気象庁のデータから出した中身なので、出典を出す（CLAUDE.md）
+    if entry.plus && !entry.time.isEmpty {
+      Text("\(entry.time) 時点 ・ 出典：気象庁").font(.system(size: 10)).opacity(0.8).lineLimit(1).minimumScaleFactor(0.8)
+    }
+  }
+
   @ViewBuilder private var content: some View {
     if !entry.plus {
       Text("Plus の機能です").font(.system(size: 16, weight: .bold))
-    } else if entry.mode == "clouds" {
+    } else if let spot = spot, spot.mode == "clouds" {
       if family == .systemMedium {
-        Text("\(entry.direction)に入道雲").font(.system(size: 22, weight: .bold))
-        Text("約\(entry.km)km先").font(.system(size: 15))
-        Text("\(entry.fists)の高さ").font(.system(size: 13))
+        Text("\(spot.direction)に入道雲").font(.system(size: 20, weight: .bold))
+        Text("約\(spot.km)km先").font(.system(size: 13))
+        Text("\(spot.fists)の高さ").font(.system(size: 13))
       } else {
-        Text(entry.direction).font(.system(size: 26, weight: .bold))
-        Text("\(entry.km)km").font(.system(size: 15, weight: .semibold))
+        Text(spot.direction).font(.system(size: 26, weight: .bold))
+        Text("\(spot.km)km").font(.system(size: 15, weight: .semibold))
       }
-    } else if entry.mode == "night" {
+    } else if spot?.mode == "night" {
       Text("見張りはお休み中").font(.system(size: 16, weight: .bold))
-    } else if entry.mode == "empty" {
+    } else if spot?.mode == "empty" {
       Text("静かな空").font(.system(size: 18, weight: .bold))
     } else {
       Text("アプリを開いて空を確かめてください").font(.system(size: 14, weight: .bold))
@@ -100,11 +225,11 @@ struct CloudWidgetView: View {
 @main
 struct CloudWidget: Widget {
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: "CloudWidget", provider: SkyProvider()) { entry in
+    AppIntentConfiguration(kind: "CloudWidget", intent: SelectSpotIntent.self, provider: SkyProvider()) { entry in
       CloudWidgetView(entry: entry)
     }
     .configurationDisplayName("入道雲")
-    .description("アプリを開かずに、入道雲の方角と距離が分かります。")
+    .description("アプリを開かずに、入道雲の方角と距離が分かります。見る場所は、ウィジェットごとに選べます。")
     .supportedFamilies([.systemSmall, .systemMedium])
   }
 }
