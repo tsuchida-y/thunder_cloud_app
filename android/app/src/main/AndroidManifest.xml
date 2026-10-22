@@ -14,7 +14,7 @@
 
 
     <application
-        android:label="thunder_cloud_app"
+        android:label="入道雲サーチ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
