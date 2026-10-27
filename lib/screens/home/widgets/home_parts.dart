@@ -127,7 +127,8 @@ class HomeHeadline extends StatelessWidget {
 /// ホームの上の帯: 見張っている場所のチップと設定（場所の見せ方_画面一覧.png）
 ///
 /// 登録した場所に切り替えられ、無料は1か所、Plus は3か所までは「＋」で足せる（2026-10-27、無料でも1か所）。
-/// 無料で1か所を登録したあとは「＋ 場所を追加（Plus）」で Plus の案内を開く。
+/// 無料で1か所を登録したあとは、短い「＋ Plus」で Plus の案内を開く（長い文字は右端で切れたため。2026-10-27）。
+/// チップが多いときは横にスクロールでき、右端を薄くぼかして続きがあることを示す。
 class SpotHeader extends StatelessWidget {
   final HomeState state;
   final ValueChanged<String> onSelect;
@@ -144,19 +145,28 @@ class SpotHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final chip in state.spots) ...[
-                  _SpotChipButton(
-                    chip: chip,
-                    selected: chip.spot.id == state.selectedSpotId,
-                    onTap: () => onSelect(chip.spot.id),
-                  ),
-                  const SizedBox(width: 8),
+            child: ShaderMask(
+              // 右端の 20px を薄くぼかす（続きがあることを示し、設定のボタンとの境目で切れて見えないように）
+              shaderCallback: (bounds) => LinearGradient(
+                colors: const [Colors.white, Colors.white, Colors.transparent],
+                stops: [0, 1 - 20 / bounds.width.clamp(40, double.infinity), 1],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(right: 20),
+                children: [
+                  for (final chip in state.spots) ...[
+                    _SpotChipButton(
+                      chip: chip,
+                      selected: chip.spot.id == state.selectedSpotId,
+                      onTap: () => onSelect(chip.spot.id),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  if (canAdd) hasRoom ? _AddCircle(onTap: onAdd) : _AddPlusPill(onTap: onAdd),
                 ],
-                if (canAdd) hasRoom ? _AddCircle(onTap: onAdd) : _AddPlusPill(onTap: onAdd),
-              ],
+              ),
             ),
           ),
           IconTapButton(
@@ -196,8 +206,13 @@ class _SpotChipButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (chip.spot.isCurrent) ...[Icon(Icons.my_location_rounded, size: 14, color: fg), const SizedBox(width: 6)],
-                Text(chip.spot.label, style: AppTextStyles.body(color: fg).copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
+                if (chip.spot.isCurrent) ...[
+                  Icon(Icons.my_location_rounded, size: 14, color: fg),
+                  const SizedBox(width: 6)
+                ],
+                Text(chip.spot.label,
+                    style:
+                        AppTextStyles.body(color: fg).copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
                 if (chip.hasCloud) ...[const SizedBox(width: 6), Icon(Icons.cloud_rounded, size: 14, color: fg)],
               ],
             ),
@@ -231,7 +246,7 @@ class _AddCircle extends StatelessWidget {
   }
 }
 
-/// 無料で1か所を登録したあとの「＋ 場所を追加（Plus）」（点線のまる長）
+/// 無料で1か所を登録したあとの「＋ Plus」（点線のまる長）
 class _AddPlusPill extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -256,13 +271,13 @@ class _AddPlusPill extends StatelessWidget {
               children: [
                 const Icon(Icons.add_rounded, color: Colors.white, size: 18),
                 const SizedBox(width: 4),
-                Text('場所を追加', style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
-                const SizedBox(width: 6),
                 DecoratedBox(
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    child: Text('Plus', style: AppTextStyles.caption(color: AppColors.primary).copyWith(fontSize: 10, fontWeight: FontWeight.w700)),
+                    child: Text('Plus',
+                        style: AppTextStyles.caption(color: AppColors.primary)
+                            .copyWith(fontSize: 10, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
@@ -323,9 +338,7 @@ class CloudListCard extends StatelessWidget {
           for (var i = 0; i < rows.length; i++)
             DecoratedBox(
               decoration: BoxDecoration(
-                border: i < rows.length - 1
-                    ? const Border(bottom: BorderSide(color: AppColors.dividerOnCard))
-                    : null,
+                border: i < rows.length - 1 ? const Border(bottom: BorderSide(color: AppColors.dividerOnCard)) : null,
               ),
               child: rows[i],
             ),
@@ -343,7 +356,7 @@ class _OtherSpotRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = other.spot.isCurrent ? 'いま' : other.spot.label;
+    final name = other.spot.isCurrent ? '現在地' : other.spot.label;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -353,7 +366,8 @@ class _OtherSpotRow extends StatelessWidget {
             const Icon(Icons.cloud_rounded, size: 16, color: AppColors.accent),
             const SizedBox(width: 10),
             Expanded(
-              child: Text('$name ・ ${other.view.directionName} ・ ${other.view.roundedKm}km', style: AppTextStyles.item()),
+              child:
+                  Text('$name ・ ${other.view.directionName} ・ ${other.view.roundedKm}km', style: AppTextStyles.item()),
             ),
             Text(
               other.view.maybeVisible ? '見えるかも' : '見えています',
@@ -367,43 +381,34 @@ class _OtherSpotRow extends StatelessWidget {
   }
 }
 
-/// ホームのいちばん下の「見えた入道雲の記録」
-/// 雲がないときのホームの「いまの空」と「全国で見えている入道雲」（Empty.html、2026-10-27）
+/// 雲がないときのホームの「いまの空」と「いちばん近い入道雲」（Empty.html、2026-10-27）
 ///
 /// 静かな空のあいだも、開くたびに変わるものを出す。どちらも、いまの観測（予想ではない）。
+/// 押せる所と間違えないよう、アイコンや「›」は付けない。
 class SkyNowCard extends StatelessWidget {
   final SkyNow? skyNow;
-  final List<NationwideCloud> nationwide;
+  final NationwideCloud? nearestCloud;
   final int nationwideCount;
 
-  const SkyNowCard({super.key, required this.skyNow, required this.nationwide, required this.nationwideCount});
+  const SkyNowCard({super.key, required this.skyNow, required this.nearestCloud, required this.nationwideCount});
 
   @override
   Widget build(BuildContext context) {
     final sky = skyNow;
-    final names = [for (final c in nationwide) if (c.placeName != null) c.placeName!];
-    final rest = nationwideCount - names.length;
-    final String nationwideText;
-    if (nationwideCount == 0) {
-      nationwideText = 'いまはありません';
-    } else if (names.isEmpty) {
-      nationwideText = '$nationwideCountか所';
-    } else {
-      nationwideText = '${names.join('、')}${rest > 0 ? ' ほか$restか所' : ''}';
-    }
+    final nearest = nearestCloud;
+    final place = nearest?.placeName == null ? '' : '（${nearest!.placeName}のあたり）';
     final rows = <Widget>[
       if (sky != null)
         _InfoRow(
-          icon: Icons.wb_sunny_outlined,
           title: 'いまの空',
           text: sky.parts.join(' ・ '),
           note: '近くのアメダス ${TimeText.clock(sky.observedAt)}',
         ),
       _InfoRow(
-        icon: Icons.public_rounded,
-        title: '全国で見えている入道雲',
-        text: nationwideText,
-        highlight: nationwideCount > 0,
+        title: 'いちばん近い入道雲',
+        text: nearest == null ? '全国で見つかっていません' : '${nearest.directionName} ${nearest.distanceKm}km$place',
+        note: nearest == null ? null : '全国で$nationwideCountか所',
+        highlight: nearest != null,
       ),
     ];
     return SkyCard(
@@ -424,48 +429,39 @@ class SkyNowCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  final IconData icon;
   final String title;
   final String text;
   final String? note;
   final bool highlight;
 
-  const _InfoRow({required this.icon, required this.title, required this.text, this.note, this.highlight = false});
+  const _InfoRow({required this.title, required this.text, this.note, this.highlight = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 20, color: AppColors.accent)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.note().copyWith(height: 1.3)),
-                const SizedBox(height: 2),
-                Text(
-                  text,
-                  style: highlight
-                      ? AppTextStyles.item(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700)
-                      : AppTextStyles.item(),
-                ),
-                if (note != null) ...[
-                  const SizedBox(height: 2),
-                  Text(note!, style: AppTextStyles.caption()),
-                ],
-              ],
-            ),
+          Text(title, style: AppTextStyles.note().copyWith(height: 1.3)),
+          const SizedBox(height: 2),
+          Text(
+            text,
+            style: highlight
+                ? AppTextStyles.item(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700)
+                : AppTextStyles.item(),
           ),
+          if (note != null) ...[
+            const SizedBox(height: 2),
+            Text(note!, style: AppTextStyles.caption()),
+          ],
         ],
       ),
     );
   }
 }
 
+/// ホームのいちばん下の「見えた入道雲の記録」
 class RecordLink extends StatelessWidget {
   const RecordLink({super.key});
 
@@ -475,7 +471,9 @@ class RecordLink extends StatelessWidget {
       child: TextButton.icon(
         onPressed: () => AppRoutes.openRecord(context),
         icon: const Icon(Icons.event_note_outlined, size: 18, color: AppColors.accent),
-        label: Text('見えた入道雲の記録', style: AppTextStyles.body(color: AppColors.accent).copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
+        label: Text('見えた入道雲の記録',
+            style: AppTextStyles.body(color: AppColors.accent)
+                .copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
         style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
       ),
     );

@@ -56,7 +56,7 @@ class WatchSpot {
   /// 'now'（いまいる場所）か 'place0'〜'place2'（登録した場所）
   final String id;
 
-  /// チップの文字（「いま」「家」）
+  /// チップの文字（「現在地」「家」）
   final String label;
 
   /// 地名（「滝沢市」「盛岡市」）。分からなければ null
@@ -129,8 +129,8 @@ class HomeState {
   /// 近くのアメダスのいまの観測（「日が差しています・気温18℃・見通し20km以上」）。分からなければ null
   final SkyNow? skyNow;
 
-  /// いま全国で見えている入道雲（新しく見つかった順に3つまで）と、その数
-  final List<NationwideCloud> nationwide;
+  /// 全国で見えている入道雲のうち、いちばん近いもの（なければ null）と、全国の数
+  final NationwideCloud? nearestCloud;
   final int nationwideCount;
 
   /// 朝や夕方（太陽が低い）か。ホームの空の色を変える
@@ -155,7 +155,7 @@ class HomeState {
     this.todaysCloud,
     this.lastSky,
     this.skyNow,
-    this.nationwide = const [],
+    this.nearestCloud,
     this.nationwideCount = 0,
     this.lowSun = false,
     this.locationOff = false,
@@ -419,7 +419,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   List<WatchSpot> _spots(bool isPlus) {
     final spots = <WatchSpot>[];
     if (_gps != null) {
-      spots.add(WatchSpot(id: 'now', label: 'いま', placeName: _gpsName, point: _gps!, isCurrent: true));
+      spots.add(WatchSpot(id: 'now', label: '現在地', placeName: _gpsName, point: _gps!, isCurrent: true));
     }
     final places = MemberService.placesOf(_member);
     final watched = places.take(SkyRules.maxPlaces(isPlus: isPlus));
@@ -449,15 +449,17 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       .toList()
     ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
 
-  static const int _nationwideShown = 3;
-
-  /// いま全国で見えている入道雲（新しく見つかった順）。名前がまだなら調べに行き、分かったら描き直す
-  List<NationwideCloud> _nationwide(List<SkyCloud> visible) {
-    final newest = [...visible]..sort((a, b) => b.firstSeenAt.compareTo(a.firstSeenAt));
-    return [
-      for (final cloud in newest.take(_nationwideShown))
-        NationwideCloud(id: cloud.id, center: cloud.center, placeName: _nameOf(cloud)),
-    ];
+  /// 全国で見えている入道雲のうち、いちばん近いもの。名前がまだなら調べに行き、分かったら描き直す
+  NationwideCloud? _nearestCloud(List<SkyCloud> visible, LatLng point) {
+    if (visible.isEmpty) return null;
+    final nearest = visible.map((c) => c.viewFrom(point)).reduce((a, b) => a.distanceKm <= b.distanceKm ? a : b);
+    return NationwideCloud(
+      id: nearest.cloud.id,
+      center: nearest.cloud.center,
+      directionName: nearest.directionName,
+      distanceKm: nearest.roundedKm,
+      placeName: _nameOf(nearest.cloud),
+    );
   }
 
   String? _nameOf(SkyCloud cloud) {
@@ -534,7 +536,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
         rangeKm: rangeKm,
         observedAt: observedAt,
         skyNow: SkyNow.near(_amedas, watch.point, now),
-        nationwide: _nationwide(visibleClouds),
+        nearestCloud: _nearestCloud(visibleClouds, watch.point),
         nationwideCount: visibleClouds.length,
         lowSun: lowSun,
       );

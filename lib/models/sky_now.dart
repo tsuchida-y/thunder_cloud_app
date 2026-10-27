@@ -77,13 +77,21 @@ class SkyNow {
       ];
 }
 
-/// ホームの「いま全国で見えている入道雲」の1つ
+/// ホームの「いちばん近い入道雲」（見える範囲の外。全国で見えている入道雲のうち、見張っている場所にいちばん近いもの）
 class NationwideCloud {
   final String id;
   final LatLng center;
+  final String directionName;
+  final int distanceKm;
 
   /// 「那覇市」など。海の上などで分からなければ null
   final String? placeName;
 
-  const NationwideCloud({required this.id, required this.center, this.placeName});
+  const NationwideCloud({
+    required this.id,
+    required this.center,
+    required this.directionName,
+    required this.distanceKm,
+    this.placeName,
+  });
 }

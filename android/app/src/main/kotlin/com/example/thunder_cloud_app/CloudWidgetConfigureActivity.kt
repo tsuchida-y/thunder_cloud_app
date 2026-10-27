@@ -57,7 +57,7 @@ class CloudWidgetConfigureActivity : Activity() {
             setPadding(0, 0, 0, dp(16))
         })
 
-        val choices = spots.ifEmpty { listOf(org.json.JSONObject().put("id", "now").put("label", "いま").put("placeName", "")) }
+        val choices = spots.ifEmpty { listOf(org.json.JSONObject().put("id", "now").put("label", "現在地").put("placeName", "")) }
         for (spot in choices) {
             val id = spot.optString("id")
             val name = spot.optString("placeName")

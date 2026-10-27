@@ -60,7 +60,7 @@ struct SpotQuery: EntityQuery {
   private func all() -> [SpotEntity] {
     let spots = SharedSky.spots().map { SpotEntity(id: $0.id, title: $0.title) }
     // アプリをまだ開いていないときも、いまいる場所は選べるようにする
-    return spots.isEmpty ? [SpotEntity(id: "now", title: "いま")] : spots
+    return spots.isEmpty ? [SpotEntity(id: "now", title: "現在地")] : spots
   }
 
   func entities(for identifiers: [String]) async throws -> [SpotEntity] {
@@ -90,7 +90,7 @@ struct SkyEntry: TimelineEntry {
 
   static let placeholder = SkyEntry(
     date: Date(), plus: true, time: "15:21",
-    spot: SpotData(id: "now", label: "いま", placeName: "滝沢市", mode: "clouds", direction: "南東",
+    spot: SpotData(id: "now", label: "現在地", placeName: "滝沢市", mode: "clouds", direction: "南東",
                    bearingDeg: 135, km: 42, fists: "こぶし1つ半"))
 
   static func load(spotId: String?) -> SkyEntry {
@@ -187,7 +187,7 @@ struct CloudWidgetView: View {
     }
   }
 
-  /// 中の見出し「いま ・ 滝沢市」
+  /// 中の見出し「現在地 ・ 滝沢市」
   private var mediumHeading: String {
     guard let spot = spot else { return "入道雲" }
     return spot.placeName.isEmpty ? spot.label : "\(spot.label) ・ \(spot.placeName)"

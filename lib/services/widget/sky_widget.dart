@@ -11,7 +11,7 @@ class WidgetSpot {
   /// ホームの WatchSpot と同じ ID（'now' か 'place_緯度_経度'）
   final String id;
 
-  /// 「いま」「家」
+  /// 「現在地」「家」
   final String label;
 
   /// 「滝沢市」「盛岡市」

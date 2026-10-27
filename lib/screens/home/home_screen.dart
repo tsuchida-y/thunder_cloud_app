@@ -244,14 +244,17 @@ class _EmptyView extends StatelessWidget {
             title: 'いまは、\n静かな空です。',
             body: '入道雲が現れたら、すぐにお知らせします。',
           ),
-          const SizedBox(height: 32),
-          Center(
-            child: SkyRadar(clouds: const [], rangeKm: state.rangeKm, size: 260, showAllDirections: false, sweep: true),
+          // レーダーは見出しと下のカードの間の真ん中に置く（間が大きく空かないように）
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: SkyRadar(clouds: const [], rangeKm: state.rangeKm, size: 280, showAllDirections: false, sweep: true),
+              ),
+            ),
           ),
-          const Spacer(),
-          const SizedBox(height: 16),
-          // 静かな空のあいだも、開くたびに変わる「いまの空」と「全国の入道雲」
-          SkyNowCard(skyNow: state.skyNow, nationwide: state.nationwide, nationwideCount: state.nationwideCount),
+          // 静かな空のあいだも、開くたびに変わる「いまの空」と「いちばん近い入道雲」
+          SkyNowCard(skyNow: state.skyNow, nearestCloud: state.nearestCloud, nationwideCount: state.nationwideCount),
           if (state.otherSpotClouds.isNotEmpty) ...[
             const SizedBox(height: 16),
             CloudListCard(clouds: const [], others: state.otherSpotClouds, onSelectSpot: onSelectSpot),
