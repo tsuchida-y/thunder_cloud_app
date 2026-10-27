@@ -5,7 +5,9 @@
  *   なので、イベントの app_user_id がそのまま member_server/{uid} の uid になる
  * - member_server はサーバーだけが書く（firestore.rules）。通知の見張り（cloud_watch_service.js）は
  *   isPlus と plusExpiresAt を見て、範囲 90km と見張る場所3か所を使う
- * - 解約（CANCELLATION）しても期限までは Plus のまま。期限切れ（EXPIRATION）で Plus をやめる
+ * - 月額: 解約（CANCELLATION）しても期限までは Plus のまま。期限切れ（EXPIRATION）で Plus をやめる
+ * - 買い切り（2026-10-27 から）: NON_RENEWING_PURCHASE で期限なしの Plus にする。
+ *   返金されたとき（期限のない CANCELLATION）は Plus をやめる
  * - RevenueCat の管理画面で決めた合言葉を Authorization ヘッダーで受け取り、違えば断る
  */
 
@@ -52,6 +54,10 @@ function planUpdate(event, entitlementId = 'plus') {
     plusLastEvent: event.type,
   };
 
+  // 買い切りの返金。期限のない購入の CANCELLATION は、解約ではなく返金を表す
+  if (event.type === 'CANCELLATION' && expiresAt === null) {
+    return { uid, update: { ...common, isPlus: false, plusExpiresAt: null } };
+  }
   if (ACTIVATE_EVENTS.has(event.type) || KEEP_EVENTS.has(event.type)) {
     return { uid, update: { ...common, isPlus: true, plusExpiresAt: expiresAt } };
   }

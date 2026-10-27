@@ -6,7 +6,7 @@ const FakeFirestore = require('./helpers/fake_firestore');
 const expires = Date.parse('2027-08-12T00:00:00Z');
 const event = (type, extra = {}) => ({
   type, app_user_id: 'uid1', entitlement_ids: ['plus'], expiration_at_ms: expires,
-  product_id: 'plus_yearly', store: 'APP_STORE', environment: 'SANDBOX', ...extra,
+  product_id: 'plus_monthly', store: 'APP_STORE', environment: 'SANDBOX', ...extra,
 });
 
 test('購入・更新は Plus にして期限を書く', () => {
@@ -20,6 +20,14 @@ test('購入・更新は Plus にして期限を書く', () => {
 test('解約しても期限までは Plus、期限切れで Plus をやめる', () => {
   assert.equal(planUpdate(event('CANCELLATION')).update.isPlus, true);
   assert.equal(planUpdate(event('EXPIRATION')).update.isPlus, false);
+});
+
+test('買い切りは期限なしの Plus にし、返金されたら Plus をやめる', () => {
+  const lifetime = { expiration_at_ms: null, product_id: 'plus_lifetime' };
+  const bought = planUpdate(event('NON_RENEWING_PURCHASE', lifetime));
+  assert.equal(bought.update.isPlus, true);
+  assert.equal(bought.update.plusExpiresAt, null);
+  assert.equal(planUpdate(event('CANCELLATION', lifetime)).update.isPlus, false);
 });
 
 test('匿名の購入、ほかの権利、テストのイベントは何もしない', () => {

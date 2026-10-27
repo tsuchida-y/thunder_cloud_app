@@ -17,8 +17,10 @@ import '../settings/settings_screen.dart';
 
 /// Plus のご案内（docs/design/Plus.html）
 ///
+/// 月額（7日間無料）と買い切りの2つ（2026-10-27 に年額をやめて買い切りにした）。
 /// ストアの審査のため、購入ボタンのすぐそばに「無料期間のあとの値段」と「自動更新」を出す（CLAUDE.md）。
-/// 無料体験を使えない人には「無料で試す」を出さない。値段はストアの値段を使う。
+/// 買い切りは自動更新がないので、そのことを出す。無料体験を使えない人には「無料で試す」を出さない。
+/// 値段はストアの値段を使う。
 class PlusScreen extends StatefulWidget {
   const PlusScreen({super.key});
 
@@ -29,7 +31,7 @@ class PlusScreen extends StatefulWidget {
 class _PlusScreenState extends State<PlusScreen> {
   PlusPlans? _plans;
   bool _loading = true;
-  bool _annual = true;
+  bool _lifetime = false;
   bool _busy = false;
   bool _isPlus = false;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _serverSub;
@@ -66,7 +68,7 @@ class _PlusScreenState extends State<PlusScreen> {
     if (plans == null) return;
     setState(() => _busy = true);
     try {
-      final ok = await PlusService.purchase(_annual ? plans.annual : plans.monthly);
+      final ok = await PlusService.purchase(_lifetime ? plans.lifetime : plans.monthly);
       if (ok && mounted) setState(() => _isPlus = true);
     } catch (e) {
       AppLogger.warning('購入に失敗: $e', tag: 'PlusScreen');
@@ -97,11 +99,21 @@ class _PlusScreenState extends State<PlusScreen> {
   @override
   Widget build(BuildContext context) {
     final plans = _plans;
-    final annualPrice = plans == null ? '1,200円' : _yen(plans.annual.storeProduct);
     final monthlyPrice = plans == null ? '200円' : _yen(plans.monthly.storeProduct);
-    final perMonth = plans == null ? '100円' : _perMonth(plans.annual.storeProduct);
-    final trial = plans != null && (_annual ? plans.annualTrial : plans.monthlyTrial);
-    final selectedPrice = _annual ? '年額$annualPrice' : '月額$monthlyPrice';
+    final lifetimePrice = plans == null ? '1,600円' : _yen(plans.lifetime.storeProduct);
+    final trial = plans != null && !_lifetime && plans.monthlyTrial;
+    final String buyTitle;
+    final String buySubtitle;
+    if (_lifetime) {
+      buyTitle = 'Plus を買う';
+      buySubtitle = '$lifetimePrice（1回だけのお支払い）';
+    } else if (trial) {
+      buyTitle = '7日間 無料で試す';
+      buySubtitle = 'そのあと月額$monthlyPrice（自動更新）';
+    } else {
+      buyTitle = 'Plus をはじめる';
+      buySubtitle = '月額$monthlyPrice（自動更新）';
+    }
 
     return SkyPage(
       gradient: SkyGradient.plus,
@@ -137,29 +149,29 @@ class _PlusScreenState extends State<PlusScreen> {
               children: [
                 Expanded(
                   child: _PlanButton(
-                    selected: _annual,
-                    badge: 'おすすめ',
-                    title: '年額 $annualPrice',
-                    subtitle: '月あたり$perMonth',
-                    onTap: () => setState(() => _annual = true),
+                    selected: !_lifetime,
+                    badge: '7日間無料',
+                    title: '月額 $monthlyPrice',
+                    subtitle: 'いつでも解約できます',
+                    onTap: () => setState(() => _lifetime = false),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _PlanButton(
-                    selected: !_annual,
-                    title: '月額 $monthlyPrice',
-                    subtitle: 'いつでも解約できます',
-                    onTap: () => setState(() => _annual = false),
+                    selected: _lifetime,
+                    title: '買い切り $lifetimePrice',
+                    subtitle: '1回払いでずっと使える',
+                    onTap: () => setState(() => _lifetime = true),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             _BuyButton(
-              title: trial ? '7日間 無料で試す' : 'Plus をはじめる',
-              // 購入ボタンのすぐそばに、無料期間のあとの値段と自動更新を出す
-              subtitle: trial ? 'そのあと$selectedPrice（自動更新）' : '$selectedPrice（自動更新）',
+              title: buyTitle,
+              // 購入ボタンのすぐそばに、無料期間のあとの値段と自動更新（買い切りは1回だけのお支払い）を出す
+              subtitle: buySubtitle,
               onPressed: _busy || _loading || plans == null ? null : _purchase,
             ),
             if (!_loading && plans == null) ...[
@@ -173,9 +185,11 @@ class _PlusScreenState extends State<PlusScreen> {
           ],
           const SizedBox(height: 12),
           Text(
-            trial
-                ? '終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。'
-                : '期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。',
+            _lifetime
+                ? '買い切りは1回のお支払いで、自動更新はありません。\nあとから追加の料金はかかりません。'
+                : trial
+                    ? '終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。'
+                    : '期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。',
             textAlign: TextAlign.center,
             style: AppTextStyles.caption().copyWith(height: 1.6),
           ),
@@ -207,11 +221,6 @@ class _PlusScreenState extends State<PlusScreen> {
   static String _yen(StoreProduct product) {
     if (product.currencyCode != 'JPY') return product.priceString;
     return '${_comma(product.price.round())}円';
-  }
-
-  static String _perMonth(StoreProduct annual) {
-    if (annual.currencyCode != 'JPY') return '${annual.currencyCode} ${(annual.price / 12).toStringAsFixed(2)}';
-    return '${_comma((annual.price / 12).round())}円';
   }
 
   static String _comma(int value) =>
@@ -274,7 +283,7 @@ class _FeatureCard extends StatelessWidget {
   }
 }
 
-/// 年額・月額の選択
+/// 月額・買い切りの選択
 class _PlanButton extends StatelessWidget {
   final bool selected;
   final String? badge;
@@ -368,7 +377,7 @@ class _PlusActive extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Text(
-          'Plus を使っています。ありがとうございます。\n更新や解約は、ストアの設定から行えます。',
+          'Plus を使っています。ありがとうございます。\n月額の更新や解約は、ストアの設定から行えます。',
           textAlign: TextAlign.center,
           style: AppTextStyles.body(),
         ),

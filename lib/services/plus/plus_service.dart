@@ -5,7 +5,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../../utils/logger.dart';
 
-/// Plus（月額200円・年額1,200円・7日間無料、RevenueCat）
+/// Plus（月額200円・7日間無料と、買い切り1,600円。RevenueCat。2026-10-27 に年額をやめて買い切りにした）
 ///
 /// - RevenueCat の「アプリのユーザー ID」に Firebase の匿名ログインの uid を使う。
 ///   webhook（functions/modules/plus/revenuecat_webhook.js）がその uid の member_server に isPlus を書く
@@ -41,18 +41,17 @@ class PlusService {
     }
   }
 
-  /// 年額と月額の商品。取れなければ null
+  /// 月額と買い切りの商品。取れなければ null
   static Future<PlusPlans?> plans() async {
     if (!_configured) return null;
     try {
       final offering = (await Purchases.getOfferings()).current;
-      final annual = offering?.annual;
       final monthly = offering?.monthly;
-      if (annual == null || monthly == null) return null;
+      final lifetime = offering?.lifetime;
+      if (monthly == null || lifetime == null) return null;
       return PlusPlans(
-        annual: annual,
         monthly: monthly,
-        annualTrial: await _trialAvailable(annual),
+        lifetime: lifetime,
         monthlyTrial: await _trialAvailable(monthly),
       );
     } catch (e) {
@@ -92,12 +91,11 @@ class PlusService {
   }
 }
 
-/// 年額と月額の商品
+/// 月額と買い切りの商品（買い切りには、ストアの仕組みで無料体験を付けられない）
 class PlusPlans {
-  final Package annual;
   final Package monthly;
-  final bool annualTrial;
+  final Package lifetime;
   final bool monthlyTrial;
 
-  const PlusPlans({required this.annual, required this.monthly, required this.annualTrial, required this.monthlyTrial});
+  const PlusPlans({required this.monthly, required this.lifetime, required this.monthlyTrial});
 }
