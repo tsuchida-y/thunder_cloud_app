@@ -389,15 +389,14 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   /// 見張る場所: いまいる場所。分からなければ登録した1か所目（サーバーの watchPointsOf と同じ）
   /// 見張っている場所の一覧（サーバーの watchPointsOf と同じ決まり）
   ///
-  /// いまいる場所が分かればそれ。Plus は登録した場所を3か所まで足す。
-  /// 無料は、いまいる場所が分からないときだけ登録した1か所目。
+  /// いまいる場所が分かればそれ。登録した場所を、無料は1か所、Plus は3か所まで足す（2026-10-27、無料でも1か所）。
   List<WatchSpot> _spots(bool isPlus) {
     final spots = <WatchSpot>[];
     if (_gps != null) {
       spots.add(WatchSpot(id: 'now', label: 'いま', placeName: _gpsName, point: _gps!, isCurrent: true));
     }
     final places = MemberService.placesOf(_member);
-    final watched = isPlus ? places.take(3) : (spots.isEmpty ? places.take(1) : const <WatchPlace>[]);
+    final watched = places.take(SkyRules.maxPlaces(isPlus: isPlus));
     for (final place in watched) {
       spots.add(WatchSpot(
         id: placeSpotId(place),

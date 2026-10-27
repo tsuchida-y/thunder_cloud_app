@@ -4,7 +4,7 @@
  * 雲の一覧（clouds）が新しくなるたびに、利用者（members）ごとに見張る場所から雲を調べ、
  * 通知のルール（notify_rules.js）に合えば「現れました」を送る。
  *
- * - 見張る場所: 無料は「いまいる場所」（なければ登録した1か所目）、Plus は「いまいる場所」＋登録した場所3か所まで
+ * - 見張る場所: 「いまいる場所」＋登録した場所（無料は1か所、Plus は3か所まで。2026-10-27 に無料でも1か所にした）
  * - いまいる場所は、最後にアプリが送ってきた位置。「常に」の許可がない人は、最後に開いた場所になる
  * - Plus かどうかと通知の記録は member_server にある（サーバーだけが書く）
  * - 見張る場所でいま雨が降っているかは、雲を探したときのタイルから調べる（rain_lookup.js）
@@ -35,11 +35,8 @@ function watchPointsOf(member, isPlus) {
     points.push({ label: 'いまいる場所', latitude: member.location.latitude, longitude: member.location.longitude });
   }
   const places = (member.places || []).filter((p) => typeof p.latitude === 'number');
-  if (isPlus) {
-    places.slice(0, NOTIFY_RULES.PLUS_MAX_PLACES).forEach((p) => points.push(p));
-  } else if (points.length === 0 && places.length > 0) {
-    points.push(places[0]);
-  }
+  const maxPlaces = isPlus ? NOTIFY_RULES.PLUS_MAX_PLACES : NOTIFY_RULES.FREE_MAX_PLACES;
+  places.slice(0, maxPlaces).forEach((p) => points.push(p));
   return points;
 }
 

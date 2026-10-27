@@ -13,6 +13,12 @@ class SkyRules {
   /// これより遠い雲は「見えるかもしれません」
   static const double maybeVisibleKm = 60;
 
+  /// 見張れる登録済みの場所の数（いまいる場所は別）。無料でも1か所（2026-10-27）
+  static const int freeMaxPlaces = 1;
+  static const int plusMaxPlaces = 3;
+
+  static int maxPlaces({required bool isPlus}) => isPlus ? plusMaxPlaces : freeMaxPlaces;
+
   /// Plus なら設定の範囲（90km まで）、そうでなければ 30km
   static double rangeKm({required bool isPlus, num? settingKm}) {
     if (!isPlus) return freeRangeKm;

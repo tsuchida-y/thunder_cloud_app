@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../models/finder_target.dart';
+import '../../models/sky_cloud.dart';
 
 import '../../navigation/app_routes.dart';
 import '../../services/notification/cloud_notifications.dart';
@@ -68,13 +69,14 @@ class _HomeScreenState extends State<HomeScreen> {
     AppRoutes.openFinder(context, target);
   }
 
-  /// チップの「＋」。Plus は「場所を追加」を開き、無料は Plus の案内を開く
+  /// チップの「＋」。まだ足せるなら「場所を追加」を開き、無料で1か所を登録したあとは Plus の案内を開く
   Future<void> _addSpot() async {
-    if (!_controller.state.isPlus) {
+    final maxPlaces = SkyRules.maxPlaces(isPlus: _controller.state.isPlus);
+    if (_controller.places.length >= maxPlaces) {
       AppRoutes.openPlus(context);
       return;
     }
-    await AddPlaceSheet.show(context, places: _controller.places, maxPlaces: SpotHeader.plusMaxPlaces);
+    await AddPlaceSheet.show(context, places: _controller.places, maxPlaces: maxPlaces);
   }
 
   void _askAlways() {

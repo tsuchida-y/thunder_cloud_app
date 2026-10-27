@@ -125,7 +125,8 @@ class HomeHeadline extends StatelessWidget {
 
 /// ホームの上の帯: 見張っている場所のチップと設定（場所の見せ方_画面一覧.png）
 ///
-/// Plus は登録した場所に切り替えられ、3か所までは「＋」で足せる。無料は「＋ 場所を追加（Plus）」で Plus の案内を開く。
+/// 登録した場所に切り替えられ、無料は1か所、Plus は3か所までは「＋」で足せる（2026-10-27、無料でも1か所）。
+/// 無料で1か所を登録したあとは「＋ 場所を追加（Plus）」で Plus の案内を開く。
 class SpotHeader extends StatelessWidget {
   final HomeState state;
   final ValueChanged<String> onSelect;
@@ -133,11 +134,10 @@ class SpotHeader extends StatelessWidget {
 
   const SpotHeader({super.key, required this.state, required this.onSelect, required this.onAdd});
 
-  static const int plusMaxPlaces = 3;
-
   @override
   Widget build(BuildContext context) {
-    final canAdd = !state.isPlus || state.placeCount < plusMaxPlaces;
+    final canAdd = !state.isPlus || state.placeCount < SkyRules.plusMaxPlaces;
+    final hasRoom = state.placeCount < SkyRules.maxPlaces(isPlus: state.isPlus);
     return SizedBox(
       height: 44,
       child: Row(
@@ -154,7 +154,7 @@ class SpotHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                 ],
-                if (canAdd) state.isPlus ? _AddCircle(onTap: onAdd) : _AddPlusPill(onTap: onAdd),
+                if (canAdd) hasRoom ? _AddCircle(onTap: onAdd) : _AddPlusPill(onTap: onAdd),
               ],
             ),
           ),
@@ -207,7 +207,7 @@ class _SpotChipButton extends StatelessWidget {
   }
 }
 
-/// Plus の「＋」（点線の丸）
+/// 「＋」（点線の丸）。まだ場所を足せるとき
 class _AddCircle extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -230,7 +230,7 @@ class _AddCircle extends StatelessWidget {
   }
 }
 
-/// 無料の「＋ 場所を追加（Plus）」（点線のまる長）
+/// 無料で1か所を登録したあとの「＋ 場所を追加（Plus）」（点線のまる長）
 class _AddPlusPill extends StatelessWidget {
   final VoidCallback onTap;
 

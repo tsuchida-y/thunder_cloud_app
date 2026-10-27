@@ -85,10 +85,9 @@ test('期限の切れた Plus は無料として扱う', () => {
   assert.equal(isPlusActive(undefined, now), false);
 });
 
-test('見張る場所: 無料は1か所、Plus はいまいる場所＋3か所まで', () => {
+test('見張る場所: 無料はいまいる場所＋1か所、Plus はいまいる場所＋3か所まで', () => {
   const places = [1, 2, 3, 4].map((i) => ({ label: `場所${i}`, latitude: 35 + i, longitude: 135 }));
-  assert.equal(watchPointsOf({ location: home, places }, false).length, 1);
-  assert.equal(watchPointsOf({ location: home, places }, false)[0].label, 'いまいる場所');
+  assert.deepEqual(watchPointsOf({ location: home, places }, false).map((p) => p.label), ['いまいる場所', '場所1']);
   assert.equal(watchPointsOf({ places }, false)[0].label, '場所1');
   assert.equal(watchPointsOf({ location: home, places }, true).length, 4);
   assert.equal(watchPointsOf({}, true).length, 0);

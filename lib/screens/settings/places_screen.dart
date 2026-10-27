@@ -26,9 +26,6 @@ import 'add_place_sheet.dart';
 class PlacesScreen extends StatefulWidget {
   const PlacesScreen({super.key});
 
-  static const int freeMaxPlaces = 1;
-  static const int plusMaxPlaces = 3;
-
   @override
   State<PlacesScreen> createState() => _PlacesScreenState();
 }
@@ -88,18 +85,15 @@ class _PlacesScreenState extends State<PlacesScreen> {
 
   bool get _isPlus => MemberService.isPlusActive(_server, DateTime.now());
   List<WatchPlace> get _places => MemberService.placesOf(_member);
-  int get _maxPlaces => _isPlus ? PlacesScreen.plusMaxPlaces : PlacesScreen.freeMaxPlaces;
+  int get _maxPlaces => SkyRules.maxPlaces(isPlus: _isPlus);
 
   /// いまいる場所を見張っているか（位置情報が使えて、場所が分かっている）
   bool get _currentWatched => !_locationOff && (_currentPoint != null || _member?['location'] != null);
 
   /// 登録した i 番目の場所を見張っているか（サーバーの watchPointsOf と同じ決まり）
   ///
-  /// Plus は3か所まで、いまいる場所といっしょに見張る。無料は、いまいる場所が分からないときだけ1か所目を見張る。
-  bool _placeWatched(int index) {
-    if (_isPlus) return index < PlacesScreen.plusMaxPlaces;
-    return !_currentWatched && index == 0;
-  }
+  /// いまいる場所といっしょに、無料は1か所、Plus は3か所まで見張る（2026-10-27、無料でも1か所）。
+  bool _placeWatched(int index) => index < _maxPlaces;
 
   /// その場所に、いま見える範囲の雲があるか
   bool _hasCloudAt(LatLng point) {
@@ -209,17 +203,6 @@ class _PlacesScreenState extends State<PlacesScreen> {
                   ),
               ],
             ),
-            if (!_isPlus && _currentWatched && places.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  '無料プランでは、いまいる場所が分かるあいだは、登録した場所は見張りません。'
-                  '位置情報がオフのときに、かわりに見張ります。いっしょに見張るのは Plus の機能です。',
-                  style: AppTextStyles.note(),
-                ),
-              ),
-            ],
             if (remaining > 0) ...[
               const SizedBox(height: 14),
               _AddPlaceButton(remaining: remaining, onPressed: _openAdd),
@@ -264,7 +247,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
             const SizedBox(height: 14),
             Text.rich(
               TextSpan(children: [
-                const TextSpan(text: '無料プランは「いまいる場所」か、手で選んだ1か所です。\n3か所の登録は '),
+                const TextSpan(text: '無料プランは「いまいる場所」と、登録した1か所です。\n3か所の登録は '),
                 WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
