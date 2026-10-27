@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// v2.0 の色（docs/design の HTML と CLAUDE.md の「デザインの決まり」）
 ///
-/// オレンジは使わない。
+/// オレンジも使ってよい（2026-10-27 tsuchida さん）。いまは朝と夕方の空の色に使っている。
 class AppColors {
   AppColors._();
 
@@ -40,15 +40,15 @@ enum SkyGradient {
     [0.0, 0.36, 0.68, 1.0],
   ),
 
-  /// 朝や夕方（太陽が低いとき）の、雲があるときのホーム。オレンジは使わず、青から薄い藤色にする
+  /// 朝や夕方（太陽が低いとき）の、雲があるときのホーム。上は青、下へ藤色からオレンジの夕焼けの色にする
   dayLow(
-    [Color(0xFF22479A), Color(0xFF4F74C0), Color(0xFFA9B9E6), Color(0xFFEDEAF7)],
+    [Color(0xFF22479A), Color(0xFF5D72BE), Color(0xFFE7A98F), Color(0xFFFFE4C8)],
     [0.0, 0.36, 0.68, 1.0],
   ),
 
   /// 朝や夕方（太陽が低いとき）の、雲がないときのホーム
   calmLow(
-    [Color(0xFF2B4F9C), Color(0xFF5A7CC6), Color(0xFFB7C3EA), Color(0xFFF2EEF8)],
+    [Color(0xFF2B4F9C), Color(0xFF6A7FC6), Color(0xFFF0B79A), Color(0xFFFFEBD4)],
     [0.0, 0.36, 0.68, 1.0],
   ),
 
