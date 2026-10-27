@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/sky_cloud.dart';
+import '../../../models/sky_now.dart';
 import '../home_controller.dart';
 import '../../../navigation/app_routes.dart';
 import '../../../theme/app_colors.dart';
@@ -367,6 +368,104 @@ class _OtherSpotRow extends StatelessWidget {
 }
 
 /// ホームのいちばん下の「見えた入道雲の記録」
+/// 雲がないときのホームの「いまの空」と「全国で見えている入道雲」（Empty.html、2026-10-27）
+///
+/// 静かな空のあいだも、開くたびに変わるものを出す。どちらも、いまの観測（予想ではない）。
+class SkyNowCard extends StatelessWidget {
+  final SkyNow? skyNow;
+  final List<NationwideCloud> nationwide;
+  final int nationwideCount;
+
+  const SkyNowCard({super.key, required this.skyNow, required this.nationwide, required this.nationwideCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final sky = skyNow;
+    final names = [for (final c in nationwide) if (c.placeName != null) c.placeName!];
+    final rest = nationwideCount - names.length;
+    final String nationwideText;
+    if (nationwideCount == 0) {
+      nationwideText = 'いまはありません';
+    } else if (names.isEmpty) {
+      nationwideText = '$nationwideCountか所';
+    } else {
+      nationwideText = '${names.join('、')}${rest > 0 ? ' ほか$restか所' : ''}';
+    }
+    final rows = <Widget>[
+      if (sky != null)
+        _InfoRow(
+          icon: Icons.wb_sunny_outlined,
+          title: 'いまの空',
+          text: sky.parts.join(' ・ '),
+          note: '近くのアメダス ${TimeText.clock(sky.observedAt)}',
+        ),
+      _InfoRow(
+        icon: Icons.public_rounded,
+        title: '全国で見えている入道雲',
+        text: nationwideText,
+        highlight: nationwideCount > 0,
+      ),
+    ];
+    return SkyCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: i < rows.length - 1 ? const Border(bottom: BorderSide(color: AppColors.dividerOnCard)) : null,
+              ),
+              child: rows[i],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String text;
+  final String? note;
+  final bool highlight;
+
+  const _InfoRow({required this.icon, required this.title, required this.text, this.note, this.highlight = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon, size: 20, color: AppColors.accent)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.note().copyWith(height: 1.3)),
+                const SizedBox(height: 2),
+                Text(
+                  text,
+                  style: highlight
+                      ? AppTextStyles.item(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700)
+                      : AppTextStyles.item(),
+                ),
+                if (note != null) ...[
+                  const SizedBox(height: 2),
+                  Text(note!, style: AppTextStyles.caption()),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class RecordLink extends StatelessWidget {
   const RecordLink({super.key});
 

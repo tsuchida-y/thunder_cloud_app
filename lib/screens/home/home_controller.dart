@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
+import '../../models/sky_now.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
 import '../../services/notification/cloud_notifications.dart';
@@ -125,6 +126,16 @@ class HomeState {
   final TodaysCloud? todaysCloud;
   final LastSky? lastSky;
 
+  /// 近くのアメダスのいまの観測（「日が差しています・気温18℃・見通し20km以上」）。分からなければ null
+  final SkyNow? skyNow;
+
+  /// いま全国で見えている入道雲（新しく見つかった順に3つまで）と、その数
+  final List<NationwideCloud> nationwide;
+  final int nationwideCount;
+
+  /// 朝や夕方（太陽が低い）か。ホームの空の色を変える
+  final bool lowSun;
+
   /// 許可がないときの画面で、どのカードを出すか
   final bool locationOff;
   final bool notificationsOff;
@@ -143,6 +154,10 @@ class HomeState {
     this.nextSunrise,
     this.todaysCloud,
     this.lastSky,
+    this.skyNow,
+    this.nationwide = const [],
+    this.nationwideCount = 0,
+    this.lowSun = false,
     this.locationOff = false,
     this.notificationsOff = false,
   });
@@ -164,6 +179,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cloudSub;
   StreamSubscription<DateTime?>? _observedSub;
+  StreamSubscription<Map<String, dynamic>?>? _amedasSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _memberSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _serverSub;
   Timer? _offlineTimer;
@@ -186,6 +202,10 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   List<SkyCloud>? _activeClouds;
   bool _offline = false;
   DateTime? _observedAt;
+  Map<String, dynamic>? _amedas;
+
+  /// 全国の入道雲の場所の名前（雲の ID ごとに1回だけ調べる）
+  final Map<String, String?> _cloudNames = {};
   LastSky? _lastSky;
   String? _savedSkyKey;
 
@@ -375,6 +395,10 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       _observedAt = time;
       _recompute();
     }, onError: (Object e) => AppLogger.warning('system/jma_nowcast を読めません: $e', tag: 'HomeController'));
+    _amedasSub ??= SkyRepository.watchAmedasLatest().listen((data) {
+      _amedas = data;
+      _recompute();
+    }, onError: (Object e) => AppLogger.warning('system/amedas_latest を読めません: $e', tag: 'HomeController'));
   }
 
   void _cancelSky() {
@@ -382,6 +406,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     _cloudSub = null;
     _observedSub?.cancel();
     _observedSub = null;
+    _amedasSub?.cancel();
+    _amedasSub = null;
     _offlineTimer?.cancel();
     _offlineTimer = null;
   }
@@ -422,6 +448,28 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       .where((v) => v.distanceKm <= rangeKm)
       .toList()
     ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+  static const int _nationwideShown = 3;
+
+  /// いま全国で見えている入道雲（新しく見つかった順）。名前がまだなら調べに行き、分かったら描き直す
+  List<NationwideCloud> _nationwide(List<SkyCloud> visible) {
+    final newest = [...visible]..sort((a, b) => b.firstSeenAt.compareTo(a.firstSeenAt));
+    return [
+      for (final cloud in newest.take(_nationwideShown))
+        NationwideCloud(id: cloud.id, center: cloud.center, placeName: _nameOf(cloud)),
+    ];
+  }
+
+  String? _nameOf(SkyCloud cloud) {
+    if (_cloudNames.containsKey(cloud.id)) return _cloudNames[cloud.id];
+    _cloudNames[cloud.id] = null;
+    CurrentPlace.placeName(cloud.center).then((name) {
+      if (name == null || _disposed) return;
+      _cloudNames[cloud.id] = name;
+      _recompute();
+    });
+    return null;
+  }
 
   void _recompute() {
     if (_disposed) return;
@@ -468,6 +516,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       next = HomeState(mode: HomeMode.loading, placeName: watch.name);
     } else {
       final views = _viewsAt(watch.point, rangeKm);
+      final visibleClouds = _activeClouds!.where((c) => c.isVisible).toList();
+      final lowSun = !SunTimes.isDaytime(now, watch.point.latitude, watch.point.longitude, altitudeDeg: SunTimes.lowSunDeg);
       final observedAt = _observedAt ??
           (_activeClouds!.isEmpty
               ? null
@@ -483,6 +533,10 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
         clouds: views,
         rangeKm: rangeKm,
         observedAt: observedAt,
+        skyNow: SkyNow.near(_amedas, watch.point, now),
+        nationwide: _nationwide(visibleClouds),
+        nationwideCount: visibleClouds.length,
+        lowSun: lowSun,
       );
       // 「最後に見た空」とウィジェットは、いまいる場所（なければ1つ目の場所）のもの
       if (selected.id == spots.first.id) _rememberSky(views, observedAt ?? now);

@@ -99,6 +99,8 @@ const AMEDAS = {
   VISIBILITY_MAX_M: 20000,
   // 雲のてっぺんの高さを出すときの地上の気温は、この距離までのいちばん近い地点を使う
   TEMP_RADIUS_KM: 50,
+  // アプリのホームの「いまの空」用に、最新の観測をまとめて置く場所（アプリは気象庁に直接行かず、ここを読む）
+  LATEST_DOC_PATH: 'system/amedas_latest',
 };
 
 /**

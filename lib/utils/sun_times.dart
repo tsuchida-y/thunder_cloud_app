@@ -53,10 +53,18 @@ class SunTimes {
     return SunTimes(toDate(solarTransit - hourAngle / 360), toDate(solarTransit + hourAngle / 360));
   }
 
+  /// 太陽がこれより低いと、朝や夕方の空として背景の色を変える（ホームの空の色）
+  static const double lowSunDeg = 10;
+
+  /// 太陽がこれより低いと、晴れていても日照計が日照なしになる（サーバーの AMEDAS.SUNSHINE_MIN_SUN_ALTITUDE_DEG と同じ）
+  static const double sunshineMinDeg = 15;
+
   /// いま、その場所が昼（市民薄明のはじまりから終わりまで。空が明るいあいだ）かどうか
-  static bool isDaytime(DateTime now, double latitude, double longitude) {
+  ///
+  /// altitudeDeg を渡すと、太陽がその高さより上にあるかを返す。
+  static bool isDaytime(DateTime now, double latitude, double longitude, {double altitudeDeg = civilTwilightDeg}) {
     for (final offset in [-1, 0, 1]) {
-      final times = forUtcDate(now.add(Duration(days: offset)), latitude, longitude, altitudeDeg: civilTwilightDeg);
+      final times = forUtcDate(now.add(Duration(days: offset)), latitude, longitude, altitudeDeg: altitudeDeg);
       if (times.sunrise != null &&
           times.sunset != null &&
           !times.sunrise!.isAfter(now) &&

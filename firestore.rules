@@ -49,6 +49,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ホームの「いまの空」用のアメダスの最新の観測（サーバーだけが書く）
+    match /system/amedas_latest {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     // ===== v1（本番と同じ。v2.0 の公開時に締め直す） =====
 
     // テスト接続用（一時的）

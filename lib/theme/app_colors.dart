@@ -40,6 +40,18 @@ enum SkyGradient {
     [0.0, 0.36, 0.68, 1.0],
   ),
 
+  /// 朝や夕方（太陽が低いとき）の、雲があるときのホーム。オレンジは使わず、青から薄い藤色にする
+  dayLow(
+    [Color(0xFF22479A), Color(0xFF4F74C0), Color(0xFFA9B9E6), Color(0xFFEDEAF7)],
+    [0.0, 0.36, 0.68, 1.0],
+  ),
+
+  /// 朝や夕方（太陽が低いとき）の、雲がないときのホーム
+  calmLow(
+    [Color(0xFF2B4F9C), Color(0xFF5A7CC6), Color(0xFFB7C3EA), Color(0xFFF2EEF8)],
+    [0.0, 0.36, 0.68, 1.0],
+  ),
+
   /// 方角ガイド
   finder(
     [Color(0xFF1C4FA8), Color(0xFF3F86D6), Color(0xFF9CCDF3), Color(0xFFEAF5FF)],

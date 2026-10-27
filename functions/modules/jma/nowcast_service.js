@@ -13,6 +13,7 @@
  * 4. 前回までの雲と結びつけて Firestore の clouds に保存する
  * 5. 結果と失敗の回数を system/jma_nowcast に残す（続けて失敗したらエラーのログを出す）
  * 6. 見張りで使うもの（雨を調べる RainLookup と、アメダスの観測値）を返す
+ * 7. アメダスが新しい時刻になったら、アプリのホームの「いまの空」用に system/amedas_latest へ置く
  */
 
 const admin = require('firebase-admin');
@@ -23,7 +24,7 @@ const { RainLookup } = require('./rain_lookup');
 const HimawariClient = require('./himawari_client');
 const AmedasClient = require('./amedas_client');
 const { coldestTopTempC, topHeightKm, isTallEnough, surfaceTempNear } = require('./sky_observations');
-const { JMA_NOWCAST, HIMAWARI } = require('../../constants');
+const { JMA_NOWCAST, HIMAWARI, AMEDAS } = require('../../constants');
 
 class NowcastService {
   constructor(jmaClient = new JmaClient(), { himawari = new HimawariClient(), amedas = new AmedasClient() } = {}) {
@@ -125,6 +126,7 @@ class NowcastService {
       requestCount: requestCount + sky.requestCount,
       rainLookup,
       amedasStations: sky.amedasStations,
+      amedasObservedAt: sky.amedasObservedAt,
       errors: sky.errors,
     };
   }
@@ -137,13 +139,16 @@ class NowcastService {
     let requestCount = 0;
 
     let amedasStations = null;
+    let amedasObservedAt = null;
     try {
-      amedasStations = (await this.amedas.getLatest()).stations;
+      const latest = await this.amedas.getLatest();
+      amedasStations = latest.stations;
+      amedasObservedAt = latest.observedAt;
       requestCount += 2;
     } catch (error) {
       errors.amedas = error;
     }
-    if (clusters.length === 0) return { clusters, amedasStations, errors, requestCount };
+    if (clusters.length === 0) return { clusters, amedasStations, amedasObservedAt, errors, requestCount };
 
     const images = new Map();
     try {
@@ -185,7 +190,7 @@ class NowcastService {
         topHeightKm: topTempC === null ? null : topHeightKm(topTempC, surfaceTempNear(amedasStations, cluster)),
       });
     }
-    return { clusters: result, amedasStations, errors, requestCount };
+    return { clusters: result, amedasStations, amedasObservedAt, errors, requestCount };
   }
 
   /**
@@ -218,6 +223,10 @@ class NowcastService {
       const result = await this._saveClouds(clusters, observedAt);
       const himawariFailures = this._countSubFailure('HIMAWARI', status.himawariFailures, detected.errors.himawari);
       const amedasFailures = this._countSubFailure('AMEDAS', status.amedasFailures, detected.errors.amedas);
+      const amedasTime = detected.amedasObservedAt ? detected.amedasObservedAt.toISOString() : null;
+      if (amedasTime && amedasTime !== status.lastAmedasTime) {
+        await this._saveAmedasLatest(detected.amedasObservedAt, amedasStations);
+      }
 
       await statusRef.set({
         lastRainTime: times.rain,
@@ -231,6 +240,7 @@ class NowcastService {
         lastRequestCount: requestCount + 2,
         himawariFailures,
         amedasFailures,
+        lastAmedasTime: amedasTime || status.lastAmedasTime || null,
       }, { merge: true });
 
       console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個、背が低いので外した塊${detected.lowClusterCount}個 ` +
@@ -300,6 +310,28 @@ class NowcastService {
     }
 
     return { updated: updated.length, created: created.length, hidden: hidden.length, ended: ended.length };
+  }
+
+  /**
+   * アプリのホームの「いまの空」用に、アメダスの最新の観測をまとめて1件に置く（10分ごと、約1,300地点で80KB ほど）
+   *
+   * 名前を短くして大きさを抑える: la 緯度、lo 経度、t 気温（℃）、s 前の1時間の日照（時間）、v 視程（m）
+   */
+  async _saveAmedasLatest(observedAt, stations) {
+    const round = (value, digits) => (typeof value === 'number' ? Number(value.toFixed(digits)) : null);
+    const compact = [];
+    for (const s of stations || []) {
+      const entry = { la: round(s.latitude, 3), lo: round(s.longitude, 3) };
+      if (typeof s.tempC === 'number') entry.t = round(s.tempC, 1);
+      if (typeof s.sun1h === 'number') entry.s = round(s.sun1h, 1);
+      if (typeof s.visibilityM === 'number') entry.v = Math.round(s.visibilityM);
+      if (entry.t !== undefined || entry.s !== undefined || entry.v !== undefined) compact.push(entry);
+    }
+    await this.firestore.doc(AMEDAS.LATEST_DOC_PATH).set({
+      observedAt: admin.firestore.Timestamp.fromDate(observedAt),
+      stations: compact,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
   }
 
   /**

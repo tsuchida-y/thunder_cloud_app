@@ -188,3 +188,31 @@ test('ひまわりとアメダスが取れなくても、ナウキャストだ�
   assert.equal(status.himawariFailures, 1);
   assert.equal(status.amedasFailures, 1);
 });
+
+test('アメダスが新しい時刻になったときだけ、ホームの「いまの空」用に観測を置く', async () => {
+  const firestore = new FakeFirestore();
+  const observedAt = new Date('2026-08-12T06:20:00Z');
+  const sky = fakeSky();
+  let calls = 0;
+  sky.amedas.getLatest = async () => {
+    calls++;
+    return {
+      observedAt,
+      stations: [
+        { latitude: 39.6833, longitude: 141.1667, tempC: 28.43, sun1h: 0.8, visibilityM: null },
+        { latitude: 39.7, longitude: 141.2, tempC: null, sun1h: null, visibilityM: null },
+      ],
+    };
+  };
+  await serviceWith(fakeJma(jmaTime(new Date(Date.now() - 5 * 60 * 1000))), firestore, sky).updateClouds();
+  const doc = (await firestore.doc('system/amedas_latest').get()).data();
+  assert.equal(doc.observedAt.toDate().getTime(), observedAt.getTime());
+  // 値のない地点は置かない。数字は丸める
+  assert.deepEqual(doc.stations, [{ la: 39.683, lo: 141.167, t: 28.4, s: 0.8 }]);
+
+  // 同じ時刻なら書き直さない
+  firestore.docs.delete('system/amedas_latest');
+  await serviceWith(fakeJma(jmaTime(new Date())), firestore, sky).updateClouds();
+  assert.equal(calls, 2);
+  assert.equal(firestore.docs.has('system/amedas_latest'), false);
+});

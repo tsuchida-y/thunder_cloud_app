@@ -27,6 +27,10 @@ class SkyRepository {
         return observedAt is Timestamp ? observedAt.toDate() : null;
       });
 
+  /// ホームの「いまの空」用のアメダスの最新の観測（サーバーが10分ごとに置く）
+  static Stream<Map<String, dynamic>?> watchAmedasLatest() =>
+      _db.doc('system/amedas_latest').snapshots().map((doc) => doc.data());
+
   /// きょう（端末の日付）見えていた雲。夜の画面の「きょう見えた入道雲」に使う
   static Future<List<SkyCloud>> cloudsSeenSince(DateTime since) async {
     final snap = await _db

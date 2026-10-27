@@ -10,6 +10,8 @@ import '../../../theme/app_text_styles.dart';
 /// 上が本当の北。外側の円が見える範囲（無料 30km、Plus は設定の範囲）。
 /// いちばん近い雲は光の筋つきで大きく、ほかの雲は小さく描く。
 /// 60km より遠い「見えるかもしれない」雲は点線の円で描く。
+/// [sweep] が true なら、見張っていることが目で分かるよう、光の筋がゆっくり回る（2026-10-27）。
+/// 端末の設定で動きを減らしている人には回さない。
 class SkyRadar extends StatelessWidget {
   final List<CloudView> clouds;
   final double rangeKm;
@@ -18,12 +20,16 @@ class SkyRadar extends StatelessWidget {
   /// 東・南・西の文字も出すか（雲がないときは北だけ）
   final bool showAllDirections;
 
+  /// 見張り中の光の筋を回すか
+  final bool sweep;
+
   const SkyRadar({
     super.key,
     required this.clouds,
     required this.rangeKm,
     this.size = 260,
     this.showAllDirections = true,
+    this.sweep = false,
   });
 
   @override
@@ -31,14 +37,19 @@ class SkyRadar extends StatelessWidget {
     return Semantics(
       label: _semanticLabel(),
       image: true,
-      child: CustomPaint(
-        size: Size.square(size),
-        painter: _RadarPainter(
-          clouds: clouds,
-          rangeKm: rangeKm,
-          showAllDirections: showAllDirections,
-          labelStyle: AppTextStyles.number(fontSize: showAllDirections ? 13 : 18, color: Colors.white),
-        ),
+      child: Stack(
+        children: [
+          CustomPaint(
+            size: Size.square(size),
+            painter: _RadarPainter(
+              clouds: clouds,
+              rangeKm: rangeKm,
+              showAllDirections: showAllDirections,
+              labelStyle: AppTextStyles.number(fontSize: showAllDirections ? 13 : 18, color: Colors.white),
+            ),
+          ),
+          if (sweep && !MediaQuery.disableAnimationsOf(context)) _RadarSweep(size: size),
+        ],
       ),
     );
   }
@@ -48,6 +59,65 @@ class SkyRadar extends StatelessWidget {
     final parts = clouds.map((c) => '${c.directionName}${c.roundedKm}kmに入道雲').join('、');
     return '現在地を中心にした空のレーダー。$parts';
   }
+}
+
+/// 見張り中の光の筋（6秒で1周）
+class _RadarSweep extends StatefulWidget {
+  final double size;
+
+  const _RadarSweep({required this.size});
+
+  @override
+  State<_RadarSweep> createState() => _RadarSweepState();
+}
+
+class _RadarSweepState extends State<_RadarSweep> with SingleTickerProviderStateMixin {
+  late final AnimationController _turn = AnimationController(vsync: this, duration: const Duration(seconds: 6))
+    ..repeat();
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: RepaintBoundary(
+        child: CustomPaint(size: Size.square(widget.size), painter: _SweepPainter(_turn)),
+      ),
+    );
+  }
+}
+
+class _SweepPainter extends CustomPainter {
+  final Animation<double> turn;
+
+  _SweepPainter(this.turn) : super(repaint: turn);
+
+  /// 光の筋の幅（扇の角度）
+  static const double _width = math.pi / 3;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // レーダーの外側の円（デザインの 320 のうち半径 150）の内側だけを塗る
+    final center = size.center(Offset.zero);
+    final radius = size.width * 150 / 320;
+    final end = turn.value * 2 * math.pi - math.pi / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final paint = Paint()
+      // 0〜幅の扇の色を作って、いまの角度まで回す（SweepGradient は 0〜2π の外の角度を扱えないため）
+      ..shader = SweepGradient(
+        endAngle: _width,
+        colors: [Colors.white.withValues(alpha: 0), Colors.white.withValues(alpha: 0.22)],
+        transform: GradientRotation(end - _width),
+      ).createShader(rect);
+    canvas.drawArc(rect, end - _width, _width, true, paint);
+  }
+
+  @override
+  bool shouldRepaint(_SweepPainter oldDelegate) => false;
 }
 
 class _RadarPainter extends CustomPainter {

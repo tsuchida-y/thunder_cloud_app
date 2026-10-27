@@ -49,7 +49,30 @@ a{color:#1C4FA8}a:hover{color:#123A80}
     </svg>
   </div>
 
+  <!-- レーダーには、見張っていることが分かるよう、光の筋（白の透明度0→22%の扇、60°）を6秒で1周させる。動きを減らす設定の人には回さない（2026-10-27） -->
+  <!-- 背景: 太陽が10°より低い朝や夕方は #2B4F9C → #5A7CC6 → #B7C3EA → #F2EEF8 にする（オレンジは使わない。2026-10-27） -->
+
   <div style="flex-grow: 1"></div>
+
+  <!-- いまの空と、全国で見えている入道雲（2026-10-27）。静かな空のあいだも開くたびに変わる。どちらも、いまの観測 -->
+  <div style="background: rgba(255, 255, 255, 0.94); border-radius: 22px; color: #14284A">
+    <div style="display: flex; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #E3EAF2">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C4FA8" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 13px; color: #47597A">いまの空</div>
+        <div style="font-size: 15px">日が差しています ・ 気温24℃ ・ 見通し20km以上</div>
+        <div style="font-size: 12px; color: #47597A">近くのアメダス 14:20</div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 12px; padding: 12px 18px">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C4FA8" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"></path></svg>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: 13px; color: #47597A">全国で見えている入道雲</div>
+        <!-- ないときは「いまはありません」（紺の普通の字）。名前の分からない海の上の雲は「ほか○か所」に入れる -->
+        <div style="font-size: 15px; font-weight: 700; color: #1C4FA8">那覇市、奄美市 ほか1か所</div>
+      </div>
+    </div>
+  </div>
 
   <div style="text-align: center; font-size: 12px; color: #47597A">1分前に空を見ました ・ 出典：気象庁</div>
 </div>

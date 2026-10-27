@@ -174,7 +174,8 @@ class _CloudsView extends StatelessWidget {
         ? '約${nearest.roundedKm}km先なので、見えるかもしれません。${nearest.fistsLabel}くらいの高さに立っています。'
         : '約${nearest.roundedKm}km先。${nearest.fistsLabel}くらいの高さに立っています。';
     return SkyPage(
-      gradient: SkyGradient.day,
+      // 朝や夕方は、外の空に合わせて少し藤色寄りにする
+      gradient: state.lowSun ? SkyGradient.dayLow : SkyGradient.day,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -194,7 +195,7 @@ class _CloudsView extends StatelessWidget {
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Center(child: SkyRadar(clouds: state.clouds, rangeKm: state.rangeKm)),
+            child: Center(child: SkyRadar(clouds: state.clouds, rangeKm: state.rangeKm, sweep: true)),
           ),
           const Spacer(),
           const SizedBox(height: 14),
@@ -227,7 +228,8 @@ class _EmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SkyPage(
-      gradient: SkyGradient.calm,
+      // 朝や夕方は、外の空に合わせて少し藤色寄りにする
+      gradient: state.lowSun ? SkyGradient.calmLow : SkyGradient.calm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -242,9 +244,14 @@ class _EmptyView extends StatelessWidget {
             title: 'いまは、\n静かな空です。',
             body: '入道雲が現れたら、すぐにお知らせします。',
           ),
-          const SizedBox(height: 40),
-          Center(child: SkyRadar(clouds: const [], rangeKm: state.rangeKm, size: 280, showAllDirections: false)),
+          const SizedBox(height: 32),
+          Center(
+            child: SkyRadar(clouds: const [], rangeKm: state.rangeKm, size: 260, showAllDirections: false, sweep: true),
+          ),
           const Spacer(),
+          const SizedBox(height: 16),
+          // 静かな空のあいだも、開くたびに変わる「いまの空」と「全国の入道雲」
+          SkyNowCard(skyNow: state.skyNow, nationwide: state.nationwide, nationwideCount: state.nationwideCount),
           if (state.otherSpotClouds.isNotEmpty) ...[
             const SizedBox(height: 16),
             CloudListCard(clouds: const [], others: state.otherSpotClouds, onSelectSpot: onSelectSpot),
