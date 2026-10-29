@@ -4,7 +4,6 @@ import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/common/app_buttons.dart';
 
 /// 「場所を追加」（場所の見せ方_画面一覧.png の「＋で開く『場所を追加』」）
@@ -21,10 +20,8 @@ class AddPlaceSheet extends StatefulWidget {
 
   const AddPlaceSheet({super.key, required this.places, required this.maxPlaces, this.initialQuery = ''});
 
-  /// 呼び名の候補。押すと入力欄に入る。はじめは、選んだ場所の地名が入る。自分で入れてもよい（2026-10-29）
-  static const List<String> labels = ['家', '学校', '職場', '実家'];
-
-  /// 呼び名の長さの上限（ホームの上のチップに収まるように）
+  /// 呼び名の長さの上限（ホームの上のチップに収まるように）。
+  /// 呼び名は、はじめは選んだ場所の地名が入り、「家」などにしたいときは自分で入れる（2026-10-29）
   static const int maxLabelLength = 10;
 
   static Future<bool> show(BuildContext context, {required List<WatchPlace> places, required int maxPlaces, String initialQuery = ''}) async {
@@ -49,7 +46,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   PlaceCandidate? _picked;
   late final TextEditingController _labelInput = TextEditingController()..addListener(() => setState(() {}));
 
-  /// 呼び名を自分で入れたか、候補を押したか。まだなら、場所を選ぶたびに地名を入れる
+  /// 呼び名を自分で入れたか。まだなら、場所を選ぶたびに地名を入れる
   bool _labelChosen = false;
 
   void _pick(PlaceCandidate candidate) {
@@ -211,19 +208,6 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                   focusedBorder: border,
                 ),
               ),
-              const SizedBox(height: 8),
-              // 地名でなく「家」などにしたいときの候補。押すと入力欄に入る
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final label in AddPlaceSheet.labels)
-                    _LabelChip(label: label, selected: label == _label, onTap: () {
-                      _labelChosen = true;
-                      _labelInput.text = label;
-                    }),
-                ],
-              ),
               const SizedBox(height: 20),
               PrimaryButton(
                 label: 'この場所を追加（あと$remainingか所）',
@@ -272,40 +256,6 @@ class _CandidateRow extends StatelessWidget {
               if (candidate.region != null && candidate.region != candidate.shortName)
                 Text(candidate.region!, style: AppTextStyles.caption()),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LabelChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _LabelChip({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: selected,
-      button: true,
-      child: Material(
-        color: selected ? AppColors.primary : Colors.white,
-        shape: StadiumBorder(side: BorderSide(color: selected ? AppColors.primary : AppColors.switchOff)),
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: AppSizes.minTapTarget, minWidth: 64),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: AppTextStyles.body(color: selected ? Colors.white : AppColors.text)
-                  .copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2),
-            ),
           ),
         ),
       ),
