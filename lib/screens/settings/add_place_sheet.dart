@@ -21,7 +21,11 @@ class AddPlaceSheet extends StatefulWidget {
 
   const AddPlaceSheet({super.key, required this.places, required this.maxPlaces, this.initialQuery = ''});
 
+  /// 呼び名の候補。押すと入力欄に入る。呼び名は自分で入れてもよい（2026-10-29）
   static const List<String> labels = ['家', '学校', '職場', '実家'];
+
+  /// 呼び名の長さの上限（ホームの上のチップに収まるように）
+  static const int maxLabelLength = 10;
 
   static Future<bool> show(BuildContext context, {required List<WatchPlace> places, required int maxPlaces, String initialQuery = ''}) async {
     final added = await showModalBottomSheet<bool>(
@@ -43,10 +47,14 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   late final TextEditingController _query = TextEditingController(text: widget.initialQuery);
   List<PlaceCandidate>? _results;
   PlaceCandidate? _picked;
-  late String _label = AddPlaceSheet.labels.firstWhere(
-    (l) => widget.places.every((p) => p.label != l),
-    orElse: () => AddPlaceSheet.labels.first,
-  );
+  late final TextEditingController _labelInput = TextEditingController(
+    text: AddPlaceSheet.labels.firstWhere(
+      (l) => widget.places.every((p) => p.label != l),
+      orElse: () => AddPlaceSheet.labels.first,
+    ),
+  )..addListener(() => setState(() {}));
+
+  String get _label => _labelInput.text.trim();
   bool _searching = false;
   bool _saving = false;
 
@@ -59,6 +67,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   @override
   void dispose() {
     _query.dispose();
+    _labelInput.dispose();
     super.dispose();
   }
 
@@ -177,18 +186,37 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
               const SizedBox(height: 16),
               Text('呼び名', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
+              TextField(
+                controller: _labelInput,
+                maxLength: AddPlaceSheet.maxLabelLength,
+                textInputAction: TextInputAction.done,
+                style: AppTextStyles.body().copyWith(height: 1.3),
+                decoration: InputDecoration(
+                  hintText: '例：家、おばあちゃんの家、塾',
+                  filled: true,
+                  fillColor: Colors.white,
+                  isDense: true,
+                  counterText: '',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  border: border,
+                  enabledBorder: border,
+                  focusedBorder: border,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // 候補を押すと入力欄に入る
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   for (final label in AddPlaceSheet.labels)
-                    _LabelChip(label: label, selected: label == _label, onTap: () => setState(() => _label = label)),
+                    _LabelChip(label: label, selected: label == _label, onTap: () => _labelInput.text = label),
                 ],
               ),
               const SizedBox(height: 20),
               PrimaryButton(
                 label: 'この場所を追加（あと$remainingか所）',
-                onPressed: _picked == null || _saving || remaining <= 0 ? null : _add,
+                onPressed: _picked == null || _label.isEmpty || _saving || remaining <= 0 ? null : _add,
               ),
             ],
           ),

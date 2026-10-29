@@ -145,8 +145,8 @@ class _PlacesScreenState extends State<PlacesScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          maxLength: 20,
-          decoration: const InputDecoration(hintText: '家、学校など'),
+          maxLength: AddPlaceSheet.maxLabelLength,
+          decoration: const InputDecoration(hintText: '例：家、おばあちゃんの家、塾'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('やめる')),
