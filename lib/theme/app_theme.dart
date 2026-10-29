@@ -48,6 +48,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
+      extensions: const [LoadingColors.standard],
     );
   }
 }

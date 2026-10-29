@@ -26,6 +26,52 @@ class AppColors {
   static const Color switchOff = Color(0xFFC9D6E3);
 }
 
+/// 読み込み画面の色（「雲がもくもく湧く」読み込み、2026-10-29）
+///
+/// 画面に直接書かず、テーマ（AppTheme.light の extensions）から取る。アプリの色に合わせ、
+/// 雲がないときのホームと同じ空の背景に、白い雲と白い文字を置く。
+/// アプリはダークモードで色を変えていないので、読み込み画面も変えない。
+@immutable
+class LoadingColors extends ThemeExtension<LoadingColors> {
+  final SkyGradient background;
+  final Color cloud;
+
+  /// 雲のふちと丸のすき間に見える影の色
+  final Color shade;
+  final Color text;
+
+  const LoadingColors({required this.background, required this.cloud, required this.shade, required this.text});
+
+  static const LoadingColors standard = LoadingColors(
+    background: SkyGradient.calm,
+    cloud: Colors.white,
+    shade: Color(0xFFC7DDF5),
+    text: AppColors.onSky,
+  );
+
+  /// テーマに登録した色。登録がなければ standard
+  static LoadingColors of(BuildContext context) => Theme.of(context).extension<LoadingColors>() ?? standard;
+
+  @override
+  LoadingColors copyWith({SkyGradient? background, Color? cloud, Color? shade, Color? text}) => LoadingColors(
+        background: background ?? this.background,
+        cloud: cloud ?? this.cloud,
+        shade: shade ?? this.shade,
+        text: text ?? this.text,
+      );
+
+  @override
+  LoadingColors lerp(ThemeExtension<LoadingColors>? other, double t) {
+    if (other is! LoadingColors) return this;
+    return LoadingColors(
+      background: t < 0.5 ? background : other.background,
+      cloud: Color.lerp(cloud, other.cloud, t)!,
+      shade: Color.lerp(shade, other.shade, t)!,
+      text: Color.lerp(text, other.text, t)!,
+    );
+  }
+}
+
 /// 画面ごとの背景のグラデーション（上から下）
 enum SkyGradient {
   /// 昼の空（ホーム、許可のお願いなど）

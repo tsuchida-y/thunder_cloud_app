@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 起動直後の画面の色。アプリの空（雲がないときのホーム・読み込み画面）のいちばん上の色 -->
+    <color name="launch_background">#FF2A62B8</color>
+</resources>

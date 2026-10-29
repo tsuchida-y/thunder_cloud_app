@@ -1,0 +1,171 @@
+<title>入道雲サーチ ローディング</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Zen+Old+Mincho:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: 説明 → 3つのスマホ枠を横に並べ、狭い画面では縦に積む */
+:root {
+  --page: #EEF4FB;
+  --ink: #14284A;
+  --sub: #47597A;
+  --accent: #14408F;
+  --line: #D3E0F0;
+  --card: #FFFFFF;
+  --body: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+  --head: 'Zen Old Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #0E1830; --ink: #E6EEFA; --sub: #A9B8D2; --accent: #9CCDF3; --line: #263A62; --card: #16244A; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --page: #0E1830; --ink: #E6EEFA; --sub: #A9B8D2; --accent: #9CCDF3; --line: #263A62; --card: #16244A; color-scheme: dark; }
+
+body { background: var(--page); color: var(--ink); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 32px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
+h1 { margin: 0; font-family: var(--head); font-size: 28px; font-weight: 700; letter-spacing: .04em; text-wrap: balance; }
+header p { margin: 0; font-size: 15px; line-height: 1.8; color: var(--sub); }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; }
+button { font: inherit; font-size: 14px; font-weight: 700; color: var(--accent); background: var(--card); border: 1.5px solid var(--line); border-radius: 28px; min-height: 44px; padding: 0 20px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.screens { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 12px; width: 280px; max-width: 100%; }
+figcaption { display: flex; flex-direction: column; gap: 4px; }
+figcaption b { font-size: 15px; }
+figcaption span { font-size: 13px; line-height: 1.7; color: var(--sub); }
+
+/* スマホ枠の中はアプリの色をそのまま使う(テーマで変えない) */
+.phone { box-sizing: border-box; position: relative; width: 280px; max-width: 100%; aspect-ratio: 390 / 844; border-radius: 34px; overflow: hidden; box-shadow: 0 0 0 6px #0B1630, 0 18px 40px rgba(11,22,48,.28); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: var(--body); }
+.phone.light { background: #EFF2F7; }
+.phone.dark { background: #1A1F29; }
+.phone canvas { width: 64px; height: 64px; }
+.phone .msg { font-size: 12px; letter-spacing: .08em; }
+.phone.light .msg { color: #8A93A0; }
+.phone.dark .msg { color: #7D8590; }
+
+section.note { max-width: 640px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.85; color: var(--sub); border-top: 1px solid var(--line); padding-top: 22px; }
+section.note h2 { margin: 0; font-family: var(--head); font-size: 18px; color: var(--ink); }
+section.note p { margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>雲がもくもく湧くローディング</h1>
+    <p>うすい灰色の背景の真ん中に、小さな雲だけをぽつんと置きました。雲は下から順に湧き上がったあと、同じ順番で下から上へ、ぽこぽことふくらむ動きをくり返します。左が通常、右は端末をダークモードにしているときです。</p>
+    <div class="controls">
+      <button id="replay" type="button">最初から再生</button>
+    </div>
+  </header>
+
+  <div class="screens">
+    <figure>
+      <div class="phone light">
+        <canvas class="cloud" data-theme="light" aria-hidden="true"></canvas>
+        <div class="msg">読み込み中</div>
+      </div>
+      <figcaption><b>通常</b><span>起動したあとのデータ待ちと、ホームの更新中のどちらも、この画面を出します。</span></figcaption>
+    </figure>
+    <figure>
+      <div class="phone dark">
+        <canvas class="cloud" data-theme="dark" aria-hidden="true"></canvas>
+        <div class="msg">読み込み中</div>
+      </div>
+      <figcaption><b>ダークモード</b><span>端末がダークモードのときは、背景を暗い灰色にします。</span></figcaption>
+    </figure>
+  </div>
+
+  <section class="note">
+    <h2>動きのしくみ</h2>
+    <p>雲は15個の丸でできています。最初の1.4秒で、下の段の丸から順に、少し大きくなってから落ち着くように現れます。そのあとは2.4秒ごとに、同じ順番で下の段から丸がぽこっとふくらんでは戻ります。上の段ほど少し大きくふくらみます。</p>
+    <p>雲の一辺は64、色はうすい青にして、目立ちすぎないようにしています。</p>
+    <p>アプリでは Flutter の CustomPainter と AnimationController だけで作れるので、画像やアニメーション用の部品を追加する必要はありません。端末の設定で動きを減らしている人には、動かない雲だけを出します。</p>
+  </section>
+</div>
+
+<script>
+// 0〜1 の箱の中の位置と半径。order が小さいほど先に現れる
+const PUFFS = [
+  { x: .14, y: .77, r: .11, phase: .00, order: 0 },
+  { x: .28, y: .74, r: .14, phase: .35, order: 0 },
+  { x: .44, y: .73, r: .15, phase: .70, order: 0 },
+  { x: .60, y: .73, r: .15, phase: .15, order: 0 },
+  { x: .75, y: .74, r: .14, phase: .55, order: 0 },
+  { x: .88, y: .78, r: .10, phase: .85, order: 0 },
+  { x: .27, y: .60, r: .12, phase: .25, order: 1 },
+  { x: .41, y: .55, r: .15, phase: .80, order: 1 },
+  { x: .58, y: .54, r: .16, phase: .45, order: 1 },
+  { x: .73, y: .61, r: .12, phase: .10, order: 1 },
+  { x: .37, y: .41, r: .13, phase: .60, order: 2 },
+  { x: .50, y: .38, r: .15, phase: .05, order: 2 },
+  { x: .65, y: .40, r: .13, phase: .90, order: 2 },
+  { x: .43, y: .25, r: .12, phase: .30, order: 3 },
+  { x: .58, y: .24, r: .12, phase: .75, order: 3 },
+];
+const BASE_Y = .84;        // 雲の底。ここから下は切りそろえる
+const INTRO_MS = 1400;
+const LOOP_MS = 2400;
+const COLORS = {
+  light: { cloud: '#BCD0EC', shade: '#8DA8D2' },
+  dark:  { cloud: '#4B6290', shade: '#33456B' },
+};
+
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeOutBack = t => { const c = 1.6; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+
+function puffsAt(intro, loop) {
+  const out = [];
+  for (const p of PUFFS) {
+    const delay = p.order / 3 * 0.6;
+    const appear = intro >= 1 ? 1 : Math.max(0, easeOutBack(clamp01((intro - delay) / 0.4)));
+    // くり返しでは、下の段から順に丸がぽこっとふくらんで戻る(最初の湧き上がりと同じ順番)
+    const lt = (loop - p.order * 0.12) / 0.4;
+    const bump = lt > 0 && lt < 1 ? Math.sin(Math.PI * lt) : 0;
+    const r = p.r * appear * (1 + (0.10 + 0.04 * p.order) * bump);
+    const y = p.y - 0.02 * (p.order / 3) * bump;
+    if (r > 0) out.push({ x: p.x, y, r });
+  }
+  return out;
+}
+
+function paint(ctx, size, theme, intro, loop) {
+  const c = COLORS[theme];
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, size, size * BASE_Y);
+  ctx.clip();
+  const puffs = puffsAt(intro, loop);
+  // まず全部の丸を影の色で描き、その上に少し小さくして左上へずらした丸を雲の色で重ねる。
+  // 雲のふちと丸のすき間にだけ影が残り、もこもこした形が見える
+  ctx.fillStyle = c.shade;
+  for (const p of puffs) { ctx.beginPath(); ctx.arc(p.x * size, p.y * size, p.r * size, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = c.cloud;
+  for (const p of puffs) { ctx.beginPath(); ctx.arc((p.x - p.r * .08) * size, (p.y - p.r * .12) * size, p.r * .9 * size, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
+
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canvases = [...document.querySelectorAll('canvas.cloud')].map(el => {
+  const dpr = window.devicePixelRatio || 1;
+  const css = 64;
+  el.width = el.height = Math.round(css * dpr);
+  const ctx = el.getContext('2d');
+  return { el, ctx, size: el.width, theme: el.dataset.theme };
+});
+
+let start = performance.now();
+function frame(now) {
+  const elapsed = now - start;
+  const intro = reduce ? 1 : clamp01(elapsed / INTRO_MS);
+  const loop = reduce ? 0 : Math.max(0, elapsed - INTRO_MS) / LOOP_MS % 1;
+  for (const c of canvases) paint(c.ctx, c.size, c.theme, intro, loop);
+  if (!reduce) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+document.getElementById('replay').addEventListener('click', () => {
+  start = performance.now();
+  if (reduce) requestAnimationFrame(frame);
+});
+</script>

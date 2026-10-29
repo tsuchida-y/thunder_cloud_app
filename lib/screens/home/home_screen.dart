@@ -12,6 +12,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/time_text.dart';
 import '../../widgets/common/app_buttons.dart';
+import '../../widgets/common/loading_view.dart';
 import '../../widgets/common/sky_card.dart';
 import '../../widgets/common/sky_page.dart';
 import '../../widgets/common/source_note.dart';
@@ -102,7 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final now = DateTime.now();
         final header = SpotHeader(state: state, onSelect: _controller.selectSpot, onAdd: _addSpot);
         return switch (state.mode) {
-          HomeMode.loading => _LoadingView(state: state),
+          // 起動したあとの最初のデータ待ちと、「もう一度読み込む」の読み込み直し。データが届いたらすぐ次の画面になる
+          HomeMode.loading => const LoadingView(),
           HomeMode.clouds => _CloudsView(state: state, now: now, header: header, onSelectSpot: _controller.selectSpot),
           HomeMode.empty => _EmptyView(state: state, now: now, header: header, onSelectSpot: _controller.selectSpot),
           HomeMode.night => _NightView(state: state, now: now, header: header),
@@ -128,34 +130,6 @@ class _SkyFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final observedAt = state.observedAt;
     return SourceNote(prefix: observedAt == null ? null : '${TimeText.ago(observedAt, now)}に空を見ました');
-  }
-}
-
-class _LoadingView extends StatelessWidget {
-  final HomeState state;
-
-  const _LoadingView({required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return SkyPage(
-      gradient: SkyGradient.calm,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          HomeHeader(label: HomeHeader.skyOf(state.placeName)),
-          const Expanded(
-            child: Center(
-              child: SizedBox.square(
-                dimension: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white, semanticsLabel: '空を確かめています'),
-              ),
-            ),
-          ),
-          const SourceNote(),
-        ],
-      ),
-    );
   }
 }
 
