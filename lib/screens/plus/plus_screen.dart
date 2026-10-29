@@ -100,7 +100,7 @@ class _PlusScreenState extends State<PlusScreen> {
   Widget build(BuildContext context) {
     final plans = _plans;
     final monthlyPrice = plans == null ? '200円' : _yen(plans.monthly.storeProduct);
-    final lifetimePrice = plans == null ? '1,600円' : _yen(plans.lifetime.storeProduct);
+    final lifetimePrice = plans == null ? '1,200円' : _yen(plans.lifetime.storeProduct);
     final trial = plans != null && !_lifetime && plans.monthlyTrial;
     final String buyTitle;
     final String buySubtitle;

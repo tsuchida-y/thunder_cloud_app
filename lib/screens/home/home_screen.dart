@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/finder_target.dart';
@@ -36,11 +37,20 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<FinderTarget>? _openedSub;
   StreamSubscription<String>? _widgetSub;
 
+  /// 開発中の確かめ用。デバッグ版で --dart-define=START_SCREEN=plus を付けると、起動したら Plus の画面を開く
+  /// （ストアの審査用のスクリーンショットをシミュレータで撮るため）
+  static const String _startScreen = kDebugMode ? String.fromEnvironment('START_SCREEN') : '';
+
   @override
   void initState() {
     super.initState();
     _controller.onAskAlways = _askAlways;
     _controller.start();
+    if (_startScreen == 'plus') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) AppRoutes.openPlus(context);
+      });
+    }
     // 通知から開いたときは、方角ガイドを直接開く
     _openedSub = CloudNotifications.opened.listen(_openFromNotification);
     // ウィジェットをタップして開いたときは、その場所に切り替える

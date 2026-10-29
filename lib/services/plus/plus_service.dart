@@ -5,7 +5,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../../utils/logger.dart';
 
-/// Plus（月額200円・7日間無料と、買い切り1,600円。RevenueCat。2026-10-27 に年額をやめて買い切りにした）
+/// Plus（月額200円・7日間無料と、買い切り1,200円。RevenueCat。2026-10-27 に年額をやめて買い切りにした）
 ///
 /// - RevenueCat の「アプリのユーザー ID」に Firebase の匿名ログインの uid を使う。
 ///   webhook（functions/modules/plus/revenuecat_webhook.js）がその uid の member_server に isPlus を書く
