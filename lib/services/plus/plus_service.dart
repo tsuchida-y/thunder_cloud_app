@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -24,6 +25,10 @@ class PlusService {
 
   static bool _configured = false;
 
+  /// ストア（RevenueCat）で見て、いま Plus の権利があるか。買った直後や復元した直後は、
+  /// webhook が届いてサーバー（member_server）が Plus になるまで少しかかるので、そのあいだもこれで Plus として扱う
+  static final ValueNotifier<bool> activeInStore = ValueNotifier(false);
+
   static String get _apiKey => Platform.isIOS ? _iosKey : _androidKey;
 
   /// 購入できる状態か（API キーがあり、設定が済んでいる）
@@ -36,6 +41,9 @@ class PlusService {
       final configuration = PurchasesConfiguration(_apiKey)..appUserID = uid;
       await Purchases.configure(configuration);
       _configured = true;
+      // 買う・復元する・期限が切れるたびに知らせが来る
+      Purchases.addCustomerInfoUpdateListener(_updateActive);
+      _updateActive(await Purchases.getCustomerInfo());
     } catch (e) {
       AppLogger.warning('RevenueCat を設定できませんでした: $e', tag: 'PlusService');
     }
@@ -73,11 +81,16 @@ class PlusService {
     return eligibility[product.identifier]?.status == IntroEligibilityStatus.introEligibilityStatusEligible;
   }
 
+  static void _updateActive(CustomerInfo info) {
+    activeInStore.value = info.entitlements.active.containsKey(entitlementId);
+  }
+
   /// 買う。Plus になったら true、やめたら false
   static Future<bool> purchase(Package package) async {
     try {
       final result = await Purchases.purchase(PurchaseParams.package(package));
-      return result.customerInfo.entitlements.active.containsKey(entitlementId);
+      _updateActive(result.customerInfo);
+      return activeInStore.value;
     } on PlatformException catch (e) {
       if (PurchasesErrorHelper.getErrorCode(e) == PurchasesErrorCode.purchaseCancelledError) return false;
       rethrow;
@@ -87,7 +100,8 @@ class PlusService {
   /// 購入を復元する。Plus なら true
   static Future<bool> restore() async {
     final info = await Purchases.restorePurchases();
-    return info.entitlements.active.containsKey(entitlementId);
+    _updateActive(info);
+    return activeInStore.value;
   }
 }
 

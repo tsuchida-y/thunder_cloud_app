@@ -84,7 +84,10 @@ async function handleWebhook(req, res, { authToken, firestore = admin.firestore(
   const event = req.body && req.body.event;
   const plan = planUpdate(event);
   if (plan.skip) {
-    console.log(`💳 [REVENUECAT] ${event && event.type} は何もしない（${plan.skip}）`);
+    // 権利の ID が違うと読み飛ばすので、何が付いていたかも残す（2026-10-29 に RevenueCat の権利の ID の違いで起きた）
+    const entitlements = event && Array.isArray(event.entitlement_ids) ? event.entitlement_ids.join(',') : '';
+    console.log(`💳 [REVENUECAT] ${event && event.type} は何もしない（${plan.skip}）` +
+      (entitlements ? ` 権利: ${entitlements}` : ''));
     res.status(200).send('ok');
     return;
   }

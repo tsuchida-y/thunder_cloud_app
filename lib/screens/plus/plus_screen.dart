@@ -39,6 +39,9 @@ class _PlusScreenState extends State<PlusScreen> {
   @override
   void initState() {
     super.initState();
+    // ストアで Plus なら、サーバーに届く前でも「Plus を使っています」にする
+    _isPlus = PlusService.activeInStore.value;
+    PlusService.activeInStore.addListener(_onStoreChanged);
     final uid = MemberService.uid;
     if (uid != null) {
       _serverSub = MemberService.watchServer(uid).listen((doc) {
@@ -55,8 +58,13 @@ class _PlusScreenState extends State<PlusScreen> {
     });
   }
 
+  void _onStoreChanged() {
+    if (mounted && PlusService.activeInStore.value) setState(() => _isPlus = true);
+  }
+
   @override
   void dispose() {
+    PlusService.activeInStore.removeListener(_onStoreChanged);
     _serverSub?.cancel();
     super.dispose();
   }

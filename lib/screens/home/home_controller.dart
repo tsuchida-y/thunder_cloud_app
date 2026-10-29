@@ -214,6 +214,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
   void start() {
     WidgetsBinding.instance.addObserver(this);
+    // ストアで Plus になったら（買った・復元した）、サーバーに届くのを待たずに描き直す
+    PlusService.activeInStore.addListener(_recompute);
     _minuteTimer = Timer.periodic(const Duration(minutes: 1), (_) => _recompute());
     LastSky.load().then((sky) {
       _lastSky = sky;
@@ -226,6 +228,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   void dispose() {
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
+    PlusService.activeInStore.removeListener(_recompute);
     _cancelSky();
     _memberSub?.cancel();
     _serverSub?.cancel();

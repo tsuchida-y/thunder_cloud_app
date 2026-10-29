@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/lat_lng.dart';
 import '../../utils/logger.dart';
+import '../plus/plus_service.dart';
 
 /// 利用者の情報（v2.0、docs/入道雲サーチ_決定事項.md の5章）
 ///
@@ -98,7 +99,10 @@ class MemberService {
       _db.collection(memberServerCollection).doc(id).snapshots();
 
   /// Plus かどうか（期限つき。期限がなければ Plus のまま）。サーバーの isPlusActive と同じ
+  ///
+  /// 買った直後や復元した直後は、サーバーに届くまで少しかかるので、ストア（RevenueCat）で Plus なら Plus とする。
   static bool isPlusActive(Map<String, dynamic>? server, DateTime now) {
+    if (PlusService.activeInStore.value) return true;
     if (server == null || server['isPlus'] != true) return false;
     final expiresAt = server['plusExpiresAt'];
     return expiresAt is! Timestamp || expiresAt.toDate().isAfter(now);
