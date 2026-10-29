@@ -132,16 +132,27 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                 onSubmitted: (_) => _search(),
                 style: AppTextStyles.body().copyWith(height: 1.3),
                 decoration: InputDecoration(
-                  hintText: '市町村名や住所',
+                  // 何を入れればよいか分かるよう、例を出す（2026-10-29）
+                  hintText: '例：盛岡市、滝沢市役所、盛岡駅',
                   filled: true,
                   fillColor: Colors.white,
                   isDense: true,
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSub),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.arrow_forward_rounded, color: AppColors.accent),
+                    tooltip: 'さがす',
+                    onPressed: _search,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   border: border,
                   enabledBorder: border,
                   focusedBorder: border,
                 ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '市・町・村の名前、住所、駅や学校の名前でさがせます。入れたら「→」かキーボードの「検索」を押してください。',
+                style: AppTextStyles.caption().copyWith(height: 1.5),
               ),
               const SizedBox(height: 12),
               if (_searching)

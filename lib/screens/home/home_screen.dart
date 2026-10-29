@@ -244,22 +244,30 @@ class _EmptyView extends StatelessWidget {
             title: 'いまは、\n静かな空です。',
             body: '入道雲が現れたら、すぐにお知らせします。',
           ),
-          // レーダーは見出しと下のカードの間の真ん中に置く（間が大きく空かないように）
+          // レーダーは見出しと下のカードの間の真ん中に置く（間が大きく空かないように）。
+          // 下の「見えた入道雲の記録」まで1画面に収まるよう、画面の高さに合わせて大きさを決める
+          // （iPhone 14 で約230、大きい画面で最大280）
           Expanded(
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: SkyRadar(clouds: const [], rangeKm: state.rangeKm, size: 280, showAllDirections: false, sweep: true),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: SkyRadar(
+                  clouds: const [],
+                  rangeKm: state.rangeKm,
+                  size: (MediaQuery.sizeOf(context).height * 0.27).clamp(170.0, 280.0),
+                  showAllDirections: false,
+                  sweep: true,
+                ),
               ),
             ),
           ),
           // 静かな空のあいだも、開くたびに変わる「いまの空」と「いちばん近い入道雲」
           SkyNowCard(skyNow: state.skyNow, nearestCloud: state.nearestCloud, nationwideCount: state.nationwideCount),
           if (state.otherSpotClouds.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             CloudListCard(clouds: const [], others: state.otherSpotClouds, onSelectSpot: onSelectSpot),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _SkyFooter(state: state, now: now),
           const SizedBox(height: 6),
           const RecordLink(),
