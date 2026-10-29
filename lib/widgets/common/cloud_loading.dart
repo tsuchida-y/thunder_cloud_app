@@ -136,8 +136,9 @@ class _CloudPainter extends CustomPainter {
       // くり返しでは、下の段から順に丸がぽこっとふくらんで戻る（最初の湧き上がりと同じ順番）
       final lt = (loopT - p.order * 0.12) / 0.4;
       final bump = lt > 0 && lt < 1 ? math.sin(math.pi * lt) : 0.0;
-      final r = p.r * appear * (1 + (0.10 + 0.04 * p.order) * bump);
-      final y = p.y - 0.02 * (p.order / 3) * bump;
+      // ふくらむ大きさは、見本のはじめの数字（0.10 + 0.04×段、上へ0.02）の約2倍（2026-10-29、もっと大きく）
+      final r = p.r * appear * (1 + (0.20 + 0.06 * p.order) * bump);
+      final y = p.y - 0.05 * (p.order / 3) * bump;
       if (r > 0) out.add(_Circle(p.x, y, r));
     }
     return out;
