@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../models/finder_target.dart';
 import '../../services/compass/compass_service.dart';
 import '../../services/location/current_place.dart';
+import '../../services/review/review_prompt.dart';
 import '../../services/sky/report_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -103,6 +104,8 @@ class _FinderScreenState extends State<FinderScreen> {
   void _answer(bool seen) {
     ReportService.send(target, seen: seen);
     setState(() => _answered = true);
+    // 見えたときは、ときどき App Store のレビューをお願いする
+    if (seen) ReviewPrompt.afterSeen();
   }
 
   @override
