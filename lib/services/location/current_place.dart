@@ -7,7 +7,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/lat_lng.dart';
+import '../../models/prefectures.dart';
 import '../../utils/logger.dart';
+import '../../utils/sky_geometry.dart';
 
 /// 位置情報の許可の状態
 enum LocationAccess {
@@ -140,6 +142,67 @@ class CurrentPlace {
       AppLogger.warning('場所の名前が分かりませんでした: $e', tag: 'CurrentPlace');
       return null;
     }
+  }
+
+  /// 入道雲のある所の目安（「秋田市のあたり」「太平洋の上」「秋田県の沖」）。ホームの全国の入道雲に使う
+  ///
+  /// 市町村 → 都道府県 → 海などの名前 の順に使う。地名の検索で何も分からなかったとき（海の上など）は、
+  /// いちばん近い都道府県庁から「〜の沖」とする。同じ場所（約10km）なら前の結果を使う。
+  /// 端末の地名検索は一度に1つしか調べられないので、順番に調べる。
+  static Future<String> areaName(LatLng location) async {
+    final key = 'area_name_${location.latitude.toStringAsFixed(1)}_${location.longitude.toStringAsFixed(1)}';
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString(key);
+    if (cached != null) return cached;
+    final previous = _areaQueue;
+    final next = previous.then((_) => _lookUpArea(location, key, prefs));
+    _areaQueue = next.catchError((_) => '');
+    return next;
+  }
+
+  static Future<String> _areaQueue = Future.value('');
+
+  static Future<String> _lookUpArea(LatLng location, String key, SharedPreferences prefs) async {
+    try {
+      final cached = prefs.getString(key);
+      if (cached != null) return cached;
+      final marks = await _geocoding.placemarkFromCoordinates(location.latitude, location.longitude, locale: _japanese);
+      String? pick(String? Function(dynamic m) field) =>
+          marks.map(field).firstWhere((n) => n != null && n.trim().isNotEmpty, orElse: () => null);
+      final city = pick((m) => m.locality) ?? pick((m) => m.subAdministrativeArea);
+      final prefecture = pick((m) => m.administrativeArea);
+      // 海の上では、市町村や県の代わりに「太平洋」などの名前だけが返ることがある（数字だけのものは使わない）
+      final other = pick((m) => m.name);
+      final String area;
+      if (city != null) {
+        area = '$cityのあたり';
+      } else if (prefecture != null) {
+        area = '$prefectureのあたり';
+      } else if (other != null && !RegExp(r'^[\d\s.,\-]+$').hasMatch(other)) {
+        area = '$otherの上';
+      } else {
+        area = offshoreName(location);
+      }
+      await prefs.setString(key, area);
+      return area;
+    } catch (e) {
+      AppLogger.warning('入道雲の場所の名前が分かりませんでした: $e', tag: 'CurrentPlace');
+      return offshoreName(location);
+    }
+  }
+
+  /// いちばん近い都道府県庁から「〜の沖」
+  static String offshoreName(LatLng location) {
+    var best = prefectureOffices.first;
+    var bestKm = double.infinity;
+    for (final office in prefectureOffices) {
+      final km = SkyGeometry.distanceKm(location, office.$2);
+      if (km < bestKm) {
+        best = office;
+        bestKm = km;
+      }
+    }
+    return '${best.$1}の沖';
   }
 
   /// 地名や住所から場所をさがす（見張る場所の登録。地図は使わない）

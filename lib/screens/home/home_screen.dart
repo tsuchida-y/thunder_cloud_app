@@ -20,6 +20,7 @@ import 'always_allow_sheet.dart';
 import 'home_controller.dart';
 import 'whats_new_sheet.dart';
 import 'widgets/home_parts.dart';
+import 'widgets/nationwide_sheet.dart';
 import 'widgets/sky_illustrations.dart';
 import 'widgets/sky_radar.dart';
 
@@ -262,7 +263,12 @@ class _EmptyView extends StatelessWidget {
             ),
           ),
           // 静かな空のあいだも、開くたびに変わる「いまの空」と「いちばん近い入道雲」
-          SkyNowCard(skyNow: state.skyNow, nearestCloud: state.nearestCloud, nationwideCount: state.nationwideCount),
+          SkyNowCard(
+            skyNow: state.skyNow,
+            nearestCloud: state.nearestCloud,
+            nationwideCount: state.nationwideCount,
+            onOpenList: () => NationwideSheet.show(context, state.nationwideViews),
+          ),
           if (state.otherSpotClouds.isNotEmpty) ...[
             const SizedBox(height: 12),
             CloudListCard(clouds: const [], others: state.otherSpotClouds, onSelectSpot: onSelectSpot),

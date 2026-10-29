@@ -133,6 +133,9 @@ class HomeState {
   final NationwideCloud? nearestCloud;
   final int nationwideCount;
 
+  /// 全国で見えている入道雲（見張っている場所から近い順）。カードを押したときの一覧に使う
+  final List<CloudView> nationwideViews;
+
   /// 朝や夕方（太陽が低い）か。ホームの空の色を変える
   final bool lowSun;
 
@@ -157,6 +160,7 @@ class HomeState {
     this.skyNow,
     this.nearestCloud,
     this.nationwideCount = 0,
+    this.nationwideViews = const [],
     this.lowSun = false,
     this.locationOff = false,
     this.notificationsOff = false,
@@ -468,8 +472,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   String? _nameOf(SkyCloud cloud) {
     if (_cloudNames.containsKey(cloud.id)) return _cloudNames[cloud.id];
     _cloudNames[cloud.id] = null;
-    CurrentPlace.placeName(cloud.center).then((name) {
-      if (name == null || _disposed) return;
+    CurrentPlace.areaName(cloud.center).then((name) {
+      if (_disposed) return;
       _cloudNames[cloud.id] = name;
       _recompute();
     });
@@ -540,6 +544,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
         observedAt: observedAt,
         skyNow: SkyNow.near(_amedas, watch.point, now),
         nearestCloud: _nearestCloud(visibleClouds, watch.point),
+        nationwideViews: [for (final c in visibleClouds) c.viewFrom(watch.point)]
+          ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm)),
         nationwideCount: visibleClouds.length,
         lowSun: lowSun,
       );

@@ -384,19 +384,27 @@ class _OtherSpotRow extends StatelessWidget {
 /// 雲がないときのホームの「いまの空」と「いちばん近い入道雲」（Empty.html、2026-10-27）
 ///
 /// 静かな空のあいだも、開くたびに変わるものを出す。どちらも、いまの観測（予想ではない）。
-/// 押せる所と間違えないよう、アイコンや「›」は付けない。
+/// 「いちばん近い入道雲」の行は、全国に雲があるときだけ押せて（「›」を付ける）、全国の一覧を開く（2026-10-29）。
+/// 「いまの空」の行は押せないので、アイコンや「›」は付けない。
 class SkyNowCard extends StatelessWidget {
   final SkyNow? skyNow;
   final NationwideCloud? nearestCloud;
   final int nationwideCount;
+  final VoidCallback? onOpenList;
 
-  const SkyNowCard({super.key, required this.skyNow, required this.nearestCloud, required this.nationwideCount});
+  const SkyNowCard({
+    super.key,
+    required this.skyNow,
+    required this.nearestCloud,
+    required this.nationwideCount,
+    this.onOpenList,
+  });
 
   @override
   Widget build(BuildContext context) {
     final sky = skyNow;
     final nearest = nearestCloud;
-    final place = nearest?.placeName == null ? '' : '（${nearest!.placeName}のあたり）';
+    final place = nearest?.placeName == null ? '' : '（${nearest!.placeName}）';
     final rows = <Widget>[
       if (sky != null)
         _InfoRow(
@@ -407,8 +415,9 @@ class SkyNowCard extends StatelessWidget {
       _InfoRow(
         title: 'いちばん近い入道雲',
         text: nearest == null ? '全国で見つかっていません' : '${nearest.directionName} ${nearest.distanceKm}km$place',
-        note: nearest == null ? null : '全国で$nationwideCountか所',
+        note: nearest == null ? null : '全国で$nationwideCountか所 ・ 押すと一覧',
         highlight: nearest != null,
+        onTap: nearest == null ? null : onOpenList,
       ),
     ];
     return SkyCard(
@@ -433,12 +442,13 @@ class _InfoRow extends StatelessWidget {
   final String text;
   final String? note;
   final bool highlight;
+  final VoidCallback? onTap;
 
-  const _InfoRow({required this.title, required this.text, this.note, this.highlight = false});
+  const _InfoRow({required this.title, required this.text, this.note, this.highlight = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,6 +466,23 @@ class _InfoRow extends StatelessWidget {
             Text(note!, style: AppTextStyles.caption()),
           ],
         ],
+      ),
+    );
+    if (onTap == null) return content;
+    return Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Row(
+          children: [
+            Expanded(child: content),
+            const Padding(
+              padding: EdgeInsets.only(right: 14),
+              child: Icon(Icons.chevron_right_rounded, color: AppColors.textSub),
+            ),
+          ],
+        ),
       ),
     );
   }

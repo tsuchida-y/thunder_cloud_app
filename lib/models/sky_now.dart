@@ -84,7 +84,7 @@ class NationwideCloud {
   final String directionName;
   final int distanceKm;
 
-  /// 「那覇市」など。海の上などで分からなければ null
+  /// 「那覇市のあたり」「太平洋の上」「沖縄県の沖」など。まだ調べている途中なら null
   final String? placeName;
 
   const NationwideCloud({
