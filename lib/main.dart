@@ -3,12 +3,14 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/plus/plus_screen.dart';
 import 'screens/welcome/welcome_screen.dart';
 import 'services/notification/cloud_notifications.dart';
 import 'theme/app_theme.dart';
@@ -50,12 +52,20 @@ class MyApp extends StatelessWidget {
 
   const MyApp({super.key, this.showWelcome = false});
 
+  /// 開発中の確かめ用。デバッグ版で --dart-define=START_SCREEN=plus を付けると、起動したら Plus の画面を出す
+  /// （ストアの審査用のスクリーンショットをシミュレータで撮るため）
+  static const String _startScreen = kDebugMode ? String.fromEnvironment('START_SCREEN') : '';
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '入道雲サーチ',
       theme: AppTheme.light,
-      home: showWelcome ? const WelcomeScreen() : const HomeScreen(),
+      home: _startScreen == 'plus'
+          ? const PlusScreen()
+          : showWelcome
+              ? const WelcomeScreen()
+              : const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
