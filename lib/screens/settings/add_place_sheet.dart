@@ -21,7 +21,7 @@ class AddPlaceSheet extends StatefulWidget {
 
   const AddPlaceSheet({super.key, required this.places, required this.maxPlaces, this.initialQuery = ''});
 
-  /// 呼び名の候補。押すと入力欄に入る。呼び名は自分で入れてもよい（2026-10-29）
+  /// 呼び名の候補。押すと入力欄に入る。はじめは、選んだ場所の地名が入る。自分で入れてもよい（2026-10-29）
   static const List<String> labels = ['家', '学校', '職場', '実家'];
 
   /// 呼び名の長さの上限（ホームの上のチップに収まるように）
@@ -47,12 +47,18 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
   late final TextEditingController _query = TextEditingController(text: widget.initialQuery);
   List<PlaceCandidate>? _results;
   PlaceCandidate? _picked;
-  late final TextEditingController _labelInput = TextEditingController(
-    text: AddPlaceSheet.labels.firstWhere(
-      (l) => widget.places.every((p) => p.label != l),
-      orElse: () => AddPlaceSheet.labels.first,
-    ),
-  )..addListener(() => setState(() {}));
+  late final TextEditingController _labelInput = TextEditingController()..addListener(() => setState(() {}));
+
+  /// 呼び名を自分で入れたか、候補を押したか。まだなら、場所を選ぶたびに地名を入れる
+  bool _labelChosen = false;
+
+  void _pick(PlaceCandidate candidate) {
+    setState(() => _picked = candidate);
+    if (!_labelChosen) {
+      final name = candidate.shortName;
+      _labelInput.text = name.length > AddPlaceSheet.maxLabelLength ? name.substring(0, AddPlaceSheet.maxLabelLength) : name;
+    }
+  }
 
   String get _label => _labelInput.text.trim();
   bool _searching = false;
@@ -82,8 +88,9 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
     setState(() {
       _searching = false;
       _results = results;
-      _picked = results.isEmpty ? null : results.first;
     });
+    // いちばん上の候補を選んでおく（呼び名にも地名が入る）
+    if (results.isNotEmpty) _pick(results.first);
   }
 
   Future<void> _add() async {
@@ -178,7 +185,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                           candidate: _results![i],
                           selected: identical(_results![i], _picked),
                           divider: i < _results!.length - 1,
-                          onTap: () => setState(() => _picked = _results![i]),
+                          onTap: () => _pick(_results![i]),
                         ),
                     ],
                   ),
@@ -189,10 +196,11 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
               TextField(
                 controller: _labelInput,
                 maxLength: AddPlaceSheet.maxLabelLength,
+                onChanged: (_) => _labelChosen = true,
                 textInputAction: TextInputAction.done,
                 style: AppTextStyles.body().copyWith(height: 1.3),
                 decoration: InputDecoration(
-                  hintText: '例：家、おばあちゃんの家、塾',
+                  hintText: '場所を選ぶと地名が入ります',
                   filled: true,
                   fillColor: Colors.white,
                   isDense: true,
@@ -204,13 +212,16 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                 ),
               ),
               const SizedBox(height: 8),
-              // 候補を押すと入力欄に入る
+              // 地名でなく「家」などにしたいときの候補。押すと入力欄に入る
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   for (final label in AddPlaceSheet.labels)
-                    _LabelChip(label: label, selected: label == _label, onTap: () => _labelInput.text = label),
+                    _LabelChip(label: label, selected: label == _label, onTap: () {
+                      _labelChosen = true;
+                      _labelInput.text = label;
+                    }),
                 ],
               ),
               const SizedBox(height: 20),
