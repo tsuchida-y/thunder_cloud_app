@@ -14,6 +14,7 @@ import 'screens/plus/plus_screen.dart';
 import 'screens/welcome/welcome_screen.dart';
 import 'services/notification/cloud_notifications.dart';
 import 'theme/app_theme.dart';
+import 'widgets/common/loading_view.dart';
 
 /// アプリが閉じているときに届いた通知
 ///
@@ -53,7 +54,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key, this.showWelcome = false});
 
   /// 開発中の確かめ用。デバッグ版で --dart-define=START_SCREEN=plus を付けると、起動したら Plus の画面を出す
-  /// （ストアの審査用のスクリーンショットをシミュレータで撮るため）
+  /// （ストアの審査用のスクリーンショットをシミュレータで撮るため）。START_SCREEN=loading なら読み込み画面を出し続ける
   static const String _startScreen = kDebugMode ? String.fromEnvironment('START_SCREEN') : '';
 
   @override
@@ -63,9 +64,11 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       home: _startScreen == 'plus'
           ? const PlusScreen()
-          : showWelcome
-              ? const WelcomeScreen()
-              : const HomeScreen(),
+          : _startScreen == 'loading'
+              ? const LoadingView()
+              : showWelcome
+                  ? const WelcomeScreen()
+                  : const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
