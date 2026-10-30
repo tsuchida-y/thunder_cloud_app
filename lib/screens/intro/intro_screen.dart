@@ -78,8 +78,6 @@ class _IntroScreenState extends State<IntroScreen> {
             height: 44,
             child: Row(
               children: [
-                // 2枚目以降は、ひとつ前に戻れる
-                if (_index > 0) TextLinkButton(label: '戻る', color: Colors.white, onPressed: _back),
                 const Spacer(),
                 if (!_isLast)
                   TextLinkButton(
@@ -100,7 +98,21 @@ class _IntroScreenState extends State<IntroScreen> {
           const SizedBox(height: 12),
           _Dots(count: _pageCount, index: _index),
           const SizedBox(height: 18),
-          PrimaryButton(label: _isLast ? (widget.fromSettings ? '閉じる' : 'はじめる') : '次へ', onPressed: _next),
+          Row(
+            children: [
+              // 2枚目以降は、ひとつ前に戻れる（次への左の小さな丸いボタン）
+              if (_index > 0) ...[
+                _BackButton(onPressed: _back),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: PrimaryButton(
+                  label: _isLast ? (widget.fromSettings ? '閉じる' : 'はじめる') : '次へ',
+                  onPressed: _next,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -424,6 +436,34 @@ class _Dots extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// ひとつ前に戻る丸いボタン（直径48、タップできる大きさは44以上）
+class _BackButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _BackButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '前のページに戻る',
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.9),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: const SizedBox.square(
+            dimension: 48,
+            child: Icon(Icons.arrow_back_rounded, size: 22, color: AppColors.primary),
+          ),
+        ),
       ),
     );
   }
