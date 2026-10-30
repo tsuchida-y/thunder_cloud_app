@@ -10,7 +10,8 @@
     "logs": "firebase functions:log",
     "test": "node --test \"test/**/*.test.js\"",
     "try:nowcast": "node scripts/try_nowcast.js",
-    "test:notify": "node scripts/send_test_notification.js"
+    "test:notify": "node scripts/send_test_notification.js",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-rules \"node --test \\\"test_rules/**/*.test.js\\\"\""
   },
   "engines": {
     "node": "22"
@@ -24,6 +25,7 @@
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.31.0"
   },
