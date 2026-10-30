@@ -285,9 +285,6 @@ class _FinderPageState extends State<_FinderPage> {
           Center(child: dial),
           const SizedBox(height: 8),
           headline,
-          // TODO(確認用・あとで消す): 向きの数値（北=0、東=90、南=135付近が見本の雲）
-          Text('確認用 向き ${heading?.round() ?? '-'}° / 雲まで ${diff.round()}°',
-              textAlign: TextAlign.center, style: AppTextStyles.note(color: Colors.white)),
           if (heading != null) ...[
             const SizedBox(height: 6),
             Text('見本です。スマホの向きを変えると、矢印が変わります。',
