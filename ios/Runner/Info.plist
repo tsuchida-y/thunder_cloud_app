@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- 暗号化は HTTPS（OS の機能）だけなので、輸出規制の対象外。TestFlight と審査で毎回聞かれないようにする -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -38,24 +41,49 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>このアプリは入道雲の写真を撮影するためにカメラを使用します。</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>このアプリは、あなたの周辺の入道雲の発生状況を監視し、入道雲が発見された際にプッシュ通知でお知らせするために位置情報を使用します。バックグラウンドでも位置情報にアクセスすることで、アプリを使用していない時でも入道雲の発生を見逃すことなく通知を受け取ることができます。</string>
+	<string>「常に」を許可すると、アプリを閉じているあいだに大きく移動したときも、移動先の空を見張って入道雲が見えたらお知らせできます。位置は約1kmの細かさに丸めて保存します。</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>このアプリは、あなたの周辺の入道雲の発生状況を監視し、入道雲が発見された際にプッシュ通知でお知らせするために位置情報を使用します。</string>
+	<string>「常に」を許可すると、アプリを閉じているあいだに大きく移動したときも、移動先の空を見張って入道雲が見えたらお知らせできます。位置は約1kmの細かさに丸めて保存します。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>このアプリは、あなたの現在地周辺の入道雲の発生状況を分析・表示するために位置情報を使用します。</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>このアプリは撮影した入道雲の写真をフォトライブラリに保存するために書き込み権限を必要とします。iPadでのプロフィール画像設定でも使用されます。</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>このアプリは撮影した入道雲の写真を保存・表示するためにフォトライブラリにアクセスします。プロフィール画像の設定にも使用されます。</string>
+	<string>いまいる場所から見える空に入道雲があるかを調べ、その方角と距離を出すために位置情報を使います。位置は約1kmの細かさに丸めて保存します。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.tsuchida.thundercloud.widget</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>thundercloud</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-		<string>fetch</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

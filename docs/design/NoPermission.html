@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>許可がないとき</title>
+<style>x-dc,helmet{display:block}</style>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&amp;family=Zen+Old+Mincho:wght@600;700&amp;family=Outfit:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1C4FA8}a:hover{color:#123A80}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: linear-gradient(180deg, #1C4FA8 0%, #3F86D6 36%, #9CCDF3 66%, #EAF5FF 100%); color: #FFFFFF; font-family: 'Zen Maru Gothic', sans-serif; display: flex; flex-direction: column; padding: 56px 20px 28px; gap: 16px; overflow: hidden">
+
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <div style="font-size: 14px">場所が分かりません</div>
+    <a href="Settings.html" aria-label="設定" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
+    </a>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-family: 'Zen Old Mincho', serif; font-size: 30px; font-weight: 700; line-height: 1.4; letter-spacing: 0.04em">このままでは<br>空を見張れません。</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.7">下の2つをオンにすると、入道雲が現れたときにお知らせできます。</p>
+  </div>
+
+  <div style="flex-grow: 1"></div>
+
+  <div style="background: rgba(255, 255, 255, 0.94); color: #14284A; border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C4FA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle></svg>
+      <div style="flex-grow: 1; font-size: 15px; font-weight: 700">位置情報がオフです</div>
+    </div>
+    <div style="font-size: 13px; color: #47597A; line-height: 1.6">設定アプリで「位置情報」を「使用中のみ」か「常に」にしてください。</div>
+    <button type="button" style="height: 44px; border: 0; border-radius: 22px; background: #14408F; color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 700">設定アプリを開く</button>
+  </div>
+
+  <div style="background: rgba(255, 255, 255, 0.94); color: #14284A; border-radius: 22px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C4FA8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+      <div style="flex-grow: 1; font-size: 15px; font-weight: 700">通知がオフです</div>
+    </div>
+    <div style="font-size: 13px; color: #47597A; line-height: 1.6">アプリを開いたときだけ、雲の場所を確かめられます。</div>
+    <button type="button" style="height: 44px; border: 1.5px solid #14408F; border-radius: 22px; background: #FFFFFF; color: #14408F; font-family: inherit; font-size: 15px; font-weight: 700">通知をオンにする</button>
+  </div>
+
+  <a href="Settings.html" style="text-align: center; font-size: 14px; padding: 8px; color: #14284A">場所を手で登録する</a>
+</div>
+</x-dc>
+</body>
+</html>

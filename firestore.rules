@@ -1,15 +1,70 @@
-// firestore.rules - 最適化版
+// firestore.rules
+//
+// v1（今のアプリ 1.0.4）の部分は、2026-10-20 時点で本番に出ているルールと同じ中身にしてある。
+// v1 のアプリはログインしないため、users や photos を誰でも読み書きできる状態になっている。
+// v2.0 の公開時に v1 の部分を締め直す（docs/入道雲サーチ_決定事項.md の5章）。
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // ===== v2.0（匿名ログインの uid で本人を確かめる） =====
+
+    // 利用者がアプリから書く情報（位置、見張る場所、設定、FCM トークンなど）
+    match /members/{uid} {
+      allow read, create, update, delete: if isOwner(uid);
+    }
+
+    // サーバーだけが書く情報（Plus かどうか、通知の記録）。本人は読むだけ
+    match /member_server/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // 「見えた」「見えなかった」の答え。本人が作り、本人だけが読める。あとから書き換えない
+    match /reports/{reportId} {
+      allow create: if signedIn() &&
+                    request.resource.data.uid == request.auth.uid &&
+                    request.resource.data.seen is bool;
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // いまある雲の一覧（サーバーが書く）
+    match /clouds/{cloudId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // 雲の一覧を最後に作った時刻（ホームの「3分前に空を見ました」）。サーバーが書く
+    match /system/jma_nowcast {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // ホームの「いまの空」用のアメダスの最新の観測（サーバーだけが書く）
+    match /system/amedas_latest {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // ===== v1（本番と同じ。v2.0 の公開時に締め直す） =====
+
     // テスト接続用（一時的）
     match /_test_connection/{document} {
       allow read, write: if true;
     }
 
-    // users コレクション
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow write: if true;
+      allow read: if true;
     }
 
     // weather_cache コレクション（気象データキャッシュ）
@@ -18,50 +73,31 @@ service cloud.firestore {
       allow write: if false; // Firebase Functionsのみ書き込み可能
     }
 
-    // photos コレクション（写真データ）
     match /photos/{photoId} {
-      // 写真の読み取り: 公開かつ期限切れでない、または所有者
-      allow read: if (resource.data.isPublic == true &&
-                     resource.data.expiresAt > request.time) ||
-                     (request.auth != null && request.auth.uid == resource.data.userId);
-
-      // 写真の作成: 認証済みユーザーのみ（expiresAtフィールドが必須）
-      allow create: if request.auth != null &&
-                    request.auth.uid == request.resource.data.userId &&
-                    request.resource.data.expiresAt is timestamp;
-
-      // 写真の更新・削除: 所有者のみ
-      allow update, delete: if request.auth != null &&
-                           request.auth.uid == resource.data.userId;
+      allow read: if true;
+      allow write: if true;
     }
 
-    // likes コレクション（いいね）- TTL付きで自動削除対応
     match /likes/{likeId} {
-      // いいねの読み取り: 期限切れでない場合のみ
-      allow read: if resource.data.expiresAt > request.time;
-
-      // いいねの作成: 認証済みユーザーが自分のいいねを作成（expiresAtフィールドが必須）
-      allow create: if request.auth != null &&
-                    request.auth.uid == request.resource.data.userId &&
-                    request.resource.data.expiresAt is timestamp;
-
-      // いいねの削除: 自分のいいねのみ削除可能
-      allow delete: if request.auth != null &&
-                    request.auth.uid == resource.data.userId;
+      allow read: if true;
+      allow write: if true;
     }
 
-    // downloads コレクション（ダウンロード済み写真）
+    match /comments/{commentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     match /downloads/{downloadId} {
       allow read: if true;
       allow write: if true;
     }
 
-    // debug コレクション（テスト用）
     match /debug/{document} {
       allow read, write: if true;
     }
 
-    // その他は全て拒否
+    // その他（system など）は全て拒否
     match /{document=**} {
       allow read, write: if false;
     }

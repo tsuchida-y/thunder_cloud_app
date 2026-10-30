@@ -11,13 +11,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
-        android:label="thunder_cloud_app"
+        android:label="入道雲サーチ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -40,14 +37,37 @@
         </activity>
 
 
+        <!-- 通知の「見えた」「見えなかった」ボタンを受け取る（flutter_local_notifications） -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+
+        <!-- ホーム画面のウィジェット（Plus、CloudWidget.kt）。置くときに見る場所を選ぶ画面 -->
+        <activity android:name=".CloudWidgetConfigureActivity" android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <!-- ホーム画面のウィジェット（Plus、CloudWidget.kt） -->
+        <receiver android:name=".CloudWidgetSmall" android:exported="false" android:label="入道雲（小）">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/cloud_widget_small_info" />
+        </receiver>
+        <receiver android:name=".CloudWidgetMedium" android:exported="false" android:label="入道雲（中）">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/cloud_widget_medium_info" />
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAZP8nwDl8FDXVvtYpF_b_REQbwsVpnZ2E"/>
 
         <!-- Firebase Cloud Messaging 通知アイコン設定 -->
         <meta-data
@@ -58,7 +78,7 @@
             android:resource="@android:color/white" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="thunder_cloud_channel" />
+            android:value="cloud_appeared" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

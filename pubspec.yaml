@@ -1,7 +1,7 @@
 name: thunder_cloud_app
 description: "入道雲サーチアプリ - 美しい入道雲の発生を検出・通知する観賞・撮影支援アプリ"
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
-version: 1.0.4+5
+version: 2.0.0+7
 
 environment:
   sdk: ^3.5.3
@@ -15,7 +15,6 @@ dependencies:
 
   #背景に現在地を表示するためのパッケージ
   geolocator: ^13.0.4
-  google_maps_flutter: ^2.5.0
 
   #通知機能を実装するためのパッケージ
   flutter_local_notifications: ^19.2.1
@@ -25,25 +24,25 @@ dependencies:
   firebase_messaging: ^15.2.6
   cloud_firestore: ^5.6.8
   cloud_functions: ^5.5.1
-  firebase_storage: ^12.0.1
 
   # カメラ・画像機能
-  camera: ^0.11.1
-  image_picker: ^1.1.2
-  image: ^4.5.4
-  path_provider: ^2.1.5
 
   # UI強化
-  cached_network_image: ^3.4.1
-  share_plus: ^11.0.0
   # image_gallery_saver: ^2.0.3
-  gal: ^2.3.0
 
   # ローカルキャッシュ機能
   shared_preferences: ^2.5.3
 
   # UUID生成
   uuid: ^4.0.0
+  google_fonts: ^8.2.1
+  firebase_auth: ^5.7.0
+  geocoding: ^5.0.0
+  flutter_compass: ^0.8.1
+  url_launcher: ^6.3.2
+  purchases_flutter: ^10.17.0
+  home_widget: ^0.10.0
+  in_app_review: ^2.0.12
 
 dev_dependencies:
   flutter_test:
