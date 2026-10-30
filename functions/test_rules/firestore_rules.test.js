@@ -62,6 +62,25 @@ test('members: 本人は、アプリが書く内容を作れて、更新でき�
   await assertSucceeds(ref.delete());
 });
 
+test('members: 「常に」の位置の更新（iOS の AppDelegate.swift と Android の BackgroundLocation.kt）が書く内容が通る', async () => {
+  // 本番のドキュメントには、この書き込みで locationSource が入っている。許可リストに入れ忘れると、
+  // その人のアプリからの更新（開いた時刻、設定、見張る場所など）がすべて断られる（2026-10-31 に起きた）
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc('members/me').set({
+      platform: 'ios', location: { latitude: 39.7, longitude: 141.1 }, locationSource: 'background', places: [],
+      fcmToken: 'token', settings: { rangeKm: 90 },
+    });
+  });
+  const ref = me().doc('members/me');
+  await assertSucceeds(ref.set({
+    location: { latitude: 39.78, longitude: 141.13 },
+    locationSource: 'background',
+    locationUpdatedAt: serverTimestamp(),
+  }, { merge: true }));
+  await assertSucceeds(ref.set({ lastOpenedAt: serverTimestamp() }, { merge: true }));
+  await assertFails(ref.set({ locationSource: 'x'.repeat(21) }, { merge: true }));
+});
+
 test('members: サーバーが fcmToken を null にして残す fcmTokenInvalidAt があっても、本人は書き続けられる', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await ctx.firestore().doc('members/me').set({

@@ -20,8 +20,9 @@ service cloud.firestore {
     function validMember(d) {
       return d.keys().hasOnly([
                'createdAt', 'platform', 'settings', 'legacyUserId', 'lastOpenedAt',
-               'location', 'locationUpdatedAt', 'places', 'fcmToken', 'fcmTokenUpdatedAt', 'fcmTokenInvalidAt'
+               'location', 'locationSource', 'locationUpdatedAt', 'places', 'fcmToken', 'fcmTokenUpdatedAt', 'fcmTokenInvalidAt'
              ]) &&
+             (!('locationSource' in d) || (d.locationSource is string && d.locationSource.size() <= 20)) &&
              (!('platform' in d) || (d.platform is string && d.platform.size() <= 20)) &&
              (!('settings' in d) || (d.settings is map && d.settings.size() <= 20)) &&
              (!('legacyUserId' in d) || (d.legacyUserId is string && d.legacyUserId.size() <= 100)) &&
