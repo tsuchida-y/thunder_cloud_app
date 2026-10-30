@@ -85,6 +85,27 @@ class PlusService {
     activeInStore.value = info.entitlements.active.containsKey(entitlementId);
   }
 
+  /// いまの Plus の契約（プラン、期限、解約済みか、ストアの管理画面）。Plus でなければ null
+  static Future<PlusStatus?> status() async {
+    if (!_configured) return null;
+    try {
+      final info = await Purchases.getCustomerInfo();
+      final entitlement = info.entitlements.active[entitlementId];
+      if (entitlement == null) return null;
+      final expiration = entitlement.expirationDate;
+      return PlusStatus(
+        lifetime: expiration == null,
+        expiresAt: expiration == null ? null : DateTime.tryParse(expiration)?.toLocal(),
+        willRenew: entitlement.willRenew,
+        inTrial: entitlement.periodType == PeriodType.trial,
+        managementUrl: info.managementURL == null ? null : Uri.tryParse(info.managementURL!),
+      );
+    } catch (e) {
+      AppLogger.warning('Plus の契約を取れませんでした: $e', tag: 'PlusService');
+      return null;
+    }
+  }
+
   /// 買う。Plus になったら true、やめたら false
   static Future<bool> purchase(Package package) async {
     try {
@@ -112,4 +133,30 @@ class PlusPlans {
   final bool monthlyTrial;
 
   const PlusPlans({required this.monthly, required this.lifetime, required this.monthlyTrial});
+}
+
+/// いまの Plus の契約
+class PlusStatus {
+  /// 買い切りか（期限がない）
+  final bool lifetime;
+
+  /// 月額の、今の期間の終わり（更新される日、解約済みなら使える最後の日）
+  final DateTime? expiresAt;
+
+  /// 期限が来たら自動で更新されるか（解約済みなら false）
+  final bool willRenew;
+
+  /// 7日間の無料体験中か
+  final bool inTrial;
+
+  /// ストアのサブスクリプションの管理画面（解約はここから）
+  final Uri? managementUrl;
+
+  const PlusStatus({
+    required this.lifetime,
+    required this.expiresAt,
+    required this.willRenew,
+    required this.inTrial,
+    required this.managementUrl,
+  });
 }

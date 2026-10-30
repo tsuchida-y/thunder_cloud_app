@@ -34,11 +34,13 @@ class _PlusScreenState extends State<PlusScreen> {
   bool _lifetime = false;
   bool _busy = false;
   bool _isPlus = false;
+  PlusStatus? _status;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _serverSub;
 
   @override
   void initState() {
     super.initState();
+    _loadStatus();
     // ストアで Plus なら、サーバーに届く前でも「Plus を使っています」にする
     _isPlus = PlusService.activeInStore.value;
     PlusService.activeInStore.addListener(_onStoreChanged);
@@ -59,7 +61,15 @@ class _PlusScreenState extends State<PlusScreen> {
   }
 
   void _onStoreChanged() {
-    if (mounted && PlusService.activeInStore.value) setState(() => _isPlus = true);
+    if (mounted && PlusService.activeInStore.value) {
+      setState(() => _isPlus = true);
+      _loadStatus();
+    }
+  }
+
+  Future<void> _loadStatus() async {
+    final status = await PlusService.status();
+    if (mounted) setState(() => _status = status);
   }
 
   @override
@@ -151,7 +161,7 @@ class _PlusScreenState extends State<PlusScreen> {
           const _FeatureCard(),
           const SizedBox(height: 12),
           if (_isPlus)
-            _PlusActive()
+            _PlusActive(status: _status)
           else ...[
             Row(
               children: [
@@ -376,18 +386,54 @@ class _BuyButton extends StatelessWidget {
   }
 }
 
-/// すでに Plus のとき
+/// すでに Plus のとき。どのプランか、いつまでか、解約の入口を出す（二重に買わないように、購入ボタンは出さない）
 class _PlusActive extends StatelessWidget {
+  final PlusStatus? status;
+
+  const _PlusActive({required this.status});
+
+  String _detail(PlusStatus status) {
+    if (status.lifetime) return '買い切り（ずっと使えます。追加の料金はかかりません）';
+    final date = status.expiresAt;
+    final day = date == null ? '' : '${date.year}年${date.month}月${date.day}日';
+    if (!status.willRenew) return '月額（解約済み）\n$dayまで使えます。それ以降は料金がかかりません';
+    final trial = status.inTrial ? '7日間の無料体験中\n' : '月額（自動更新）\n';
+    return '$trial$dayに更新されます';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final status = this.status;
     return DecoratedBox(
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.card)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        child: Text(
-          'Plus を使っています。ありがとうございます。\n月額の更新や解約は、ストアの設定から行えます。',
-          textAlign: TextAlign.center,
-          style: AppTextStyles.body(),
+        child: Column(
+          children: [
+            Text('Plus を使っています。ありがとうございます。', textAlign: TextAlign.center, style: AppTextStyles.body()),
+            if (status != null) ...[
+              const SizedBox(height: 8),
+              Text(_detail(status), textAlign: TextAlign.center, style: AppTextStyles.note().copyWith(height: 1.6)),
+            ],
+            const SizedBox(height: 6),
+            if (status?.lifetime ?? false)
+              const SizedBox.shrink()
+            else ...[
+              Text(
+                '月額の更新や解約は、ストアの設定から行えます。',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.note(),
+              ),
+              TextLinkButton(
+                label: 'サブスクリプションを管理',
+                color: AppColors.accent,
+                onPressed: () => launchUrl(
+                  status?.managementUrl ?? Uri.parse('https://apps.apple.com/account/subscriptions'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

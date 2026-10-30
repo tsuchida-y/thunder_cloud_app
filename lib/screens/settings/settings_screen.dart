@@ -152,10 +152,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
-          if (!isPlus) ...[
-            const SizedBox(height: 14),
+          const SizedBox(height: 14),
+          if (isPlus)
+            // Plus の人は、プランや期限の確認と解約の入口へ
+            SettingsCard(
+              children: [
+                SettingsRow.text(
+                  'Plus',
+                  subtitle: 'プランの確認・解約',
+                  trailing: const SettingsValue('利用中'),
+                  onTap: () => AppRoutes.openPlus(context),
+                ),
+              ],
+            )
+          else
             _PlusBanner(onTap: () => AppRoutes.openPlus(context)),
-          ],
         ],
       ),
     );
