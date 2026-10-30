@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/compass/compass_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/common/app_buttons.dart';
@@ -21,8 +24,7 @@ class IntroScreen extends StatefulWidget {
   static const String _doneKey = 'intro_done';
 
   /// 見せ終わった（またはスキップした）か。許可のお願いを済ませた人（1.0.4 から上げた人を含む）には見せない
-  static bool isDone(SharedPreferences prefs) =>
-      prefs.getBool(_doneKey) == true || WelcomeScreen.isDone(prefs);
+  static bool isDone(SharedPreferences prefs) => prefs.getBool(_doneKey) == true || WelcomeScreen.isDone(prefs);
 
   @override
   State<IntroScreen> createState() => _IntroScreenState();
@@ -50,16 +52,14 @@ class _IntroScreenState extends State<IntroScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(IntroScreen._doneKey, true);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()));
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const WelcomeScreen()));
   }
 
   void _next() {
     if (_isLast) {
       _finish();
     } else {
-      _pages.nextPage(
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _pages.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
 
@@ -95,9 +95,7 @@ class _IntroScreenState extends State<IntroScreen> {
           const SizedBox(height: 12),
           _Dots(count: _pageCount, index: _index),
           const SizedBox(height: 18),
-          PrimaryButton(
-              label: _isLast ? (widget.fromSettings ? '閉じる' : 'はじめる') : '次へ',
-              onPressed: _next),
+          PrimaryButton(label: _isLast ? (widget.fromSettings ? '閉じる' : 'はじめる') : '次へ', onPressed: _next),
         ],
       ),
     );
@@ -122,20 +120,12 @@ class _Page extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 8),
-              Semantics(
-                  header: true,
-                  child:
-                      Text(title, style: AppTextStyles.headline(fontSize: 30))),
+              Semantics(header: true, child: Text(title, style: AppTextStyles.headline(fontSize: 30))),
               const SizedBox(height: 12),
-              Text(body,
-                  style: AppTextStyles.body(color: Colors.white)
-                      .copyWith(fontSize: 16)),
+              Text(body, style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 16)),
               // 絵は、説明の下の空きの真ん中に置く
               Expanded(
-                  child: Center(
-                      child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: picture))),
+                  child: Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: picture))),
             ],
           ),
         ),
@@ -159,8 +149,7 @@ class _NotifyPage extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.cloud_rounded,
-                    size: 18, color: AppColors.accent),
+                const Icon(Icons.cloud_rounded, size: 18, color: AppColors.accent),
                 const SizedBox(width: 8),
                 Text('入道雲サーチ', style: AppTextStyles.caption()),
                 const Spacer(),
@@ -168,9 +157,7 @@ class _NotifyPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text('南東の空に、入道雲が現れました',
-                style:
-                    AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
+            Text('南東の空に、入道雲が現れました', style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text('約42km先。こぶし1つ半の高さを見上げてみて。', style: AppTextStyles.note()),
             const SizedBox(height: 12),
@@ -200,40 +187,92 @@ class _FakeButton extends StatelessWidget {
       child: Container(
         height: 40,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-            color: AppColors.chip, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: AppColors.chip, borderRadius: BorderRadius.circular(14)),
         child: Text(label, style: AppTextStyles.item().copyWith(fontSize: 14)),
       ),
     );
   }
 }
 
-class _FinderPage extends StatelessWidget {
+/// 2枚目。スマホの向きを変えると、矢印が本物の方角ガイドと同じように変わる
+///
+/// 見本の雲は南東（真北から135°）にあることにする。方位センサーがない端末（シミュレータなど）では、
+/// 「右へ 35°」のままの絵を出す。
+class _FinderPage extends StatefulWidget {
   const _FinderPage();
 
   @override
+  State<_FinderPage> createState() => _FinderPageState();
+}
+
+class _FinderPageState extends State<_FinderPage> {
+  static const double _targetDeg = 135;
+  static const double _alignedDeg = 10;
+  static const double _behindDeg = 150;
+
+  StreamSubscription<Heading>? _sub;
+  double? _heading;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = CompassService.headings().listen((h) {
+      if (!mounted) return;
+      final previous = _heading;
+      // 細かく揺れないよう、前の値に少しずつ寄せる（方角ガイドと同じ）
+      final smoothed = previous == null ? h.trueDeg : (previous + angleDiff(previous, h.trueDeg) * 0.25 + 360) % 360;
+      setState(() => _heading = smoothed);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final heading = _heading;
+    final diff = heading == null ? 35.0 : angleDiff(heading, _targetDeg);
+    final aligned = heading != null && diff.abs() <= _alignedDeg;
+    final behind = heading != null && diff.abs() >= _behindDeg;
+
+    final Widget dial;
+    final Widget headline;
+    if (aligned) {
+      dial = const AlignedDial();
+      headline = Text('この方向です', textAlign: TextAlign.center, style: AppTextStyles.display());
+    } else if (behind) {
+      dial = TurnDial(diffDeg: diff);
+      headline = Text('後ろを向いて', textAlign: TextAlign.center, style: AppTextStyles.display());
+    } else {
+      dial = TurnDial(diffDeg: diff);
+      headline = Text.rich(
+        TextSpan(children: [
+          TextSpan(text: diff > 0 ? '右へ ' : '左へ '),
+          TextSpan(text: '${diff.abs().round()}°', style: AppTextStyles.number(fontSize: 34, color: Colors.white)),
+        ]),
+        textAlign: TextAlign.center,
+        style: AppTextStyles.display(),
+      );
+    }
+
     return _Page(
       title: 'どっちを見るか、\n矢印で案内。',
-      body:
-          'ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。',
+      body: 'ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。',
       picture: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Center(child: TurnDial(diffDeg: 35)),
+          Center(child: dial),
           const SizedBox(height: 8),
-          Text.rich(
-            TextSpan(children: [
-              const TextSpan(text: '右へ '),
-              TextSpan(
-                  text: '35°',
-                  style:
-                      AppTextStyles.number(fontSize: 34, color: Colors.white)),
-            ]),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.display(),
-          ),
+          headline,
+          if (heading != null) ...[
+            const SizedBox(height: 6),
+            Text('見本です。スマホの向きを変えると、矢印が変わります。',
+                textAlign: TextAlign.center, style: AppTextStyles.note(color: Colors.white)),
+          ],
         ],
       ),
     );
@@ -247,8 +286,7 @@ class _PlacesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _Page(
       title: '家や学校の空も、\n見張れます。',
-      body:
-          'いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。',
+      body: 'いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。',
       picture: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -257,11 +295,7 @@ class _PlacesPage extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _ChipMock(
-                  label: '現在地',
-                  icon: Icons.my_location_rounded,
-                  selected: true,
-                  cloud: true),
+              _ChipMock(label: '現在地', icon: Icons.my_location_rounded, selected: true, cloud: true),
               _ChipMock(label: '家', cloud: true),
               _ChipMock(label: '＋ Plus', dashed: true),
             ],
@@ -291,12 +325,7 @@ class _ChipMock extends StatelessWidget {
   final bool cloud;
   final bool dashed;
 
-  const _ChipMock(
-      {required this.label,
-      this.icon,
-      this.selected = false,
-      this.cloud = false,
-      this.dashed = false});
+  const _ChipMock({required this.label, this.icon, this.selected = false, this.cloud = false, this.dashed = false});
 
   @override
   Widget build(BuildContext context) {
@@ -306,29 +335,17 @@ class _ChipMock extends StatelessWidget {
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: selected
-              ? Colors.white
-              : Colors.white.withValues(alpha: dashed ? 0.08 : 0.2),
-          border: dashed
-              ? Border.all(
-                  color: Colors.white.withValues(alpha: 0.85), width: 1.5)
-              : null,
+          color: selected ? Colors.white : Colors.white.withValues(alpha: dashed ? 0.08 : 0.2),
+          border: dashed ? Border.all(color: Colors.white.withValues(alpha: 0.85), width: 1.5) : null,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: 14, color: fg),
-              const SizedBox(width: 6)
-            ],
+            if (icon != null) ...[Icon(icon, size: 14, color: fg), const SizedBox(width: 6)],
             Text(label,
-                style: AppTextStyles.body(color: fg).copyWith(
-                    fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
-            if (cloud) ...[
-              const SizedBox(width: 6),
-              Icon(Icons.cloud_rounded, size: 14, color: fg)
-            ],
+                style: AppTextStyles.body(color: fg).copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
+            if (cloud) ...[const SizedBox(width: 6), Icon(Icons.cloud_rounded, size: 14, color: fg)],
           ],
         ),
       ),
@@ -343,40 +360,31 @@ class _RowMock extends StatelessWidget {
   final bool cloud;
   final bool divider;
 
-  const _RowMock(
-      {required this.text,
-      required this.trailing,
-      this.cloud = false,
-      this.divider = false});
+  const _RowMock({required this.text, required this.trailing, this.cloud = false, this.divider = false});
 
   @override
   Widget build(BuildContext context) {
     return ExcludeSemantics(
       child: DecoratedBox(
         decoration: BoxDecoration(
-          border: divider
-              ? const Border(bottom: BorderSide(color: AppColors.dividerOnCard))
-              : null,
+          border: divider ? const Border(bottom: BorderSide(color: AppColors.dividerOnCard)) : null,
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
           child: Row(
             children: [
               if (cloud)
-                const Icon(Icons.cloud_rounded,
-                    size: 16, color: AppColors.accent)
+                const Icon(Icons.cloud_rounded, size: 16, color: AppColors.accent)
               else
                 const SizedBox.square(
                   dimension: 16,
-                  child: DecoratedBox(
-                      decoration: BoxDecoration(
-                          color: AppColors.accent, shape: BoxShape.circle)),
+                  child: DecoratedBox(decoration: BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
                 ),
               const SizedBox(width: 10),
               Expanded(child: Text(text, style: AppTextStyles.item())),
               Text(trailing,
-                  style: AppTextStyles.note(color: AppColors.accent)
-                      .copyWith(fontWeight: FontWeight.w700, height: 1.3)),
+                  style:
+                      AppTextStyles.note(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700, height: 1.3)),
             ],
           ),
         ),
@@ -406,9 +414,7 @@ class _Dots extends StatelessWidget {
               width: i == index ? 22 : 8,
               height: 8,
               decoration: BoxDecoration(
-                color: i == index
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.3),
+                color: i == index ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
