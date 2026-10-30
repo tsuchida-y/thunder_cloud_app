@@ -146,18 +146,17 @@ class MemberService {
 
   /// 自分のデータを、サーバーから削除する（設定の「データを削除」）
   ///
-  /// サーバーの deleteMyData が、members・member_server・自分の reports と匿名ログインのアカウントを消す。
-  /// そのあと端末の保存も消して（_keepKeys 以外）、新しい匿名ログインで始め直す。Plus の購入はストアに残る。
+  /// サーバーの deleteMyData が、members・自分の reports・member_server（Plus の状態は残す）を消す。
+  /// 匿名ログインのアカウント（uid）は残すので、Plus はそのまま使える。
+  /// そのあと端末の保存も消して（_keepKeys 以外）、members を作り直す。
   /// 失敗したときは例外を投げる（このときサーバーのデータは消えていないことがある）。
   static Future<void> deleteMyData() async {
     await FirebaseFunctions.instanceFor(region: 'asia-northeast1').httpsCallable('deleteMyData').call<void>();
-    await FirebaseAuth.instance.signOut();
     final prefs = await SharedPreferences.getInstance();
     for (final key in prefs.getKeys().toList()) {
       if (!_keepKeys.contains(key)) await prefs.remove(key);
     }
-    final newUid = await ensureSignedIn();
-    await PlusService.logIn(newUid);
+    await ensureSignedIn();
   }
 
   static double _round2(double value) => (value * 100).roundToDouble() / 100;

@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('データを削除しますか'),
         content: const Text(
           '見張る場所、設定、通知の宛先、見えた雲の記録を、サーバーから削除します。元には戻せません。\n\n'
-          'Plus の購入は消えません。削除したあと、Plus の画面の「購入を復元」で戻せます。',
+          'Plus の購入は消えません。削除したあとも、Plus はそのまま使えます。',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('やめる')),

@@ -49,21 +49,6 @@ class PlusService {
     }
   }
 
-  /// データを削除して新しい uid になったあとに、RevenueCat の利用者を新しい uid に切り替える。
-  /// 購入は元の uid に残るので、新しい uid は無料に戻る（「購入を復元」で権利が移る）
-  static Future<void> logIn(String uid) async {
-    if (!_configured) {
-      await configure(uid);
-      return;
-    }
-    try {
-      final result = await Purchases.logIn(uid);
-      _updateActive(result.customerInfo);
-    } catch (e) {
-      AppLogger.warning('RevenueCat の利用者を切り替えられませんでした: $e', tag: 'PlusService');
-    }
-  }
-
   /// 月額と買い切りの商品。取れなければ null
   static Future<PlusPlans?> plans() async {
     if (!_configured) return null;

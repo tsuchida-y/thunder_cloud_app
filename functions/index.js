@@ -90,7 +90,7 @@ exports.cleanupInactiveMembers = onSchedule({
 
 /**
  * 自分のデータの削除（設定の「データを削除」）
- * 呼んだ本人（認証した uid）の members、member_server、reports と、匿名ログインのアカウントを消す
+ * 呼んだ本人（認証した uid）の members、member_server（Plus の状態は残す）、reports を消す。アカウント（uid）は残す
  */
 exports.deleteMyData = onCall({
   region: 'asia-northeast1',

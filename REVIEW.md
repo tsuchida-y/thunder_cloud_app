@@ -28,7 +28,7 @@
 
 2回目の対応（review-followup ブランチ）。
 - 中-1 ルールの検証: members と reports に、書けるフィールドと大きさの検証を足した。Firestore エミュレータで確かめるテスト（functions/test_rules、`npm run test:rules`、Java 21 が要る）を作り、アプリが実際に書く内容が通ることを確かめた。**デプロイはまだ。**
-- 中-3 データの削除: 設定に「データを削除」を足した。サーバーの `deleteMyData`（呼んだ本人の members・member_server・reports と匿名ログインを消す）を作った。プライバシーポリシーも書き換えた。**デプロイはまだ。**
+- 中-3 データの削除: 設定に「データを削除」を足した。サーバーの `deleteMyData`（呼んだ本人の members と reports を消し、member_server は Plus の状態だけ残す）を作った。匿名ログインのアカウント（uid）は残す（消すと、購入を復元しても Plus を移せなくなるため）。プライバシーポリシーも書き換えた。**デプロイはまだ。**
 
 直していない（理由つき）。
 - 高-1 Storage のルール、高-2 Firestore の v1 の部分: 公開日に v1 の関数と写真を消したあとでないと、v1（1.0.4）が壊れる。公開日の手順に足した（docs/残りの作業と確認事項.md）。
@@ -84,13 +84,13 @@ ios 以下に PrivacyInfo.xcprivacy が1つもない（git ls-files で確認）
 
 ### 中-2. Plus を復元したときに、サーバー側の Plus が付かない（revenuecat_webhook.js、member_service.dart:35-47）
 
-匿名ログインなので、アプリを消して入れ直すと uid が変わる。購入を復元すると、RevenueCat は権利を新しい uid に移し、TRANSFER イベントを送る。webhook は TRANSFER を扱っていない（ファイル内に TRANSFER の記述がない）。そのため、新しい uid の member_server に isPlus が書かれない。アプリの画面は RevenueCat の権利を見て Plus と出すが、サーバーは無料として通知する（範囲30km、見張る場所1か所）。古い uid は期限まで Plus のまま残る。要確認（実機で、入れ直して復元し、member_server を見る）。
+匿名ログインなので、uid が変わる場面（Android の入れ直し、端末の買い替え）では、購入を復元すると、RevenueCat は権利を新しい uid に移し、TRANSFER イベントを送る。（2026-10-31 に実機で確かめたところ、iPhone はアプリを消して入れ直しても同じ uid が続いた。Firebase Auth がキーチェーンに保存するため。iPhone の入れ直しでは起きない。）webhook は TRANSFER を扱っていない（ファイル内に TRANSFER の記述がない）。そのため、新しい uid の member_server に isPlus が書かれない。アプリの画面は RevenueCat の権利を見て Plus と出すが、サーバーは無料として通知する（範囲30km、見張る場所1か所）。古い uid は期限まで Plus のまま残る。要確認（実機で、入れ直して復元し、member_server を見る）。
 
 直し方は、webhook に TRANSFER を足し、`transferred_to` の uid に Plus を書き、`transferred_from` の uid から外すこと。
 
 ### 中-3. データの引き継ぎと削除（member_service.dart:35-47、docs/privacy_policy.html）
 
-- **引き継ぎ**: 匿名ログインのため、端末を変える、入れ直すと uid が変わり、見張る場所、設定、記録（reports）が失われる。Plus は復元で戻るが、記録は戻らない。v1 の端末 ID（legacyUserId、member_service.dart:46）は、手がかりとして保存しているだけ。仕様として割り切るなら、設定や記録の画面に「入れ直すと記録は消えます」と一言あるとよい（要確認）。
+- **引き継ぎ**: 匿名ログインのため、uid が変わる場面（Android の入れ直し、端末の買い替え）では、見張る場所、設定、記録（reports）が失われる。iPhone は入れ直しても同じ uid が続く（2026-10-31 に実機で確認）。Plus は復元で戻るが、記録は戻らない。v1 の端末 ID（legacyUserId、member_service.dart:46）は、手がかりとして保存しているだけ。仕様として割り切るなら、設定や記録の画面に「入れ直すと記録は消えます」と一言あるとよい（要確認）。
 - **削除**: アプリの中に、自分のデータを消す導線がない（lib を検索して該当なし）。プライバシーポリシーには、1年開かなければ消える、と書いてある。Apple のアカウント削除の規則は、アカウントを作るアプリが対象なので、匿名ログインだけなら該当しない見込み（要確認）。一方 Google Play は、データの削除の依頼方法を、アプリとストアの両方で示すよう求めている（要確認）。
 
 直し方は、設定に「データを削除」を足し、`members`・`member_server`・自分の `reports` を消す Cloud Function と、`FirebaseAuth.currentUser.delete()` を呼ぶこと。
