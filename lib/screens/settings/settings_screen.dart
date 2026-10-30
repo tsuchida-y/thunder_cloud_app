@@ -11,6 +11,7 @@ import '../../services/sky/report_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/logger.dart';
 import '../../widgets/common/page_header.dart';
 import '../../widgets/common/settings_parts.dart';
 import '../../widgets/common/sky_page.dart';
@@ -39,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _member;
   Map<String, dynamic>? _server;
   int? _seenDays;
+  bool _deleting = false;
 
   @override
   void initState() {
@@ -61,6 +63,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   bool get _isPlus => MemberService.isPlusActive(_server, DateTime.now());
+
+  Future<void> _confirmDeleteData() async {
+    if (_deleting) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('データを削除しますか'),
+        content: const Text(
+          '見張る場所、設定、通知の宛先、見えた雲の記録を、サーバーから削除します。元には戻せません。\n\n'
+          'Plus の購入は消えません。削除したあと、Plus の画面の「購入を復元」で戻せます。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('やめる')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('削除する')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      await MemberService.deleteMyData();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('削除しました'),
+          content: const Text('もう一度はじめから使えます。'),
+          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))],
+        ),
+      );
+      if (mounted) await AppRoutes.restartAtHome(context);
+    } catch (e, stackTrace) {
+      AppLogger.error('データの削除に失敗', error: e, stackTrace: stackTrace, tag: 'SettingsScreen');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('削除できませんでした。通信を確かめて、もう一度お試しください。')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
 
   Future<void> _editQuietHours(QuietHours? current) async {
     final result = await QuietHoursSheet.show(context, current);
@@ -154,6 +199,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 14),
+          SettingsCard(
+            children: [
+              SettingsRow.text(
+                'データを削除',
+                subtitle: _deleting ? '削除しています…' : '見張る場所・設定・記録をサーバーから消します',
+                onTap: _deleting ? null : _confirmDeleteData,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           if (isPlus)
             // Plus の人は、プランや期限の確認と解約の入口へ
             SettingsCard(
@@ -201,11 +256,14 @@ class _RangeSelector extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (locked) ...[const Icon(Icons.lock_outline_rounded, size: 12, color: AppColors.text), const SizedBox(width: 6)],
+                    if (locked) ...[
+                      const Icon(Icons.lock_outline_rounded, size: 12, color: AppColors.text),
+                      const SizedBox(width: 6)
+                    ],
                     Text(
                       label,
-                      style: AppTextStyles.body(color: selected ? Colors.white : AppColors.text)
-                          .copyWith(fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w400, height: 1.2),
+                      style: AppTextStyles.body(color: selected ? Colors.white : AppColors.text).copyWith(
+                          fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w400, height: 1.2),
                     ),
                   ],
                 ),

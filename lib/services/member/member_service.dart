@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -137,6 +138,26 @@ class MemberService {
     final id = uid;
     if (id == null) return;
     await _db.collection(membersCollection).doc(id).set({'settings': fields}, SetOptions(merge: true));
+  }
+
+  /// 端末に残しておく印（許可のお願いと使い方を見終わったこと。welcome_screen.dart と intro_screen.dart のキー）。
+  /// 削除のあとに、また最初の画面から見せないため
+  static const Set<String> _keepKeys = {'welcome_done', 'intro_done'};
+
+  /// 自分のデータを、サーバーから削除する（設定の「データを削除」）
+  ///
+  /// サーバーの deleteMyData が、members・member_server・自分の reports と匿名ログインのアカウントを消す。
+  /// そのあと端末の保存も消して（_keepKeys 以外）、新しい匿名ログインで始め直す。Plus の購入はストアに残る。
+  /// 失敗したときは例外を投げる（このときサーバーのデータは消えていないことがある）。
+  static Future<void> deleteMyData() async {
+    await FirebaseFunctions.instanceFor(region: 'asia-northeast1').httpsCallable('deleteMyData').call<void>();
+    await FirebaseAuth.instance.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys().toList()) {
+      if (!_keepKeys.contains(key)) await prefs.remove(key);
+    }
+    final newUid = await ensureSignedIn();
+    await PlusService.logIn(newUid);
   }
 
   static double _round2(double value) => (value * 100).roundToDouble() / 100;

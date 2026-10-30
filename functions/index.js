@@ -12,7 +12,7 @@
  */
 
 const {onSchedule} = require('firebase-functions/v2/scheduler');
-const {onRequest} = require('firebase-functions/v2/https');
+const {onRequest, onCall, HttpsError} = require('firebase-functions/v2/https');
 const {defineSecret} = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
@@ -20,6 +20,7 @@ const NowcastService = require('./modules/jma/nowcast_service');            // �
 const { CloudWatchService } = require('./modules/watch/cloud_watch_service'); // 雲の見張りと通知
 const CleanupService = require('./modules/cleanup/cleanup_service');        // データクリーンアップ
 const { handleWebhook } = require('./modules/plus/revenuecat_webhook');     // Plus（RevenueCat）
+const { deleteMemberData } = require('./modules/account/account_service'); // 利用者が自分のデータを消す
 
 // RevenueCat の webhook の合言葉（Authorization ヘッダー）。
 // `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH` で登録し、RevenueCat の管理画面にも同じ値を入れる
@@ -86,3 +87,22 @@ exports.cleanupInactiveMembers = onSchedule({
   timeZone: 'Asia/Tokyo',
   region: 'asia-northeast1',
 }, () => cleanupService.cleanupInactiveMembers());
+
+/**
+ * 自分のデータの削除（設定の「データを削除」）
+ * 呼んだ本人（認証した uid）の members、member_server、reports と、匿名ログインのアカウントを消す
+ */
+exports.deleteMyData = onCall({
+  region: 'asia-northeast1',
+}, async (request) => {
+  const uid = request.auth && request.auth.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'ログインが必要です');
+  try {
+    const result = await deleteMemberData(uid);
+    console.log(`🧹 [DELETE_MY_DATA] 利用者が自分のデータを削除しました（reports ${result.reports}件）`);
+    return { ok: true };
+  } catch (error) {
+    console.error('❌ [DELETE_MY_DATA] 削除に失敗しました:', error);
+    throw new HttpsError('internal', '削除できませんでした');
+  }
+});
