@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/intro/intro_screen.dart';
 import 'screens/plus/plus_screen.dart';
 import 'screens/welcome/welcome_screen.dart';
 import 'services/notification/cloud_notifications.dart';
@@ -41,17 +42,18 @@ void main() async {
   unawaited(CloudNotifications.initialize());
 
   final prefs = await SharedPreferences.getInstance();
-  runApp(MyApp(showWelcome: !WelcomeScreen.isDone(prefs)));
+  runApp(MyApp(showIntro: !IntroScreen.isDone(prefs), showWelcome: !WelcomeScreen.isDone(prefs)));
 }
 
 /// アプリケーションのルートウィジェット
 ///
-/// はじめての起動では Welcome（許可のお願い）、2回目からはホーム。
+/// はじめての起動では Intro（使い方）→ Welcome（許可のお願い）、2回目からはホーム。
 /// 匿名ログイン・位置・雲の一覧の読み込みは、ホーム（HomeController）が始める。
 class MyApp extends StatelessWidget {
+  final bool showIntro;
   final bool showWelcome;
 
-  const MyApp({super.key, this.showWelcome = false});
+  const MyApp({super.key, this.showIntro = false, this.showWelcome = false});
 
   /// 開発中の確かめ用。デバッグ版で --dart-define=START_SCREEN=plus を付けると、起動したら Plus の画面を出す
   /// （ストアの審査用のスクリーンショットをシミュレータで撮るため）。START_SCREEN=loading なら読み込み画面を出し続ける
@@ -66,9 +68,11 @@ class MyApp extends StatelessWidget {
           ? const PlusScreen()
           : _startScreen == 'loading'
               ? const LoadingView()
-              : showWelcome
-                  ? const WelcomeScreen()
-                  : const HomeScreen(),
+              : showIntro
+                  ? const IntroScreen()
+                  : showWelcome
+                      ? const WelcomeScreen()
+                      : const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
