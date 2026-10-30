@@ -141,6 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 14),
           SettingsCard(
             children: [
+              SettingsRow.text('使い方', onTap: () => AppRoutes.openIntro(context)),
               SettingsRow.text('データの出典', onTap: () => AppRoutes.openDataSource(context)),
               SettingsRow.text(
                 '利用規約',

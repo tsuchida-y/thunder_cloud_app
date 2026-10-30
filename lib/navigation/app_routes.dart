@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/finder_target.dart';
 import '../screens/finder/finder_screen.dart';
+import '../screens/intro/intro_screen.dart';
 import '../screens/plus/plus_screen.dart';
 import '../screens/record/record_screen.dart';
 import '../screens/settings/data_source_screen.dart';
@@ -29,6 +30,9 @@ class AppRoutes {
 
   static Future<void> openPlus(BuildContext context) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlusScreen()));
+
+  static Future<void> openIntro(BuildContext context) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const IntroScreen(fromSettings: true)));
 
   static Future<void> openDataSource(BuildContext context) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataSourceScreen()));
