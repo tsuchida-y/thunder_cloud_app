@@ -47,7 +47,10 @@ class CompassService {
   static const String _fakeHeading = kDebugMode ? String.fromEnvironment('FAKE_HEADING') : '';
 
   /// 方位センサーの値。センサーがない端末（シミュレータなど）では何も届かない
-  static Stream<Heading> headings({double declinationDeg = 0}) {
+  ///
+  /// iPhone は、位置情報を許可する前は本当の北の角度が負（使えない）で届く。[allowMagneticFallback] が true なら、
+  /// そのときは端末の動きから出した磁北の角度を使う（はじめの使い方の見本用。偏角は直さないので数°ずれる）
+  static Stream<Heading> headings({double declinationDeg = 0, bool allowMagneticFallback = false}) {
     final fake = double.tryParse(_fakeHeading);
     if (fake != null) {
       return Stream.periodic(const Duration(milliseconds: 200), (_) => Heading(fake, 10));
@@ -55,7 +58,9 @@ class CompassService {
     final events = FlutterCompass.events;
     if (events == null) return const Stream.empty();
     return events.where((e) => e.heading != null).map((e) {
-      final deg = (e.heading! + declinationDeg) % 360;
+      var base = e.heading!;
+      if (allowMagneticFallback && base < 0) base = e.headingForCameraMode ?? base;
+      final deg = (base + declinationDeg) % 360;
       return Heading(deg < 0 ? deg + 360 : deg, e.accuracy);
     });
   }

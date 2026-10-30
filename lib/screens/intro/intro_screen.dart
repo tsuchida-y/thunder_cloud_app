@@ -63,6 +63,8 @@ class _IntroScreenState extends State<IntroScreen> {
     }
   }
 
+  void _back() => _pages.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+
   @override
   Widget build(BuildContext context) {
     return SkyPage(
@@ -74,15 +76,18 @@ class _IntroScreenState extends State<IntroScreen> {
         children: [
           SizedBox(
             height: 44,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _isLast
-                  ? null
-                  : TextLinkButton(
-                      label: widget.fromSettings ? '閉じる' : 'スキップ',
-                      color: Colors.white,
-                      onPressed: _finish,
-                    ),
+            child: Row(
+              children: [
+                // 2枚目以降は、ひとつ前に戻れる
+                if (_index > 0) TextLinkButton(label: '戻る', color: Colors.white, onPressed: _back),
+                const Spacer(),
+                if (!_isLast)
+                  TextLinkButton(
+                    label: widget.fromSettings ? '閉じる' : 'スキップ',
+                    color: Colors.white,
+                    onPressed: _finish,
+                  ),
+              ],
             ),
           ),
           Expanded(
@@ -216,7 +221,7 @@ class _FinderPageState extends State<_FinderPage> {
   @override
   void initState() {
     super.initState();
-    _sub = CompassService.headings().listen((h) {
+    _sub = CompassService.headings(allowMagneticFallback: true).listen((h) {
       if (!mounted) return;
       final previous = _heading;
       // 細かく揺れないよう、前の値に少しずつ寄せる（方角ガイドと同じ）
