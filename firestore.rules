@@ -15,11 +15,39 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // members に書けるフィールドと大きさ（アプリが書くもの＋サーバーが書く fcmTokenInvalidAt）。
+    // 巨大なデータを入れて、毎回の読み取りを重くされないための上限
+    function validMember(d) {
+      return d.keys().hasOnly([
+               'createdAt', 'platform', 'settings', 'legacyUserId', 'lastOpenedAt',
+               'location', 'locationSource', 'locationUpdatedAt', 'places', 'fcmToken', 'fcmTokenUpdatedAt', 'fcmTokenInvalidAt'
+             ]) &&
+             (!('locationSource' in d) || (d.locationSource is string && d.locationSource.size() <= 20)) &&
+             (!('platform' in d) || (d.platform is string && d.platform.size() <= 20)) &&
+             (!('settings' in d) || (d.settings is map && d.settings.size() <= 20)) &&
+             (!('legacyUserId' in d) || (d.legacyUserId is string && d.legacyUserId.size() <= 100)) &&
+             (!('location' in d) || d.location is map) &&
+             (!('places' in d) || (d.places is list && d.places.size() <= 10)) &&
+             (!('fcmToken' in d) || d.fcmToken == null || (d.fcmToken is string && d.fcmToken.size() <= 500));
+    }
+
+    // 「見えた」「見えなかった」の答えに書けるフィールドと型
+    function validReport(d) {
+      return d.keys().hasOnly(['uid', 'seen', 'cloudId', 'source', 'bearingDeg', 'distanceKm', 'answeredAt', 'reportedAt']) &&
+             (!('cloudId' in d) || d.cloudId == null || (d.cloudId is string && d.cloudId.size() <= 100)) &&
+             (!('source' in d) || (d.source is string && d.source.size() <= 30)) &&
+             (!('bearingDeg' in d) || d.bearingDeg is number) &&
+             (!('distanceKm' in d) || d.distanceKm is number) &&
+             (!('answeredAt' in d) || d.answeredAt is timestamp) &&
+             (!('reportedAt' in d) || d.reportedAt == request.time);
+    }
+
     // ===== v2.0（匿名ログインの uid で本人を確かめる） =====
 
     // 利用者がアプリから書く情報（位置、見張る場所、設定、FCM トークンなど）
     match /members/{uid} {
-      allow read, create, update, delete: if isOwner(uid);
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validMember(request.resource.data);
     }
 
     // サーバーだけが書く情報（Plus かどうか、通知の記録）。本人は読むだけ
@@ -32,7 +60,8 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow create: if signedIn() &&
                     request.resource.data.uid == request.auth.uid &&
-                    request.resource.data.seen is bool;
+                    request.resource.data.seen is bool &&
+                    validReport(request.resource.data);
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
