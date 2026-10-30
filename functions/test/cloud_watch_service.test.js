@@ -158,3 +158,25 @@ test('ひまわりで見積もった高さで、通知の見上げる高さを�
   // 約25km 先で高さ6km なら約13.4°
   assert.equal(sent[0].data.elevationDeg, '13.4');
 });
+
+test('読み取りを減らす: 通知の宛先がない人と通知をオフの人の member_server は読まない', async () => {
+  const { firestore, service } = setup({
+    members: {
+      u1: member(),
+      u2: member({ fcmToken: null }),
+      u3: { location: home, settings: {} },
+      u4: member({ settings: { notifyAppeared: false } }),
+    },
+    servers: { u1: {}, u2: {}, u3: {}, u4: {} },
+  });
+  const read = [];
+  const getAll = firestore.getAll.bind(firestore);
+  firestore.getAll = async (...refs) => {
+    refs.forEach((ref) => read.push(ref.path));
+    return getAll(...refs);
+  };
+  const summary = await service.run(now);
+
+  assert.equal(summary.checked, 1);
+  assert.deepEqual(read, ['member_server/u1']);
+});

@@ -30,6 +30,10 @@ class FakeFirestore {
     return this._ref(path);
   }
 
+  async getAll(...refs) {
+    return Promise.all(refs.map((ref) => ref.get().then((snap) => ({ id: ref.id, exists: snap.exists, data: snap.data }))));
+  }
+
   collection(name) {
     const store = this;
     return {
@@ -42,7 +46,12 @@ class FakeFirestore {
       },
       where: (field, op, value) => ({
         async get() {
-          const match = (v) => (op === 'in' ? value.includes(v) : v === value);
+          const match = (v) => {
+            if (op === 'in') return value.includes(v);
+            // Firestore の != は、そのフィールドがない（undefined）ドキュメントを含めない
+            if (op === '!=') return v !== undefined && v !== value;
+            return v === value;
+          };
           const docs = [...store.docs.entries()]
             .filter(([path, data]) => path.startsWith(`${name}/`) && path.split('/').length === 2 && match(data[field]))
             .map(([path, data]) => ({ id: path.split('/').pop(), ref: store._ref(path), data: () => data }));
