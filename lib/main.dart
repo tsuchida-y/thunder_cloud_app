@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ import 'screens/plus/plus_screen.dart';
 import 'screens/welcome/welcome_screen.dart';
 import 'services/notification/cloud_notifications.dart';
 import 'theme/app_theme.dart';
+import 'utils/logger.dart';
 import 'widgets/common/loading_view.dart';
 
 /// アプリが閉じているときに届いた通知
@@ -27,6 +29,22 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await CloudNotifications.showFromData(message.data);
 }
 
+/// App Check（本物のアプリからの通信だけを Firebase に通す仕組み）を始める
+///
+/// iPhone は App Attest（使えない端末は DeviceCheck）、Android は Play Integrity。デバッグ版はデバッグ用の印を使う。
+/// いまは Firebase 側で「強制」にしていないので、失敗してもアプリは今までどおり動く（記録が残るだけ）。
+/// 強制にすると、App Check を持たない v1（1.0.4）が使えなくなるので、v1 を止めたあとに行う。
+Future<void> _activateAppCheck() async {
+  try {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttestWithDeviceCheckFallback,
+    );
+  } catch (e) {
+    AppLogger.warning('App Check を始められませんでした: $e', tag: 'main');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -37,6 +55,7 @@ void main() async {
   ]);
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await _activateAppCheck();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   // 通知の準備は画面を出すのと並べて進める（iOS で返事が遅いことがあるため、待たない）
   unawaited(CloudNotifications.initialize());
