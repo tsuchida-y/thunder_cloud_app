@@ -211,8 +211,16 @@ void onNotificationActionInBackground(NotificationResponse response) {
   if (response.actionId != CloudNotifications.seenAction && response.actionId != CloudNotifications.notSeenAction) {
     return;
   }
+  void logFailure(Object e, StackTrace stackTrace) {
+    // 「見えた」「見えなかった」の答えを残せなかったので、本番でも気づけるように出す
+    AppLogger.error('通知のボタンの答えを残せませんでした', error: e, stackTrace: stackTrace, tag: 'CloudNotifications');
+  }
+
   try {
     final data = jsonDecode(response.payload ?? '') as Map<String, dynamic>;
-    ReportService.queueFromNotification(data, seen: response.actionId == CloudNotifications.seenAction);
-  } catch (_) {}
+    ReportService.queueFromNotification(data, seen: response.actionId == CloudNotifications.seenAction)
+        .catchError((Object e, StackTrace stackTrace) => logFailure(e, stackTrace));
+  } catch (e, stackTrace) {
+    logFailure(e, stackTrace);
+  }
 }

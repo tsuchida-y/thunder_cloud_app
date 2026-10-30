@@ -8,9 +8,12 @@
  * - 月額: 解約（CANCELLATION）しても期限までは Plus のまま。期限切れ（EXPIRATION）で Plus をやめる
  * - 買い切り（2026-10-27 から）: NON_RENEWING_PURCHASE で期限なしの Plus にする。
  *   返金されたとき（期限のない CANCELLATION）は Plus をやめる
+ * - 買った人が入れ直して購入を復元すると、RevenueCat は権利を新しい uid に移し、TRANSFER を送る（期限は付かない）。
+ *   移す元の member_server が持つ Plus の状態（期限、プラン）を、移す先にコピーして、元は外す
  * - RevenueCat の管理画面で決めた合言葉を Authorization ヘッダーで受け取り、違えば断る
  */
 
+const crypto = require('crypto');
 const admin = require('firebase-admin');
 const { COLLECTIONS } = require('../../constants');
 
@@ -67,6 +70,68 @@ function planUpdate(event, entitlementId = 'plus') {
   return { skip: `ignored_${event.type}` };
 }
 
+const PLUS_FIELDS = ['plusProductId', 'plusStore', 'plusEnvironment', 'plusExpiresAt'];
+
+const isRealUid = (id) => typeof id === 'string' && id !== '' && !id.startsWith('$RCAnonymousID');
+
+/**
+ * TRANSFER（購入の復元で、権利が別の uid に移った）で書く内容を決める（Firestore に触れない部分）
+ *
+ * @param {Object} event - transferred_from, transferred_to を持つ
+ * @param {Object<string, Object>} serverDocs - 移す元の uid ごとの member_server の中身
+ * @returns {{skip:string}|{copy:Object, to:string[], from:string[]}} copy は移す先に書く Plus の状態
+ */
+function planTransfer(event, serverDocs) {
+  const from = (event.transferred_from || []).filter(isRealUid);
+  const to = (event.transferred_to || []).filter(isRealUid);
+  if (to.length === 0) return { skip: 'no_destination' };
+  const source = from.map((id) => serverDocs[id]).find((doc) => doc && doc.isPlus === true);
+  if (!source) return { skip: 'source_not_plus' };
+  const copy = { isPlus: true, plusLastEvent: 'TRANSFER' };
+  PLUS_FIELDS.forEach((key) => {
+    copy[key] = source[key] === undefined ? null : source[key];
+  });
+  return { copy, to, from };
+}
+
+/** 合言葉を、一定の時間で比べる（比べる時間から中身を推測されないように） */
+function sameSecret(given, expected) {
+  if (typeof given !== 'string' || typeof expected !== 'string') return false;
+  const a = crypto.createHash('sha256').update(given).digest();
+  const b = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+async function handleTransfer(event, firestore) {
+  const collection = firestore.collection(COLLECTIONS.MEMBER_SERVER);
+  const serverDocs = {};
+  for (const id of (event.transferred_from || []).filter(isRealUid)) {
+    const snap = await collection.doc(id).get();
+    if (snap.exists) serverDocs[id] = snap.data();
+  }
+  const plan = planTransfer(event, serverDocs);
+  if (plan.skip) {
+    console.log(`💳 [REVENUECAT] TRANSFER は何もしない（${plan.skip}）`);
+    return;
+  }
+  for (const id of plan.to) {
+    await collection.doc(id).set(
+      { ...plan.copy, plusUpdatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+  }
+  for (const id of plan.from) {
+    if (plan.to.includes(id)) continue;
+    await collection.doc(id).set({
+      isPlus: false,
+      plusExpiresAt: null,
+      plusLastEvent: 'TRANSFER',
+      plusUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  }
+  console.log(`💳 [REVENUECAT] TRANSFER: Plus を ${plan.to.length} 件に移しました`);
+}
+
 /**
  * webhook の本体（firebase-functions の onRequest から呼ぶ）
  */
@@ -75,13 +140,18 @@ async function handleWebhook(req, res, { authToken, firestore = admin.firestore(
     res.status(405).send('POST only');
     return;
   }
-  if (!authToken || req.get('Authorization') !== authToken) {
+  if (!authToken || !sameSecret(req.get('Authorization'), authToken)) {
     console.warn('⚠️ [REVENUECAT] 合言葉が違う webhook を断りました');
     res.status(401).send('unauthorized');
     return;
   }
 
   const event = req.body && req.body.event;
+  if (event && event.type === 'TRANSFER') {
+    await handleTransfer(event, firestore);
+    res.status(200).send('ok');
+    return;
+  }
   const plan = planUpdate(event);
   if (plan.skip) {
     // 権利の ID が違うと読み飛ばすので、何が付いていたかも残す（2026-10-29 に RevenueCat の権利の ID の違いで起きた）
@@ -102,4 +172,4 @@ async function handleWebhook(req, res, { authToken, firestore = admin.firestore(
   res.status(200).send('ok');
 }
 
-module.exports = { planUpdate, handleWebhook };
+module.exports = { planUpdate, planTransfer, sameSecret, handleWebhook };

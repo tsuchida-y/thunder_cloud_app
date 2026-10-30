@@ -81,16 +81,17 @@ class CloudWatchService {
       return summary;
     }
 
-    const [memberSnap, serverSnap] = await Promise.all([
-      this.firestore.collection(COLLECTIONS.MEMBERS).get(),
-      this.firestore.collection(COLLECTIONS.MEMBER_SERVER).get(),
-    ]);
-    const servers = new Map(serverSnap.docs.map((doc) => [doc.id, doc.data()]));
+    // 読み取りの回数（料金）を減らすため、通知の宛先がある人だけを読み、member_server もその人の分だけ読む
+    const memberSnap = await this.firestore.collection(COLLECTIONS.MEMBERS).where('fcmToken', '!=', null).get();
+    const targets = memberSnap.docs.filter((doc) => {
+      const member = doc.data();
+      return member.fcmToken && member.settings?.notifyAppeared !== false;
+    });
+    const servers = await this._readServers(targets.map((doc) => doc.id));
     const isRaining = this._rainChecker(rainLookup);
 
-    for (const memberDoc of memberSnap.docs) {
+    for (const memberDoc of targets) {
       const member = memberDoc.data();
-      if (!member.fcmToken || member.settings?.notifyAppeared === false) continue;
       summary.checked++;
 
       const server = servers.get(memberDoc.id) || {};
@@ -125,6 +126,22 @@ class CloudWatchService {
     console.log(`📣 [CLOUD_WATCH] 雲${clouds.length}個、調べた人${summary.checked}人、通知${summary.sent}件、` +
       `送らなかった理由 ${JSON.stringify(summary.skipped)}`);
     return summary;
+  }
+
+  /**
+   * 指定した人の member_server を読んで、uid から中身を引ける Map にする
+   */
+  async _readServers(uids) {
+    const servers = new Map();
+    const CHUNK = 300;
+    for (let i = 0; i < uids.length; i += CHUNK) {
+      const refs = uids.slice(i, i + CHUNK).map((id) => this.firestore.collection(COLLECTIONS.MEMBER_SERVER).doc(id));
+      const snaps = await this.firestore.getAll(...refs);
+      snaps.forEach((snap) => {
+        if (snap.exists) servers.set(snap.id, snap.data());
+      });
+    }
+    return servers;
   }
 
   /**
