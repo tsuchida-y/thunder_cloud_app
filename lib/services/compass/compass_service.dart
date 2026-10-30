@@ -59,7 +59,11 @@ class CompassService {
     if (events == null) return const Stream.empty();
     return events.where((e) => e.heading != null).map((e) {
       var base = e.heading!;
-      if (allowMagneticFallback && base < 0) base = e.headingForCameraMode ?? base;
+      if (allowMagneticFallback && base < 0) {
+        // 端末の動きから出した角度は反時計回りなので、方位（時計回り）に直す
+        final motion = e.headingForCameraMode;
+        if (motion != null) base = (360 - motion) % 360;
+      }
       final deg = (base + declinationDeg) % 360;
       return Heading(deg < 0 ? deg + 360 : deg, e.accuracy);
     });
