@@ -78,6 +78,22 @@ const HIMAWARI = {
 };
 
 /**
+ * 見張る場所のまわりの雲の量（ひまわりの赤外画像）の設定
+ *
+ * 見張る場所から半径 RADIUS_PIXELS（z6 で1ピクセル約2km なので約20km）のうち、赤外画像の温度が
+ * 地上の気温より COLD_DELTA_C 以上低いピクセルの割合を「雲に覆われた割合」とする。太陽の高さに関係なく、
+ * 朝夕と夜も使える。割合が OVERCAST_FRACTION 以上なら一面の曇り。
+ * 数字は、岩手の3つの時刻（曇り 100%、晴れ 5〜15% と 0〜1%）で決めた目安（2026-11-02）。通知の記録で調整する。
+ */
+const CLOUD_COVER = {
+  RADIUS_PIXELS: 10,
+  COLD_DELTA_C: 8,
+  OVERCAST_FRACTION: 0.8,
+  // 記録に残す、ほかの冷たさのしきい値（調整のため）
+  EXTRA_DELTAS_C: [5, 12],
+};
+
+/**
  * 気象庁ホームページのアメダスの設定
  *
  * 見張る場所の空が一面の曇りか（日照時間）と、遠くまで見通せるか（視程）を調べる。
@@ -91,8 +107,11 @@ const AMEDAS = {
   STATION_TABLE_TTL_MS: 24 * 60 * 60 * 1000,
   // 見張る場所からこの距離までの地点の日照を見る
   SUNSHINE_RADIUS_KM: 20,
-  // 太陽がこれより低いと、晴れていても日照計が日照なしになるので、日照は使わない
-  SUNSHINE_MIN_SUN_ALTITUDE_DEG: 15,
+  // 太陽がこれより低いと、晴れていても日照計が日照なしになる（岩手では夕方、西の山に太陽が隠れて、
+  // 6〜8° で晴れていても日照が減る日があった）ので、前の1時間のうち、太陽がこの高さ以上だった時間が
+  // SUNSHINE_MIN_MINUTES 以上あるときだけ、日照を使う（2026-11-02 の検知の見直し。docs/検知の見直し案_2026-11-02.md）
+  SUNSHINE_MIN_SUN_ALTITUDE_DEG: 10,
+  SUNSHINE_MIN_MINUTES: 30,
   // 視程は気象台など約150地点だけなので、この距離までのいちばん近い地点を使う
   VISIBILITY_RADIUS_KM: 40,
   // 視程計はこれ以上を同じ値（20km）で出すので、これ未満のときだけ使う
@@ -113,6 +132,9 @@ const NOTIFY_RULES = {
   MAYBE_VISIBLE_KM: 60,
   // 雲の端がこれより近いと、真下か近すぎて形が見えないので知らせない（離れてから知らせる）
   MIN_DISTANCE_KM: 10,
+  // 雲のてっぺんを見上げる角度がこれより低いと、水平線のすぐ上の小さなふくらみで、山やもやに隠れて見えないので知らせない。
+  // 背の高い雲ほど遠くまで通る（高さ12kmなら約85km、10kmなら約71km、8kmなら約57km）。2026-11-02 の検知の見直し
+  MIN_ELEVATION_DEG: 8,
   MIN_INTERVAL_MS: 30 * 60 * 1000,
   DAILY_LIMIT: 3,
   // アプリを開いてからこの時間内の人には送らない（もう画面で見ているため）
@@ -135,7 +157,13 @@ const COLLECTIONS = {
   MEMBERS: 'members',
   MEMBER_SERVER: 'member_server',
   REPORTS: 'reports',
+  NOTIFICATION_LOG: 'notification_log',
 };
+
+/**
+ * 通知の判断の記録（notification_log）を残す日数（プライバシーポリシーの1年。しきい値の調整に使う）
+ */
+const NOTIFICATION_LOG_RETENTION_DAYS = 365;
 
 /**
  * 終わった雲を残しておく日数（夜の画面の「きょう見えた入道雲」に使うので、少なくとも当日分は残す）
@@ -148,9 +176,11 @@ const INACTIVE_MEMBER_DAYS = 365;
 module.exports = {
   JMA_NOWCAST,
   HIMAWARI,
+  CLOUD_COVER,
   AMEDAS,
   NOTIFY_RULES,
   COLLECTIONS,
   CLOUD_RETENTION_DAYS,
+  NOTIFICATION_LOG_RETENTION_DAYS,
   INACTIVE_MEMBER_DAYS,
 };

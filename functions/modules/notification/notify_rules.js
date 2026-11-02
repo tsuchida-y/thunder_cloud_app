@@ -62,7 +62,9 @@ function isInQuietHours(now, quietHours) {
  * @param {Object} params.history - {notifiedCloudIds, lastNotifiedAt, dailyCount, dailyDate}
  * @param {Array<{id:string,latitude:number,longitude:number,isVisible:boolean,edgePoints?:Array}>} params.clouds
  *   - edgePoints は雲のふちの点（いちばん近い所までの距離に使う）
- * @returns {{notify: Object}|{skip: string}} 知らせるときは雲と見え方、知らせないときは理由
+ * @returns {{notify: Object, candidates: Array}|{skip: string, candidates?: Array}}
+ *   知らせるときは雲と見え方、知らせないときは理由。candidates は、範囲内にあった雲ごとの見え方と、知らせなかった理由
+ *   （通知の記録に残して、しきい値の調整に使う。reason が null の雲は、条件を全部通った雲）
  */
 function decideNotification(params) {
   const { now, watchPoints, isPlus, quietHours = null, lastOpenedAt = null, history = {}, clouds } = params;
@@ -85,38 +87,73 @@ function decideNotification(params) {
   const daytimePoints = watchPoints.filter((p) => isDaytime(now, p.latitude, p.longitude));
   if (daytimePoints.length === 0) return { skip: 'night' };
 
-  // 雨の降っている場所は雲の下か曇り空で、入道雲の形が見えない
-  const dryPoints = daytimePoints.filter((p) => !p.raining);
-  if (dryPoints.length === 0) return { skip: 'raining_here' };
-  // 一面の曇り空も、入道雲は雲に隠れて見えない
-  const openPoints = dryPoints.filter((p) => !p.overcast);
-  if (openPoints.length === 0) return { skip: 'overcast_here' };
-
   const notified = new Set(history.notifiedCloudIds || []);
-  let best = null;
-  let tooClose = false;
-  let hazy = false;
+  // 範囲内の雲ごとの見え方（記録用。いちばん近い見張る場所から見たもの）
+  const inRange = [];
   for (const cloud of clouds) {
     if (!cloud.isVisible || notified.has(cloud.id)) continue;
-    for (const point of openPoints) {
+    for (const point of daytimePoints) {
       const view = describeCloud(point, cloud);
       if (view.distanceKm > rangeKm) continue;
-      if (typeof point.visibilityKm === 'number' && view.distanceKm > point.visibilityKm) {
-        hazy = true;
-        continue;
-      }
-      if (nearestDistanceKm(point, cloud) < NOTIFY_RULES.MIN_DISTANCE_KM) {
-        tooClose = true;
-        continue;
-      }
-      if (!best || view.distanceKm < best.view.distanceKm) {
-        best = { cloud, point, view, maybeVisible: view.distanceKm > NOTIFY_RULES.MAYBE_VISIBLE_KM };
-      }
+      inRange.push({ cloud, point, view, nearestEdgeKm: nearestDistanceKm(point, cloud), reason: null });
     }
   }
-  if (best) return { notify: best };
-  if (tooClose) return { skip: 'too_close' };
-  return { skip: hazy ? 'beyond_visibility' : 'no_cloud_in_range' };
+  const candidates = nearestPerCloud(inRange);
+
+  // 雨の降っている場所は雲の下か曇り空で、入道雲の形が見えない
+  const dryPoints = daytimePoints.filter((p) => !p.raining);
+  if (dryPoints.length === 0) return { skip: 'raining_here', candidates };
+  // 一面の曇り空も、入道雲は雲に隠れて見えない
+  const openPoints = dryPoints.filter((p) => !p.overcast);
+  if (openPoints.length === 0) return { skip: 'overcast_here', candidates };
+
+  let best = null;
+  let tooClose = false;
+  let lowElevation = false;
+  let hazy = false;
+  for (const item of inRange) {
+    if (!openPoints.includes(item.point)) {
+      item.reason = item.point.raining ? 'raining_here' : 'overcast_here';
+      continue;
+    }
+    const { cloud, point, view } = item;
+    if (typeof point.visibilityKm === 'number' && view.distanceKm > point.visibilityKm) {
+      hazy = true;
+      item.reason = 'beyond_visibility';
+      continue;
+    }
+    if (item.nearestEdgeKm < NOTIFY_RULES.MIN_DISTANCE_KM) {
+      tooClose = true;
+      item.reason = 'too_close';
+      continue;
+    }
+    // てっぺんを見上げる角度が低い雲は、水平線のすぐ上の小さなふくらみで、山やもやに隠れて見えない
+    if (view.elevationDeg < NOTIFY_RULES.MIN_ELEVATION_DEG) {
+      lowElevation = true;
+      item.reason = 'low_elevation';
+      continue;
+    }
+    if (!best || view.distanceKm < best.view.distanceKm) {
+      best = { cloud, point, view, maybeVisible: view.distanceKm > NOTIFY_RULES.MAYBE_VISIBLE_KM };
+    }
+  }
+  const result = nearestPerCloud(inRange);
+  if (best) return { notify: best, candidates: result };
+  if (tooClose) return { skip: 'too_close', candidates: result };
+  if (lowElevation) return { skip: 'low_elevation', candidates: result };
+  return { skip: hazy ? 'beyond_visibility' : 'no_cloud_in_range', candidates: result };
+}
+
+/**
+ * 同じ雲を複数の見張る場所から見ているとき、いちばん近い場所から見たものだけにして、近い順に並べる（最大10個）
+ */
+function nearestPerCloud(items) {
+  const byCloud = new Map();
+  for (const item of items) {
+    const previous = byCloud.get(item.cloud.id);
+    if (!previous || item.view.distanceKm < previous.view.distanceKm) byCloud.set(item.cloud.id, item);
+  }
+  return [...byCloud.values()].sort((a, b) => a.view.distanceKm - b.view.distanceKm).slice(0, 10);
 }
 
 /**

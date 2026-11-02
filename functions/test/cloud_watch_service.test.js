@@ -110,7 +110,11 @@ test('使えなくなったトークンは消し、通知の記録は残さな�
   const summary = await service.run(now);
   assert.equal(summary.sent, 0);
   assert.equal(firestore.docs.get('members/u1').fcmToken, null);
-  assert.equal(firestore.docs.has('member_server/u1'), false);
+  // 通知の記録（知らせた雲、回数、最初の通知）は残さない。判断の記録（send_failed）だけが入る
+  const server = firestore.docs.get('member_server/u1') || {};
+  assert.equal(server.firstNotifiedAt, undefined);
+  assert.equal((server.notification || {}).notifiedCloudIds, undefined);
+  assert.equal((server.notification || {}).dailyCount, undefined);
 });
 
 test('見えている雲がなければ誰も調べない', async () => {
@@ -179,4 +183,120 @@ test('読み取りを減らす: 通知の宛先がない人と通知をオフの
 
   assert.equal(summary.checked, 1);
   assert.deepEqual(read, ['member_server/u1']);
+});
+
+// ===== 一面の曇りの判断（ひまわりの雲の量）と、判断の記録（2026-11-02 の検知の見直し） =====
+
+const { GRAY_CLEAR, GRAY_CLOUD, infraredAround, fakeInfrared } = require('./helpers/infrared');
+
+// 日の入りの直前（太陽が低く、日照を使えない）。市民薄明のあいだなので、通知してよい時間
+const evening = new Date('2026-08-12T18:30:00+09:00');
+const stationNearHome = (sun1h = 0) => [{ latitude: 39.72, longitude: 141.08, sun1h, tempC: 8 }];
+
+test('太陽が低くて日照を使えなくても、ひまわりの雲の量が多ければ一面の曇りとして知らせない', async () => {
+  const cloudy = fakeInfrared(infraredAround(home, () => GRAY_CLOUD));
+  const clear = fakeInfrared(infraredAround(home, () => GRAY_CLEAR));
+
+  const a = setup({ members: { u1: member() } });
+  const blocked = await a.service.run(evening, { amedasStations: stationNearHome(0), infrared: cloudy });
+  assert.equal(blocked.sent, 0);
+  assert.equal(blocked.skipped.overcast_here, 1);
+
+  // 雲が少なければ、日照0（太陽が低くて当てにならない）でも知らせる
+  const b = setup({ members: { u1: member() } });
+  const sent = await b.service.run(evening, { amedasStations: stationNearHome(0), infrared: clear });
+  assert.equal(sent.sent, 1);
+
+  // ひまわりがなければ、太陽が低い時間は曇りを判断できないので、今までどおり知らせる
+  const c = setup({ members: { u1: member() } });
+  assert.equal((await c.service.run(evening, { amedasStations: stationNearHome(0), infrared: null })).sent, 1);
+});
+
+test('昼に近くで日差しがあれば、雲の量が多くても（薄い雲、切れ間）曇りとしない', async () => {
+  const cloudy = fakeInfrared(infraredAround(home, () => GRAY_CLOUD));
+  const { service } = setup({ members: { u1: member() } });
+  const summary = await service.run(now, { amedasStations: stationNearHome(0.7), infrared: cloudy });
+  assert.equal(summary.sent, 1);
+});
+
+test('背の低い遠い雲（見上げる角度が8°未満）は知らせず、判断を記録する', async () => {
+  const lowFar = { center: { latitude: 39.26, longitude: 141.70 }, topHeightKm: 7.2, topTempC: -37.1, areaKm2: 7.1,
+    pixelCount: 2, maxRainMmPerHour: 30, maxThunderLevel: 0 };
+  const { firestore, service, sent } = setup({
+    clouds: { far: lowFar },
+    members: { u1: member({ settings: { rangeKm: 90 } }) },
+    servers: { u1: { isPlus: true } },
+  });
+  const summary = await service.run(now, {
+    amedasStations: stationNearHome(0.9),
+    infrared: fakeInfrared(infraredAround(home, () => GRAY_CLEAR)),
+    times: { rain: '20260812062000', thunder: '20260812062000' },
+    amedasTime: '2026-08-12T06:20:00.000Z',
+  });
+  assert.equal(summary.sent, 0);
+  assert.equal(summary.skipped.low_elevation, 1);
+  assert.equal(sent.length, 0);
+
+  const logs = [...firestore.docs.entries()].filter(([path]) => path.startsWith('notification_log/')).map(([, v]) => v);
+  assert.equal(logs.length, 1);
+  const log = logs[0];
+  assert.equal(log.uid, 'u1');
+  assert.equal(log.cloudId, 'far');
+  assert.equal(log.decision, 'low_elevation');
+  assert.equal(log.rulesVersion, 'detect-2026-11-02');
+  assert.equal(log.cloud.topTempC, -37.1);
+  assert.equal(log.cloud.topHeightKm, 7.2);
+  assert.equal(log.cloud.areaKm2, 7.1);
+  assert.equal(log.cloud.pixelCount, 2);
+  assert.ok(log.cloud.elevationDeg < 8);
+  assert.ok(log.cloud.distanceKm > 60);
+  // 位置は約1kmに丸めた値だけ
+  assert.equal(log.viewer.latitude, 39.74);
+  assert.equal(log.viewer.longitude, 141.08);
+  assert.equal(log.viewer.isCurrentLocation, true);
+  assert.equal(log.sky.overcast, false);
+  assert.equal(log.sky.coverFraction, 0);
+  assert.equal(log.sky.sunshineUsable, true);
+  assert.equal(log.sky.sunshineAnyPositive, true);
+  assert.equal(log.sky.surfaceTempC, 8);
+  assert.deepEqual(log.dataTimes, { nowcast: '20260812062000', himawari: '20260812062000', amedas: '2026-08-12T06:20:00.000Z' });
+  assert.ok(log.expiresAt && log.loggedAt);
+
+  // 同じ雲で同じ判断は、2回目から書かない
+  await service.run(new Date(now.getTime() + 5 * 60 * 1000), { amedasStations: stationNearHome(0.9) });
+  assert.equal([...firestore.docs.keys()].filter((path) => path.startsWith('notification_log/')).length, 1);
+});
+
+test('通知した雲は notified と記録し、ほかの雲は理由つきで記録する', async () => {
+  const lowFar = { center: { latitude: 39.26, longitude: 141.70 }, topHeightKm: 7.2 };
+  const { firestore, service } = setup({
+    clouds: { c1: { ...nearCloud, topHeightKm: 10 }, far: lowFar },
+    members: { u1: member({ settings: { rangeKm: 90 } }) },
+    servers: { u1: { isPlus: true } },
+  });
+  const summary = await service.run(now);
+  assert.equal(summary.sent, 1);
+  const logs = [...firestore.docs.entries()].filter(([path]) => path.startsWith('notification_log/')).map(([, v]) => v);
+  const byCloud = Object.fromEntries(logs.map((l) => [l.cloudId, l.decision]));
+  assert.deepEqual(byCloud, { c1: 'notified', far: 'low_elevation' });
+  // 通知の記録（回数など）は、判断の記録を足しても消えない
+  const server = firestore.docs.get('member_server/u1');
+  assert.equal(server.notification.dailyCount, 1);
+  assert.deepEqual(server.notification.notifiedCloudIds, ['c1']);
+  assert.ok(server.notification.loggedDecisions.includes('c1:notified'));
+  assert.equal(server.isPlus, true);
+});
+
+test('一面の曇りで止めたときも、範囲内の雲が曇りの数字つきで記録される', async () => {
+  const { firestore, service } = setup({ members: { u1: member() } });
+  await service.run(evening, {
+    amedasStations: stationNearHome(0),
+    infrared: fakeInfrared(infraredAround(home, () => GRAY_CLOUD)),
+  });
+  const logs = [...firestore.docs.entries()].filter(([path]) => path.startsWith('notification_log/')).map(([, v]) => v);
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].decision, 'overcast_here');
+  assert.equal(logs[0].sky.overcast, true);
+  assert.equal(logs[0].sky.coverFraction, 1);
+  assert.equal(logs[0].sky.sunshineUsable, false);
 });
