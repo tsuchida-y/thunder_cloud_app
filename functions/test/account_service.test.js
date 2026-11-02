@@ -12,6 +12,8 @@ function setup({ server = { notification: { dailyCount: 1 } } } = {}) {
   firestore.docs.set('members/other', { platform: 'android' });
   firestore.docs.set('member_server/other', { isPlus: false });
   firestore.docs.set('reports/r3', { uid: 'other', seen: true });
+  firestore.docs.set('notification_log/l1', { uid: 'me', decision: 'notified' });
+  firestore.docs.set('notification_log/l2', { uid: 'other', decision: 'low_elevation' });
   return firestore;
 }
 
@@ -19,7 +21,7 @@ test('自分の members・reports・member_server を消す。他人のものは
   const firestore = setup();
   const result = await deleteMemberData('me', { firestore });
 
-  assert.deepEqual(result, { reports: 2, keptPlus: false });
+  assert.deepEqual(result, { reports: 2, logs: 1, keptPlus: false });
   assert.equal(firestore.docs.has('members/me'), false);
   assert.equal(firestore.docs.has('member_server/me'), false);
   assert.equal(firestore.docs.has('reports/r1'), false);
@@ -27,6 +29,9 @@ test('自分の members・reports・member_server を消す。他人のものは
   assert.equal(firestore.docs.has('members/other'), true);
   assert.equal(firestore.docs.has('member_server/other'), true);
   assert.equal(firestore.docs.has('reports/r3'), true);
+  // 通知の判断の記録も、自分の分だけ消す
+  assert.equal(firestore.docs.has('notification_log/l1'), false);
+  assert.equal(firestore.docs.has('notification_log/l2'), true);
 });
 
 test('Plus の人は、member_server に Plus の状態だけを残す（通知の記録は消す）', async () => {
