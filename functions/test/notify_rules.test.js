@@ -146,3 +146,40 @@ test('見上げる高さは、ひまわりで見積もったてっぺんの高�
   const twelve = decideNotification({ ...base, clouds: [{ ...near, topHeightKm: 12 }] }).notify.view;
   assert.equal(unknown.elevationDeg, twelve.elevationDeg);
 });
+
+test('てっぺんを見上げる角度が8°より低い雲は知らせない（背が高い雲なら遠くても知らせる）', () => {
+  const plus = { ...base, isPlus: true, rangeKm: 90 };
+  // far は約75km。高さ7.2km だと約5.5°（水平線のすぐ上の小さなふくらみ）
+  const low = decideNotification({ ...plus, clouds: [{ ...far, topHeightKm: 7.2 }] });
+  assert.equal(low.skip, 'low_elevation');
+  assert.equal(low.candidates[0].reason, 'low_elevation');
+  // 高さ12km だと約9°で、60km より遠くても知らせる（「見えるかもしれません」の言い方で）
+  const tall = decideNotification({ ...plus, clouds: [{ ...far, topHeightKm: 12 }] });
+  assert.equal(tall.notify.cloud.id, 'far');
+  assert.equal(tall.notify.maybeVisible, true);
+  // 同じ背の低い雲でも、近ければ角度が高いので知らせる（25km で約16°）
+  assert.equal(decideNotification({ ...base, clouds: [{ ...near, topHeightKm: 7.2 }] }).notify.cloud.id, 'near');
+  // 背の低い遠い雲と、背の高い近い雲があれば、近い雲を知らせる
+  const both = decideNotification({ ...plus, clouds: [{ ...far, topHeightKm: 7.2 }, { ...mid, topHeightKm: 10 }] });
+  assert.equal(both.notify.cloud.id, 'mid');
+});
+
+test('候補の記録: 範囲内の雲ごとに、見え方と知らせなかった理由が付く', () => {
+  const plus = { ...base, isPlus: true, rangeKm: 90 };
+  const lowFar = { ...far, topHeightKm: 7.2 };
+  const chosen = decideNotification({ ...plus, clouds: [lowFar, { ...mid, topHeightKm: 10 }] });
+  const reasons = Object.fromEntries(chosen.candidates.map((c) => [c.cloud.id, c.reason]));
+  assert.deepEqual(reasons, { mid: null, far: 'low_elevation' });
+  assert.ok(chosen.candidates[0].view.distanceKm < chosen.candidates[1].view.distanceKm);
+  assert.ok(chosen.candidates.every((c) => typeof c.nearestEdgeKm === 'number'));
+
+  // 一面の曇りで止まったときも、範囲内の雲が候補に残る（あとで「見えたのに来なかった」を調べるため）
+  const overcast = decideNotification({ ...base, watchPoints: [{ ...home, overcast: true }] });
+  assert.equal(overcast.skip, 'overcast_here');
+  assert.equal(overcast.candidates.length, 1);
+  assert.equal(overcast.candidates[0].cloud.id, 'near');
+  // 前の通知から30分たっていないような、雲と関係のない理由のときは候補を調べない
+  const recent = decideNotification({ ...base, history: { lastNotifiedAt: new Date(now.getTime() - 60000) } });
+  assert.equal(recent.skip, 'interval');
+  assert.equal(recent.candidates, undefined);
+});

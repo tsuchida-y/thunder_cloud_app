@@ -52,14 +52,18 @@ exports.updateNowcastClouds = onSchedule({
 });
 
 /**
- * 終わった雲の削除
+ * 終わった雲の削除と、保存期間が過ぎた通知の判断の記録の削除
  * スケジュール: 毎日 3:30（日本時間）
  */
 exports.cleanupOldClouds = onSchedule({
   schedule: '30 3 * * *',
   timeZone: 'Asia/Tokyo',
   region: 'asia-northeast1'
-}, () => cleanupService.cleanupOldClouds());
+}, async () => {
+  await cleanupService.cleanupOldClouds();
+  // 保存期間（1年）が過ぎた通知の判断の記録も、毎日ここで消す
+  await cleanupService.cleanupOldNotificationLogs();
+});
 
 /**
  * 期限切れ写真削除処理

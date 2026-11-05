@@ -8,9 +8,10 @@
  * どれも予想ではなく、いまの観測から読み取るだけ。通信や Firestore には触れない（テストしやすくするため）。
  */
 
-const { HIMAWARI, AMEDAS, JMA_NOWCAST } = require('../../constants');
+const { HIMAWARI, AMEDAS, JMA_NOWCAST, CLOUD_COVER } = require('../../constants');
 const { distanceKm } = require('../geo/sky_geometry');
-const { isDaytime } = require('../geo/sun_times');
+const { isDaytime, sunAltitudeDeg } = require('../geo/sun_times');
+const { latLngToPixel } = require('./rain_lookup');
 
 /**
  * 赤外画像の明るさ（0〜255）を温度（℃）に直す（見積もりの式。constants.js の HIMAWARI を参照）
@@ -84,22 +85,155 @@ function surfaceTempNear(stations, point) {
 }
 
 /**
- * 見張る場所の空が一面の曇りか
+ * 前の1時間のうち、太陽が altitudeDeg 以上の高さだった時間（分。5分きざみ）
+ */
+function sunMinutesAbove(now, point, altitudeDeg, windowMinutes = 60, stepMinutes = 5) {
+  let minutes = 0;
+  for (let ago = 0; ago < windowMinutes; ago += stepMinutes) {
+    const at = new Date(now.getTime() - ago * 60 * 1000);
+    if (isDaytime(at, point.latitude, point.longitude, altitudeDeg)) minutes += stepMinutes;
+  }
+  return minutes;
+}
+
+/**
+ * 見張る場所から半径20km のアメダス地点の、前の1時間の日照
+ *
+ * @returns {{stations:number, anyPositive:boolean, allZero:boolean}} 日照が取れた地点の数と、日差しがあった地点があるか、
+ *   どこも日差しがなかったか（地点がなければ allZero は false）
+ */
+function nearbySunshine(stations, point) {
+  const nearby = (stations || []).filter((s) =>
+    s.sun1h !== null && s.sun1h !== undefined && distanceKm(point, s) <= AMEDAS.SUNSHINE_RADIUS_KM);
+  return {
+    stations: nearby.length,
+    anyPositive: nearby.some((s) => s.sun1h > 0),
+    allZero: nearby.length > 0 && nearby.every((s) => s.sun1h === 0),
+  };
+}
+
+/**
+ * 日照（アメダス）を使えるか
+ *
+ * 太陽が低いと、晴れていても日照が0になる。前の1時間のうち、太陽が10°以上だった時間が30分以上あるときだけ使う。
+ */
+function isSunshineUsable(now, point) {
+  return sunMinutesAbove(now, point, AMEDAS.SUNSHINE_MIN_SUN_ALTITUDE_DEG) >= AMEDAS.SUNSHINE_MIN_MINUTES;
+}
+
+/**
+ * 見張る場所の空が一面の曇りか（日照だけで見る。ひまわりが取れなかったときの代わり）
  *
  * 半径20km のアメダス地点がどこも、前の1時間ずっと日が差していなければ曇りとする。
- * 太陽が低いと晴れていても日照なしになるので、前の1時間ずっと太陽が15°より高かったときだけ判定する。
  * 1地点だけだと、入道雲そのものの影に入っただけのこともあるので、近くの地点をすべて見る。
  */
 function isOvercast(stations, point, now) {
-  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  const altitude = AMEDAS.SUNSHINE_MIN_SUN_ALTITUDE_DEG;
-  if (!isDaytime(now, point.latitude, point.longitude, altitude) ||
-    !isDaytime(hourAgo, point.latitude, point.longitude, altitude)) {
-    return false;
+  if (!isSunshineUsable(now, point)) return false;
+  return nearbySunshine(stations, point).allZero;
+}
+
+/**
+ * 見張る場所のまわり（半径20km）の雲の量
+ *
+ * ひまわりの赤外画像で、温度が地上の気温より COLD_DELTA_C 以上低いピクセルの割合。
+ * 地上の気温が分からないとき（近くにアメダスがない）や、画像が足りないときは null（分からない）。
+ *
+ * @param {{latitude:number,longitude:number}} point
+ * @param {Map<string, {width:number,height:number,data:Uint8Array}>} images - "x,y" をキーにした z6 の赤外画像
+ * @param {number|null} surfaceTempC - 見張る場所の近くの地上の気温（アメダス）
+ * @returns {{fraction:number, fractions:Object<string,number>, medianDeltaC:number, pixels:number}|null}
+ */
+function cloudCover(point, images, surfaceTempC) {
+  if (!images || images.size === 0 || typeof surfaceTempC !== 'number') return null;
+  const size = JMA_NOWCAST.TILE_SIZE;
+  const radius = CLOUD_COVER.RADIUS_PIXELS;
+  const center = latLngToPixel(point.latitude, point.longitude, HIMAWARI.ZOOM);
+  const deltas = [];
+  let total = 0;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy > radius * radius) continue;
+      total++;
+      const x = center.x + dx;
+      const y = center.y + dy;
+      const image = images.get(`${Math.floor(x / size)},${Math.floor(y / size)}`);
+      if (!image) continue;
+      const px = ((x % size) + size) % size;
+      const py = ((y % size) + size) % size;
+      deltas.push(grayToTempC(image.data[(py * image.width + px) * 4]) - surfaceTempC);
+    }
   }
-  const nearby = (stations || []).filter((s) =>
-    s.sun1h !== null && s.sun1h !== undefined && distanceKm(point, s) <= AMEDAS.SUNSHINE_RADIUS_KM);
-  return nearby.length > 0 && nearby.every((s) => s.sun1h === 0);
+  // 画像が半分以上足りないときは、判断しない
+  if (deltas.length < total / 2) return null;
+  deltas.sort((a, b) => a - b);
+  const shareBelow = (delta) => deltas.filter((d) => d <= -delta).length / deltas.length;
+  const fractions = {};
+  [CLOUD_COVER.COLD_DELTA_C, ...CLOUD_COVER.EXTRA_DELTAS_C].forEach((delta) => {
+    fractions[delta] = Math.round(shareBelow(delta) * 100) / 100;
+  });
+  return {
+    fraction: fractions[CLOUD_COVER.COLD_DELTA_C],
+    fractions,
+    medianDeltaC: Math.round(deltas[Math.floor(deltas.length / 2)] * 10) / 10,
+    pixels: deltas.length,
+  };
+}
+
+/**
+ * 見張る場所のまわり（雲の量を測る範囲）にかかる、z6 のタイルの一覧
+ *
+ * @param {Array<{latitude:number,longitude:number}>} points
+ * @returns {Array<{x:number,y:number}>}
+ */
+function infraredTilesAround(points) {
+  const size = JMA_NOWCAST.TILE_SIZE;
+  const radius = CLOUD_COVER.RADIUS_PIXELS;
+  const keys = new Set();
+  for (const point of points) {
+    const c = latLngToPixel(point.latitude, point.longitude, HIMAWARI.ZOOM);
+    for (let x = Math.floor((c.x - radius) / size); x <= Math.floor((c.x + radius) / size); x++) {
+      for (let y = Math.floor((c.y - radius) / size); y <= Math.floor((c.y + radius) / size); y++) {
+        keys.add(`${x},${y}`);
+      }
+    }
+  }
+  return [...keys].map((key) => {
+    const [x, y] = key.split(',').map(Number);
+    return { x, y };
+  });
+}
+
+/**
+ * 見張る場所の空のようす（一面の曇りか）と、判断に使った数字
+ *
+ * - 日照（アメダス）を使える時間（太陽が10°以上の時間が前の1時間に30分以上）に、近くの地点がどこも日照0なら、曇り。
+ * - ひまわりの雲の量が80%以上でも、曇り。ただし日照を使える時間に、近くで日差しがあった地点があれば、雲に切れ間が
+ *   あるので曇りとしない（薄い雲やまばらな雲）。
+ * - ひまわりが取れなかったとき（cover が null）は、日照だけで決める。
+ * どちらも予想ではなく、いまの観測から読み取るだけ。
+ *
+ * @returns {{overcast:boolean, cover:Object|null, sun:{altitudeDeg:number, usable:boolean, stations:number,
+ *   anyPositive:boolean, allZero:boolean}, surfaceTempC:number|null}}
+ */
+function assessSky({ stations, point, now, images }) {
+  const usable = isSunshineUsable(now, point);
+  const sunshine = nearbySunshine(stations, point);
+  const surfaceTempC = nearestValue(stations || [], point, AMEDAS.TEMP_RADIUS_KM, (s) => s.tempC);
+  const cover = cloudCover(point, images, surfaceTempC);
+
+  const darkBySunshine = usable && sunshine.allZero;
+  const coveredByInfrared = cover !== null && cover.fraction >= CLOUD_COVER.OVERCAST_FRACTION &&
+    !(usable && sunshine.anyPositive);
+  return {
+    overcast: darkBySunshine || coveredByInfrared,
+    cover,
+    sun: {
+      altitudeDeg: Math.round(sunAltitudeDeg(now, point.latitude, point.longitude) * 10) / 10,
+      usable,
+      ...sunshine,
+    },
+    surfaceTempC,
+  };
 }
 
 /**
@@ -118,5 +252,11 @@ module.exports = {
   isTallEnough,
   surfaceTempNear,
   isOvercast,
+  sunMinutesAbove,
+  nearbySunshine,
+  isSunshineUsable,
+  cloudCover,
+  infraredTilesAround,
+  assessSky,
   visibilityKmNear,
 };

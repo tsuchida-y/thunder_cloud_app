@@ -8,14 +8,27 @@
  * - いまいる場所は、最後にアプリが送ってきた位置。「常に」の許可がない人は、最後に開いた場所になる
  * - Plus かどうかと通知の記録は member_server にある（サーバーだけが書く）
  * - 見張る場所でいま雨が降っているかは、雲を探したときのタイルから調べる（rain_lookup.js）
- * - 見張る場所の空が一面の曇りか、どこまで見通せるかは、アメダスから調べる（sky_observations.js）
+ * - 見張る場所の空が一面の曇りか（ひまわりの雲の量とアメダスの日照）、どこまで見通せるか（アメダスの視程）は、
+ *   sky_observations.js で調べる
+ * - 判断に使った数字は、通知の記録（notification_log）に残す。しきい値を、「見えた」「見えなかった」の答えと
+ *   突き合わせて調整するため（docs/検知の見直し案_2026-11-02.md の案D）
  */
 
 const admin = require('firebase-admin');
 const NotificationService = require('../notification/notification_service');
 const { decideNotification, nextHistory, appearedMessage } = require('../notification/notify_rules');
-const { isOvercast, visibilityKmNear } = require('../jma/sky_observations');
-const { COLLECTIONS, JMA_NOWCAST, NOTIFY_RULES } = require('../../constants');
+const { assessSky, visibilityKmNear } = require('../jma/sky_observations');
+const {
+  COLLECTIONS, JMA_NOWCAST, NOTIFY_RULES, NOTIFICATION_LOG_RETENTION_DAYS,
+} = require('../../constants');
+
+/** 判断の記録の、しきい値の組の名前（しきい値を変えたら、この名前も変えて、記録を見分けられるようにする） */
+const RULES_VERSION = 'detect-2026-11-02';
+
+const round = (value, digits = 1) => {
+  if (typeof value !== 'number') return null;
+  return Math.round(value * 10 ** digits) / 10 ** digits;
+};
 
 /**
  * Plus かどうか（期限つき。期限がなければ Plus のまま）
@@ -58,9 +71,14 @@ class CloudWatchService {
    * @param {Object} [sky] - 雲を探したときに取った観測（nowcast_service.js の updateClouds の戻り値）
    * @param {import('../jma/rain_lookup').RainLookup|null} [sky.rainLookup] - なければ雨は調べない
    * @param {Array|null} [sky.amedasStations] - なければ曇りと視程は調べない
+   * @param {{images:Map, validtime:string, ensureAround:function}|null} [sky.infrared] - ひまわりの赤外画像（雲の量に使う）
+   * @param {{rain:string, thunder:string}|null} [sky.times] - ナウキャストの解析時刻（記録用）
+   * @param {string|null} [sky.amedasTime] - アメダスの観測時刻（記録用）
    * @returns {Promise<{checked:number, sent:number, skipped:Object<string,number>}>}
    */
-  async run(now = new Date(), { rainLookup = null, amedasStations = null } = {}) {
+  async run(now = new Date(), {
+    rainLookup = null, amedasStations = null, infrared = null, times = null, amedasTime = null,
+  } = {}) {
     const cloudSnap = await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
       .where('status', '==', 'active').get();
     const clouds = cloudSnap.docs
@@ -72,6 +90,12 @@ class CloudWatchService {
         longitude: c.center.longitude,
         edgePoints: c.edgePoints || [],
         topHeightKm: typeof c.topHeightKm === 'number' ? c.topHeightKm : null,
+        // 判断の記録に残す
+        topTempC: typeof c.topTempC === 'number' ? c.topTempC : null,
+        areaKm2: typeof c.areaKm2 === 'number' ? c.areaKm2 : null,
+        pixelCount: typeof c.pixelCount === 'number' ? c.pixelCount : null,
+        maxRainMmPerHour: typeof c.maxRainMmPerHour === 'number' ? c.maxRainMmPerHour : null,
+        maxThunderLevel: typeof c.maxThunderLevel === 'number' ? c.maxThunderLevel : null,
         isVisible: true,
       }));
 
@@ -90,20 +114,40 @@ class CloudWatchService {
     const servers = await this._readServers(targets.map((doc) => doc.id));
     const isRaining = this._rainChecker(rainLookup);
 
-    for (const memberDoc of targets) {
+    const prepared = targets.map((memberDoc) => {
       const member = memberDoc.data();
-      summary.checked++;
-
       const server = servers.get(memberDoc.id) || {};
       const isPlus = isPlusActive(server, now);
+      return { memberDoc, member, server, isPlus, points: watchPointsOf(member, isPlus) };
+    });
+    // 見張る場所のまわりの雲の量に使う赤外画像のタイルを、足りない分だけ取り足す（取れなければ日照だけで決める）
+    if (infrared) {
+      try {
+        await infrared.ensureAround(prepared.flatMap((item) => item.points));
+      } catch (error) {
+        console.warn('⚠️ [CLOUD_WATCH] 見張る場所のまわりの赤外画像を取れませんでした（日照だけで決めます）:', error);
+      }
+    }
+    const images = infrared ? infrared.images : null;
+    const dataTimes = {
+      nowcast: times && times.rain ? times.rain : null,
+      himawari: infrared && infrared.validtime ? infrared.validtime : null,
+      amedas: amedasTime || null,
+    };
+
+    for (const { memberDoc, member, server, isPlus, points } of prepared) {
+      summary.checked++;
       const history = server.notification || {};
-      const watchPoints = await Promise.all(watchPointsOf(member, isPlus)
-        .map(async (p) => ({
+      const watchPoints = await Promise.all(points.map(async (p) => {
+        const sky = assessSky({ stations: amedasStations, point: p, now, images });
+        return {
           ...p,
           raining: await isRaining(p),
-          overcast: amedasStations ? isOvercast(amedasStations, p, now) : false,
+          overcast: sky.overcast,
+          sky,
           visibilityKm: amedasStations ? visibilityKmNear(amedasStations, p) : null,
-        })));
+        };
+      }));
       const decision = decideNotification({
         now,
         watchPoints,
@@ -114,18 +158,101 @@ class CloudWatchService {
         history: { ...history, lastNotifiedAt: toDate(history.lastNotifiedAt) },
         clouds,
       });
-      if (decision.skip) {
-        summary.skipped[decision.skip] = (summary.skipped[decision.skip] || 0) + 1;
-        continue;
-      }
 
-      const sent = await this._send(memberDoc.id, member, decision.notify, server, now);
-      if (sent) summary.sent++;
+      let sent = false;
+      if (decision.notify) {
+        sent = await this._send(memberDoc.id, member, decision.notify, server, now);
+        if (sent) summary.sent++;
+      } else {
+        summary.skipped[decision.skip] = (summary.skipped[decision.skip] || 0) + 1;
+      }
+      // 判断の記録は、通知を止めたり遅らせたりしないよう、失敗しても続ける
+      try {
+        await this._logDecision(memberDoc.id, server, decision, sent, dataTimes, now);
+      } catch (error) {
+        console.warn('⚠️ [CLOUD_WATCH] 通知の判断を記録できませんでした:', error);
+      }
     }
 
     console.log(`📣 [CLOUD_WATCH] 雲${clouds.length}個、調べた人${summary.checked}人、通知${summary.sent}件、` +
       `送らなかった理由 ${JSON.stringify(summary.skipped)}`);
     return summary;
+  }
+
+  /**
+   * 通知の判断に使った数字を、notification_log に残す（案D）
+   *
+   * 範囲内にあった雲ごとに1件。同じ雲で同じ判断（通知した、止めた理由）は、2回目から書かない
+   * （member_server.notification.loggedDecisions に覚えておく）。位置は約1kmに丸めた値だけ。
+   */
+  async _logDecision(uid, server, decision, sent, dataTimes, now) {
+    const candidates = decision.candidates || [];
+    if (candidates.length === 0) return;
+    const chosenId = decision.notify ? decision.notify.cloud.id : null;
+    const logged = new Set((server.notification && server.notification.loggedDecisions) || []);
+    const expiresAt = admin.firestore.Timestamp.fromDate(
+      new Date(now.getTime() + NOTIFICATION_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000));
+
+    const fresh = [];
+    for (const { cloud, point, view, nearestEdgeKm, reason } of candidates) {
+      let name;
+      if (cloud.id === chosenId) name = sent ? 'notified' : 'send_failed';
+      else name = reason || decision.skip || 'not_chosen';
+      const key = `${cloud.id}:${name}`;
+      if (logged.has(key)) continue;
+      const sky = point.sky || {};
+      fresh.push({
+        key,
+        record: {
+          uid,
+          cloudId: cloud.id,
+          decision: name,
+          rulesVersion: RULES_VERSION,
+          loggedAt: admin.firestore.Timestamp.fromDate(now),
+          expiresAt,
+          viewer: {
+            isCurrentLocation: point.label === 'いまいる場所',
+            latitude: round(point.latitude, 2),
+            longitude: round(point.longitude, 2),
+          },
+          cloud: {
+            topTempC: round(cloud.topTempC),
+            topHeightKm: round(cloud.topHeightKm),
+            areaKm2: round(cloud.areaKm2),
+            pixelCount: cloud.pixelCount,
+            maxRainMmPerHour: cloud.maxRainMmPerHour,
+            maxThunderLevel: cloud.maxThunderLevel,
+            distanceKm: round(view.distanceKm),
+            nearestEdgeKm: round(nearestEdgeKm),
+            bearingDeg: round(view.bearingDeg, 0),
+            elevationDeg: round(view.elevationDeg),
+          },
+          sky: {
+            overcast: Boolean(point.overcast),
+            raining: Boolean(point.raining),
+            visibilityKm: round(point.visibilityKm),
+            surfaceTempC: round(sky.surfaceTempC),
+            sunAltitudeDeg: sky.sun ? sky.sun.altitudeDeg : null,
+            sunshineUsable: sky.sun ? sky.sun.usable : null,
+            sunshineStations: sky.sun ? sky.sun.stations : null,
+            sunshineAnyPositive: sky.sun ? sky.sun.anyPositive : null,
+            sunshineAllZero: sky.sun ? sky.sun.allZero : null,
+            coverFraction: sky.cover ? sky.cover.fraction : null,
+            coverFractions: sky.cover ? sky.cover.fractions : null,
+            coverMedianDeltaC: sky.cover ? sky.cover.medianDeltaC : null,
+          },
+          dataTimes,
+        },
+      });
+    }
+    if (fresh.length === 0) return;
+
+    const batch = this.firestore.batch();
+    fresh.forEach(({ record }) => batch.set(this.firestore.collection(COLLECTIONS.NOTIFICATION_LOG).doc(), record));
+    await batch.commit();
+    const next = [...logged, ...fresh.map(({ key }) => key)].slice(-60);
+    await this.firestore.collection(COLLECTIONS.MEMBER_SERVER).doc(uid)
+      .set({ notification: { loggedDecisions: next } }, { merge: true });
   }
 
   /**

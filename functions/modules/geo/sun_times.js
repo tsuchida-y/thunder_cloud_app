@@ -82,4 +82,25 @@ function nextSunrise(now, latitude, longitude, altitudeDeg = CIVIL_TWILIGHT_DEG)
   return null;
 }
 
-module.exports = { sunTimesForUtcDate, isDaytime, nextSunrise, SUNRISE_ALTITUDE_DEG, CIVIL_TWILIGHT_DEG };
+/**
+ * いまの太陽の高さ（°。地平線が0、真上が90）。通知の記録に残す用（NOAA の簡易式。誤差は 0.3° ほど）
+ */
+function sunAltitudeDeg(now, latitude, longitude) {
+  const n = now.getTime() / DAY_MS + 2440587.5 - 2451545.0;
+  const meanLongitude = (280.46 + 0.9856474 * n) % 360;
+  const anomaly = toRad((357.528 + 0.9856003 * n) % 360);
+  const eclipticLongitude = toRad(meanLongitude + 1.915 * Math.sin(anomaly) + 0.02 * Math.sin(2 * anomaly));
+  const obliquity = toRad(23.439 - 0.0000004 * n);
+  const declination = Math.asin(Math.sin(obliquity) * Math.sin(eclipticLongitude));
+  const rightAscension = Math.atan2(Math.cos(obliquity) * Math.sin(eclipticLongitude), Math.cos(eclipticLongitude));
+  const greenwichHours = (18.697374558 + 24.06570982441908 * n) % 24;
+  const localSiderealTime = toRad((((greenwichHours * 15 + longitude) % 360) + 360) % 360);
+  const hourAngle = localSiderealTime - rightAscension;
+  const sinAltitude = Math.sin(toRad(latitude)) * Math.sin(declination) +
+    Math.cos(toRad(latitude)) * Math.cos(declination) * Math.cos(hourAngle);
+  return toDeg(Math.asin(sinAltitude));
+}
+
+module.exports = {
+  sunTimesForUtcDate, isDaytime, nextSunrise, sunAltitudeDeg, SUNRISE_ALTITUDE_DEG, CIVIL_TWILIGHT_DEG,
+};

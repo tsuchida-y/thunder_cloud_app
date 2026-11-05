@@ -23,7 +23,9 @@ const { trackClouds } = require('./cloud_tracker');
 const { RainLookup } = require('./rain_lookup');
 const HimawariClient = require('./himawari_client');
 const AmedasClient = require('./amedas_client');
-const { coldestTopTempC, topHeightKm, isTallEnough, surfaceTempNear } = require('./sky_observations');
+const {
+  coldestTopTempC, topHeightKm, isTallEnough, surfaceTempNear, infraredTilesAround,
+} = require('./sky_observations');
 const { JMA_NOWCAST, HIMAWARI, AMEDAS } = require('../../constants');
 
 class NowcastService {
@@ -127,6 +129,7 @@ class NowcastService {
       rainLookup,
       amedasStations: sky.amedasStations,
       amedasObservedAt: sky.amedasObservedAt,
+      infrared: sky.infrared || null,
       errors: sky.errors,
     };
   }
@@ -151,6 +154,7 @@ class NowcastService {
     if (clusters.length === 0) return { clusters, amedasStations, amedasObservedAt, errors, requestCount };
 
     const images = new Map();
+    let infrared = null;
     try {
       const time = await this.himawari.getTimeAtOrBefore(rainTime);
       requestCount += 1;
@@ -176,6 +180,20 @@ class NowcastService {
       });
       for (const t of await this.himawari.getInfraredTiles(time, tiles)) images.set(`${t.x},${t.y}`, t.image);
       requestCount += tiles.length;
+      // 見張る場所のまわりの雲の量にも使う。足りないタイルは、見張りが必要になったときに取り足す
+      infrared = {
+        validtime: time.validtime,
+        images,
+        requestCount: 0,
+        fetched: new Set(tiles.map((t) => `${t.x},${t.y}`)),
+        ensureAround: async (points) => {
+          const missing = infraredTilesAround(points).filter((t) => !infrared.fetched.has(`${t.x},${t.y}`));
+          missing.forEach((t) => infrared.fetched.add(`${t.x},${t.y}`));
+          if (missing.length === 0) return;
+          for (const t of await this.himawari.getInfraredTiles(time, missing)) images.set(`${t.x},${t.y}`, t.image);
+          infrared.requestCount += missing.length;
+        },
+      };
     } catch (error) {
       errors.himawari = error;
     }
@@ -190,13 +208,14 @@ class NowcastService {
         topHeightKm: topTempC === null ? null : topHeightKm(topTempC, surfaceTempNear(amedasStations, cluster)),
       });
     }
-    return { clusters: result, amedasStations, amedasObservedAt, errors, requestCount };
+    return { clusters: result, amedasStations, amedasObservedAt, errors, requestCount, infrared };
   }
 
   /**
    * 5分ごとの本処理: 雲の一覧を更新する
    *
-   * @returns {Promise<{rainLookup:RainLookup, amedasStations:Array|null}|null>}
+   * @returns {Promise<{rainLookup:RainLookup, amedasStations:Array|null, infrared:Object|null,
+   *   times:Object, amedasTime:string|null}|null>}
    *   新しい解析値で雲の一覧を書き換えたら、見張りで使うもの。書き換えなかったら null
    */
   async updateClouds() {
@@ -219,7 +238,7 @@ class NowcastService {
       }
 
       const detected = await this.detectClusters(times);
-      const { clusters, requestCount, rainLookup, amedasStations } = detected;
+      const { clusters, requestCount, rainLookup, amedasStations, infrared } = detected;
       const result = await this._saveClouds(clusters, observedAt);
       const himawariFailures = this._countSubFailure('HIMAWARI', status.himawariFailures, detected.errors.himawari);
       const amedasFailures = this._countSubFailure('AMEDAS', status.amedasFailures, detected.errors.amedas);
@@ -246,7 +265,7 @@ class NowcastService {
       console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個、背が低いので外した塊${detected.lowClusterCount}個 ` +
         `（続き${result.updated} 新規${result.created} 見えない${result.hidden} 終了${result.ended}、` +
         `気象庁へのリクエスト${requestCount + 2}回）`);
-      return { rainLookup, amedasStations };
+      return { rainLookup, amedasStations, infrared, times: { rain: times.rain, thunder: times.thunder }, amedasTime };
     } catch (error) {
       await this._recordFailure(statusRef, status, error);
       return null;

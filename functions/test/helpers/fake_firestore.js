@@ -1,6 +1,17 @@
 /**
  * テストで使う分だけを真似た、メモリ上の Firestore
  */
+const isPlainObject = (value) => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
+
+/** 本物の Firestore の set(..., {merge: true}) と同じく、入れ子の map は深く合わせ、配列と値は置き換える */
+function deepMerge(base, update) {
+  const result = { ...base };
+  for (const [key, value] of Object.entries(update)) {
+    result[key] = isPlainObject(value) && isPlainObject(base[key]) ? deepMerge(base[key], value) : value;
+  }
+  return result;
+}
+
 class FakeFirestore {
   constructor() {
     this.docs = new Map();
@@ -17,7 +28,7 @@ class FakeFirestore {
         return { exists: data !== undefined, data: () => data };
       },
       async set(data, options = {}) {
-        store.docs.set(path, options.merge ? { ...(store.docs.get(path) || {}), ...data } : { ...data });
+        store.docs.set(path, options.merge ? deepMerge(store.docs.get(path) || {}, data) : { ...data });
       },
       async update(data) {
         if (!store.docs.has(path)) throw new Error(`no document: ${path}`);
@@ -45,11 +56,24 @@ class FakeFirestore {
         return { docs };
       },
       where: (field, op, value) => ({
+        limit(count) {
+          const query = this;
+          return {
+            async get() {
+              const result = await query.get();
+              return { docs: result.docs.slice(0, count) };
+            },
+          };
+        },
         async get() {
           const match = (v) => {
             if (op === 'in') return value.includes(v);
             // Firestore の != は、そのフィールドがない（undefined）ドキュメントを含めない
             if (op === '!=') return v !== undefined && v !== value;
+            if (op === '<') {
+              const millis = (x) => (x && typeof x.toMillis === 'function' ? x.toMillis() : x);
+              return v !== undefined && millis(v) < millis(value);
+            }
             return v === value;
           };
           const docs = [...store.docs.entries()]

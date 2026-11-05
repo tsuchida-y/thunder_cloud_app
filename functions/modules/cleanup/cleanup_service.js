@@ -59,7 +59,13 @@ class CleanupService {
         if (server && server.isPlus && (!plusUntil || plusUntil > now)) continue;
 
         const reports = await this.firestore.collection(COLLECTIONS.REPORTS).where('uid', '==', doc.id).get();
-        const refs = [doc.ref || this.firestore.collection(COLLECTIONS.MEMBERS).doc(doc.id), serverRef, ...reports.docs.map((r) => r.ref)];
+        const logs = await this.firestore.collection(COLLECTIONS.NOTIFICATION_LOG).where('uid', '==', doc.id).get();
+        const refs = [
+          doc.ref || this.firestore.collection(COLLECTIONS.MEMBERS).doc(doc.id),
+          serverRef,
+          ...reports.docs.map((r) => r.ref),
+          ...logs.docs.map((r) => r.ref),
+        ];
         for (let i = 0; i < refs.length; i += 450) {
           const batch = this.firestore.batch();
           refs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
@@ -70,6 +76,33 @@ class CleanupService {
       console.log(`🧹 ${INACTIVE_MEMBER_DAYS}日開いていない利用者${deleted}人の情報を削除しました`);
     } catch (error) {
       console.error('❌ 開いていない利用者の削除に失敗しました:', error);
+    }
+    return deleted;
+  }
+
+  /**
+   * 保存期間（1年）が過ぎた通知の判断の記録（notification_log）を消す
+   *
+   * @returns {Promise<number>} 消した件数
+   */
+  async cleanupOldNotificationLogs(now = new Date()) {
+    const BATCH = 450;
+    const MAX_ROUNDS = 40;
+    let deleted = 0;
+    try {
+      const cutoff = admin.firestore.Timestamp.fromDate(now);
+      for (let round = 0; round < MAX_ROUNDS; round++) {
+        const snapshot = await this.firestore.collection(COLLECTIONS.NOTIFICATION_LOG)
+          .where('expiresAt', '<', cutoff).limit(BATCH).get();
+        if (snapshot.docs.length === 0) break;
+        const batch = this.firestore.batch();
+        snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        deleted += snapshot.docs.length;
+      }
+      console.log(`🧹 保存期間が過ぎた通知の判断の記録を${deleted}件削除しました`);
+    } catch (error) {
+      console.error('❌ 古い通知の判断の記録の削除に失敗しました:', error);
     }
     return deleted;
   }

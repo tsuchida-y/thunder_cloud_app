@@ -51,3 +51,33 @@ test('1年開いていない利用者の情報を消す。Plus の期間が残�
   assert.equal(firestore.docs.has('members/paying'), true);
   assert.equal(firestore.docs.has('members/active'), true);
 });
+
+test('1年開いていない利用者の、通知の判断の記録（notification_log）も消す。ほかの人の記録は残す', async () => {
+  const firestore = new FakeFirestore();
+  const service = new CleanupService();
+  Object.defineProperty(service, 'firestore', { get: () => firestore });
+  firestore.docs.set('members/old', { lastOpenedAt: ts('2025-01-01T00:00:00Z') });
+  firestore.docs.set('members/recent', { lastOpenedAt: ts('2026-10-30T00:00:00Z') });
+  firestore.docs.set('notification_log/a', { uid: 'old', decision: 'notified' });
+  firestore.docs.set('notification_log/b', { uid: 'old', decision: 'low_elevation' });
+  firestore.docs.set('notification_log/c', { uid: 'recent', decision: 'notified' });
+
+  const deleted = await service.cleanupInactiveMembers(new Date('2026-11-02T00:00:00Z'));
+  assert.equal(deleted, 1);
+  assert.equal(firestore.docs.has('notification_log/a'), false);
+  assert.equal(firestore.docs.has('notification_log/b'), false);
+  assert.equal(firestore.docs.has('notification_log/c'), true);
+});
+
+test('保存期間（expiresAt）が過ぎた通知の判断の記録だけを消す', async () => {
+  const firestore = new FakeFirestore();
+  const service = new CleanupService();
+  Object.defineProperty(service, 'firestore', { get: () => firestore });
+  firestore.docs.set('notification_log/expired', { uid: 'u1', expiresAt: ts('2026-10-01T00:00:00Z') });
+  firestore.docs.set('notification_log/alive', { uid: 'u1', expiresAt: ts('2027-10-01T00:00:00Z') });
+
+  const deleted = await service.cleanupOldNotificationLogs(new Date('2026-11-02T00:00:00Z'));
+  assert.equal(deleted, 1);
+  assert.equal(firestore.docs.has('notification_log/expired'), false);
+  assert.equal(firestore.docs.has('notification_log/alive'), true);
+});
