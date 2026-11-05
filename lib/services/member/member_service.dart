@@ -27,6 +27,12 @@ class MemberService {
   /// v1 で端末ごとに作っていた ID（UserIdService と同じキー）
   static const String _legacyUserIdKey = 'unique_user_id';
 
+  /// 試験用（公開のビルドには付けない）。iPhone は、アプリを消しても同じ匿名ログインの uid が続くので、
+  /// Plus の購入・解約・期限切れ・買い切りを、新しい利用者（購入していない状態）で試すときに、印を付けて入れる。
+  /// 付けた印を、端末に覚えて、同じ印では1回しか始め直さない。付けなければ、何も起きない。
+  static const String _testResetUser = String.fromEnvironment('TEST_RESET_USER');
+  static const String _testResetKey = 'test_reset_user_applied';
+
   static FirebaseFirestore get _db => FirebaseFirestore.instance;
 
   static String? get uid => FirebaseAuth.instance.currentUser?.uid;
@@ -36,10 +42,16 @@ class MemberService {
   /// はじめての起動で通信できないときは例外を投げる（ホームは「通信できないとき」を出す）。
   static Future<String> ensureSignedIn() async {
     final auth = FirebaseAuth.instance;
+    final prefs = await SharedPreferences.getInstance();
+    // 試験用: ビルドのときに --dart-define=TEST_RESET_USER=（印）を付けたときだけ、その印で1回だけ、新しい利用者で始め直す
+    if (_testResetUser.isNotEmpty && prefs.getString(_testResetKey) != _testResetUser) {
+      await auth.signOut();
+      await prefs.setString(_testResetKey, _testResetUser);
+      AppLogger.info('試験用に、新しい利用者で始め直します（$_testResetUser）', tag: 'MemberService');
+    }
     final user = auth.currentUser ?? (await auth.signInAnonymously()).user;
     if (user == null) throw StateError('匿名ログインできませんでした');
 
-    final prefs = await SharedPreferences.getInstance();
     final createdKey = 'member_created_${user.uid}';
     if (prefs.getBool(createdKey) != true) {
       await _db.collection(membersCollection).doc(user.uid).set({
