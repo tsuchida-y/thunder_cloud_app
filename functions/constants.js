@@ -173,8 +173,10 @@ const VALIDATION = {
   METAR_URL: 'https://aviationweather.gov/api/data/metar',
   // 日本付近（南西諸島から北海道まで）: 南, 西, 北, 東
   METAR_BBOX: '24,122,46,146',
-  // 取った METAR のうち、この時間より古い観測は使わない（30分ごとの観測に、取得のおくれを足した長さ）
-  METAR_MAX_AGE_MS: 50 * 60 * 1000,
+  // 取った METAR のうち、この時間より古い観測は使わない。日本の METAR は、ほとんどが毎時0分の観測（一部の大きな空港は
+  // 30分も）で、aviationweather.gov に届くのは観測の約5.5〜10.5分あと（2026-11-05 の実測）。毎時15分と45分に取り、
+  // 直近の観測（15分ほど前）だけを、観測ごとに1回だけ記録する（取りこぼしと重複を防ぐ）
+  METAR_MAX_AGE_MS: 25 * 60 * 1000,
   COLLECTION: 'sky_validation',
   // 空港の観測は個人情報ではないので長めに残す。1年分の季節をそろえるため
   RETENTION_DAYS: 400,

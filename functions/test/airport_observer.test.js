@@ -86,8 +86,9 @@ test('空港の観測と雲の量を、30分に1件まとめて記録する', as
       metar({ icaoId: 'ROAH', lat: 26.2, lon: 127.65, clouds: [{ cover: 'SCT', base: 2000 }], rawOb: 'METAR ROAH SCT020' }),
       // 同じ空港の古い観測は使わない
       metar({ obsTime: obsSeconds - 1800 }),
-      // 古すぎる空港は除く
+      // 古すぎる空港は除く（3時間前、40分前。観測ごとに1回だけ記録するため、直近25分より古い観測は使わない）
       metar({ icaoId: 'RJOT', obsTime: obsSeconds - 3 * 3600 }),
+      metar({ icaoId: 'RJTT', obsTime: obsSeconds - 40 * 60 }),
       { icaoId: 'KSFO', lat: 37, lon: -122, temp: 12, obsTime: obsSeconds },
     ],
     images: infraredAround(point, () => GRAY_CLOUD),
