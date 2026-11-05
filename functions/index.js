@@ -116,10 +116,10 @@ exports.deleteMyData = onCall({
 
 /**
  * 空港の気象実況（METAR）と、ひまわりの雲の量を並べて記録する（しきい値の検証用。通知の判断には使わない）
- * スケジュール: 毎時5分と35分（METAR は毎時0分と30分の観測）
+ * スケジュール: 毎時15分と45分（METAR は毎時0分（大きな空港は30分も）の観測で、届くのは5〜11分あと）
  */
 exports.recordAirportObservations = onSchedule({
-  schedule: '5,35 * * * *',
+  schedule: '15,45 * * * *',
   timeZone: 'Asia/Tokyo',
   timeoutSeconds: 120,
   region: 'asia-northeast1',
