@@ -19,7 +19,7 @@ const NotificationService = require('../notification/notification_service');
 const { decideNotification, nextHistory, appearedMessage } = require('../notification/notify_rules');
 const { assessSky, visibilityKmNear } = require('../jma/sky_observations');
 const {
-  COLLECTIONS, JMA_NOWCAST, NOTIFY_RULES, NOTIFICATION_LOG_RETENTION_DAYS,
+  COLLECTIONS, JMA_NOWCAST, NOTIFY_RULES, NOTIFICATION_LOG_RETENTION_DAYS, SKY_NOW,
 } = require('../../constants');
 
 /** 判断の記録の、しきい値の組の名前（しきい値を変えたら、この名前も変えて、記録を見分けられるようにする） */
@@ -166,11 +166,16 @@ class CloudWatchService {
       } else {
         summary.skipped[decision.skip] = (summary.skipped[decision.skip] || 0) + 1;
       }
-      // 判断の記録は、通知を止めたり遅らせたりしないよう、失敗しても続ける
+      // 判断の記録と、ホームに渡す空のようすは、通知を止めたり遅らせたりしないよう、失敗しても続ける
       try {
         await this._logDecision(memberDoc.id, server, decision, sent, dataTimes, now);
       } catch (error) {
         console.warn('⚠️ [CLOUD_WATCH] 通知の判断を記録できませんでした:', error);
+      }
+      try {
+        await this._writeSkyNow(memberDoc.id, server, watchPoints, now);
+      } catch (error) {
+        console.warn('⚠️ [CLOUD_WATCH] 空のようすを書けませんでした:', error);
       }
     }
 
@@ -253,6 +258,31 @@ class CloudWatchService {
     const next = [...logged, ...fresh.map(({ key }) => key)].slice(-60);
     await this.firestore.collection(COLLECTIONS.MEMBER_SERVER).doc(uid)
       .set({ notification: { loggedDecisions: next } }, { merge: true });
+  }
+
+  /**
+   * 見張る場所ごとの空のようす（一面の曇り、雨、視程）を、アプリのホームが読めるように書く
+   *
+   * member_server/{uid}.skyNow = { updatedAt, points: [{key, overcast, raining, visibilityKm}] }
+   * key は見張る場所の位置を小数第2位に丸めたもの（"39.78,141.13"）。変わったときと、30分たったときだけ書く。
+   */
+  async _writeSkyNow(uid, server, watchPoints, now) {
+    if (watchPoints.length === 0) return;
+    const points = watchPoints.map((p) => ({
+      // アプリと同じ丸め方（×100 を四捨五入して÷100）。members の位置と登録した場所は、この丸めで保存されている
+      key: `${round(p.latitude, 2).toFixed(2)},${round(p.longitude, 2).toFixed(2)}`,
+      overcast: Boolean(p.overcast),
+      raining: Boolean(p.raining),
+      visibilityKm: round(p.visibilityKm),
+    }));
+    const signature = (list) => (list || [])
+      .map((p) => `${p.key}|${p.overcast}|${p.raining}|${p.visibilityKm}`).sort().join(';');
+    const previous = server.skyNow;
+    const updatedAt = previous && previous.updatedAt && previous.updatedAt.toDate ? previous.updatedAt.toDate() : null;
+    const fresh = updatedAt !== null && now.getTime() - updatedAt.getTime() < SKY_NOW.HEARTBEAT_MS;
+    if (fresh && signature(previous.points) === signature(points)) return;
+    await this.firestore.collection(COLLECTIONS.MEMBER_SERVER).doc(uid)
+      .set({ skyNow: { updatedAt: admin.firestore.Timestamp.fromDate(now), points } }, { merge: true });
   }
 
   /**

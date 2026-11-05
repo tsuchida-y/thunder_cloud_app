@@ -21,6 +21,7 @@ const { CloudWatchService } = require('./modules/watch/cloud_watch_service'); //
 const CleanupService = require('./modules/cleanup/cleanup_service');        // データクリーンアップ
 const { handleWebhook } = require('./modules/plus/revenuecat_webhook');     // Plus（RevenueCat）
 const { deleteMemberData } = require('./modules/account/account_service'); // 利用者が自分のデータを消す
+const { AirportObserver } = require('./modules/validation/airport_observer'); // 空港の観測と雲の量の記録（検証用）
 
 // RevenueCat の webhook の合言葉（Authorization ヘッダー）。
 // `firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH` で登録し、RevenueCat の管理画面にも同じ値を入れる
@@ -30,6 +31,7 @@ const revenuecatWebhookAuth = defineSecret('REVENUECAT_WEBHOOK_AUTH');
 admin.initializeApp();
 
 const nowcastService = new NowcastService();
+const airportObserver = new AirportObserver();
 const cloudWatchService = new CloudWatchService();
 const cleanupService = new CleanupService();
 
@@ -63,6 +65,7 @@ exports.cleanupOldClouds = onSchedule({
   await cleanupService.cleanupOldClouds();
   // 保存期間（1年）が過ぎた通知の判断の記録も、毎日ここで消す
   await cleanupService.cleanupOldNotificationLogs();
+  await cleanupService.cleanupOldSkyValidation();
 });
 
 /**
@@ -108,5 +111,23 @@ exports.deleteMyData = onCall({
   } catch (error) {
     console.error('❌ [DELETE_MY_DATA] 削除に失敗しました:', error);
     throw new HttpsError('internal', '削除できませんでした');
+  }
+});
+
+/**
+ * 空港の気象実況（METAR）と、ひまわりの雲の量を並べて記録する（しきい値の検証用。通知の判断には使わない）
+ * スケジュール: 毎時5分と35分（METAR は毎時0分と30分の観測）
+ */
+exports.recordAirportObservations = onSchedule({
+  schedule: '5,35 * * * *',
+  timeZone: 'Asia/Tokyo',
+  timeoutSeconds: 120,
+  region: 'asia-northeast1',
+}, async () => {
+  try {
+    await airportObserver.run(new Date());
+  } catch (error) {
+    // 検証用なので、失敗しても通知には影響しない。ログに残して次の回を待つ
+    console.error('❌ [AIRPORT_OBS] 空港の観測を記録できませんでした:', error.message);
   }
 });

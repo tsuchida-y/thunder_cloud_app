@@ -161,6 +161,35 @@ const COLLECTIONS = {
 };
 
 /**
+ * 空港の気象実況（METAR）と、ひまわりの雲の量を並べて記録する設定（しきい値の検証用。通知の判断には使わない）
+ *
+ * METAR は、米国の航空気象センター（aviationweather.gov）の公開 API から取る（もとは各国の気象機関の観測）。
+ * 空港の観測が「曇り」「ほぼ晴れ」のところで、ひまわりの雲の量（CLOUD_COVER）が合うかを、毎日たくさん確かめられる。
+ * 利用規約を読んで確かめる必要がある（要確認。docs/検知のしくみ.md の10章）。
+ */
+const VALIDATION = {
+  METAR_URL: 'https://aviationweather.gov/api/data/metar',
+  // 日本付近（南西諸島から北海道まで）: 南, 西, 北, 東
+  METAR_BBOX: '24,122,46,146',
+  // 取った METAR のうち、この時間より古い観測は使わない（30分ごとの観測に、取得のおくれを足した長さ）
+  METAR_MAX_AGE_MS: 50 * 60 * 1000,
+  COLLECTION: 'sky_validation',
+  // 空港の観測は個人情報ではないので長めに残す。1年分の季節をそろえるため
+  RETENTION_DAYS: 400,
+};
+
+/**
+ * 見張る場所の空のようす（一面の曇り、雨、視程）を、アプリのホームに渡す設定
+ *
+ * サーバーが利用者ごとに判定した結果を member_server/{uid}.skyNow に書く。ホームの「見えています」を、
+ * 通知のルールとそろえるため（アプリは、ひまわりやアメダスの生のデータを持っていない）。
+ * 変わったときに書き、変わらなくても、この間隔で書き直す（アプリが古い結果を使わないように）。
+ */
+const SKY_NOW = {
+  HEARTBEAT_MS: 30 * 60 * 1000,
+};
+
+/**
  * 通知の判断の記録（notification_log）を残す日数（プライバシーポリシーの1年。しきい値の調整に使う）
  */
 const NOTIFICATION_LOG_RETENTION_DAYS = 365;
@@ -177,6 +206,8 @@ module.exports = {
   JMA_NOWCAST,
   HIMAWARI,
   CLOUD_COVER,
+  SKY_NOW,
+  VALIDATION,
   AMEDAS,
   NOTIFY_RULES,
   COLLECTIONS,

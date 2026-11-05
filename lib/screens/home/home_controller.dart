@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
 import '../../models/sky_now.dart';
+import '../../models/sky_verdict.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
 import '../../services/notification/cloud_notifications.dart';
@@ -449,12 +450,18 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// ある場所から見える範囲の雲（近い順）
-  List<CloudView> _viewsAt(LatLng point, double rangeKm) => (_activeClouds ?? const <SkyCloud>[])
-      .where((c) => c.isVisible)
-      .map((c) => c.viewFrom(point))
-      .where((v) => v.distanceKm <= rangeKm)
-      .toList()
-    ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+  ///
+  /// 通知のルールとそろえて、一面の曇り・雨・視程・ふちの近さ・見上げる角度で見えない雲は入れない
+  /// （空のようすは、サーバーが member_server.skyNow に書いた判定。古い、ないときは雲だけで決める）。
+  List<CloudView> _viewsAt(LatLng point, double rangeKm) {
+    final verdict = SkyVerdicts.fromServer(_server)?.at(point, DateTime.now());
+    return (_activeClouds ?? const <SkyCloud>[])
+        .where((c) => c.isVisible)
+        .map((c) => c.viewFrom(point))
+        .where((v) => v.distanceKm <= rangeKm && v.isLookable(verdict: verdict))
+        .toList()
+      ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+  }
 
   /// 全国で見えている入道雲のうち、いちばん近いもの。名前がまだなら調べに行き、分かったら描き直す
   NationwideCloud? _nearestCloud(List<SkyCloud> visible, LatLng point) {

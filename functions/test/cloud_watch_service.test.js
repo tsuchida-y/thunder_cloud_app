@@ -300,3 +300,51 @@ test('一面の曇りで止めたときも、範囲内の雲が曇りの数字�
   assert.equal(logs[0].sky.coverFraction, 1);
   assert.equal(logs[0].sky.sunshineUsable, false);
 });
+
+// ===== ホームに渡す空のようす（member_server.skyNow） =====
+
+test('見張る場所ごとの空のようすを member_server.skyNow に書く（位置は小数第2位に丸めたキー）', async () => {
+  const { firestore, service } = setup({ members: { u1: member() } });
+  await service.run(evening, {
+    amedasStations: stationNearHome(0),
+    infrared: fakeInfrared(infraredAround(home, () => GRAY_CLOUD)),
+  });
+  const skyNow = firestore.docs.get('member_server/u1').skyNow;
+  assert.equal(skyNow.updatedAt.toDate().getTime(), evening.getTime());
+  assert.deepEqual(skyNow.points, [{ key: '39.74,141.08', overcast: true, raining: false, visibilityKm: null }]);
+});
+
+test('空のようすは、変わったときと30分たったときだけ書き直す', async () => {
+  const { firestore, service } = setup({ members: { u1: member() } });
+  const clear = fakeInfrared(infraredAround(home, () => GRAY_CLEAR));
+  const cloudy = fakeInfrared(infraredAround(home, () => GRAY_CLOUD));
+  const run = (at, infrared) => service.run(at, { amedasStations: stationNearHome(0), infrared });
+  const writtenAt = () => firestore.docs.get('member_server/u1').skyNow.updatedAt.toDate().getTime();
+
+  await run(evening, clear);
+  assert.equal(writtenAt(), evening.getTime());
+  // 5分後、同じ結果なら書き直さない
+  await run(new Date(evening.getTime() + 5 * 60 * 1000), clear);
+  assert.equal(writtenAt(), evening.getTime());
+  // 10分後、結果が変われば書き直す（曇りになった）
+  const changed = new Date(evening.getTime() + 10 * 60 * 1000);
+  await run(changed, cloudy);
+  assert.equal(writtenAt(), changed.getTime());
+  assert.equal(firestore.docs.get('member_server/u1').skyNow.points[0].overcast, true);
+  // 同じ結果のまま30分以上たてば、書き直す（アプリが古い結果を使わないため）
+  const later = new Date(changed.getTime() + 31 * 60 * 1000);
+  await run(later, cloudy);
+  assert.equal(writtenAt(), later.getTime());
+});
+
+test('空のようすを書いても、通知の記録や Plus は消えない', async () => {
+  const { firestore, service } = setup({
+    members: { u1: member() },
+    servers: { u1: { isPlus: true, notification: { dailyCount: 1, dailyDate: '2026-08-12', notifiedCloudIds: ['x'] } } },
+  });
+  await service.run(now, { amedasStations: stationNearHome(0.9) });
+  const server = firestore.docs.get('member_server/u1');
+  assert.equal(server.isPlus, true);
+  assert.ok(server.skyNow);
+  assert.equal(server.notification.dailyCount, 2);
+});
