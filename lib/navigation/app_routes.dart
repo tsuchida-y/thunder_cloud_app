@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/finder_target.dart';
 import '../screens/finder/finder_screen.dart';
+import '../screens/home/home_screen.dart';
 import '../screens/intro/intro_screen.dart';
 import '../screens/plus/plus_screen.dart';
 import '../screens/record/record_screen.dart';
@@ -37,7 +38,10 @@ class AppRoutes {
   static Future<void> openDataSource(BuildContext context) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataSourceScreen()));
 
+  /// 画面を全部閉じて、ホームを新しく開く（データを削除したあとなど、新しい利用者として始め直すとき）
+  static Future<void> restartAtHome(BuildContext context) =>
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const HomeScreen()), (route) => false);
+
   /// ホームまで戻る（写真を保存したあとなど）
-  static void backToHome(BuildContext context) =>
-      Navigator.of(context).popUntil((route) => route.isFirst);
+  static void backToHome(BuildContext context) => Navigator.of(context).popUntil((route) => route.isFirst);
 }

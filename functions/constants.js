@@ -135,6 +135,7 @@ const COLLECTIONS = {
   MEMBERS: 'members',
   MEMBER_SERVER: 'member_server',
   REPORTS: 'reports',
+  NOTIFICATION_LOG: 'notification_log',
 };
 
 /**
