@@ -161,7 +161,7 @@ class _PlusScreenState extends State<PlusScreen> {
           const _FeatureCard(),
           const SizedBox(height: 12),
           if (_isPlus)
-            _PlusActive(status: _status)
+            PlusActiveCard(status: _status)
           else ...[
             Row(
               children: [
@@ -387,10 +387,12 @@ class _BuyButton extends StatelessWidget {
 }
 
 /// すでに Plus のとき。どのプランか、いつまでか、解約の入口を出す（二重に買わないように、購入ボタンは出さない）
-class _PlusActive extends StatelessWidget {
+///
+/// テストで4つの状態（月額・無料体験中・解約済み・買い切り）の表示を確かめるため、公開している。
+class PlusActiveCard extends StatelessWidget {
   final PlusStatus? status;
 
-  const _PlusActive({required this.status});
+  const PlusActiveCard({super.key, required this.status});
 
   String _detail(PlusStatus status) {
     if (status.lifetime) return '買い切り（ずっと使えます。追加の料金はかかりません）';
