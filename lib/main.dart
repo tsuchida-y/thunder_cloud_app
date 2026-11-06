@@ -10,10 +10,14 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
+import 'models/finder_target.dart';
+import 'screens/finder/finder_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/intro/intro_screen.dart';
 import 'screens/plus/plus_screen.dart';
+import 'screens/settings/settings_screen.dart';
 import 'screens/welcome/welcome_screen.dart';
+import 'services/compass/compass_service.dart';
 import 'services/notification/cloud_notifications.dart';
 import 'theme/app_theme.dart';
 import 'utils/logger.dart';
@@ -74,7 +78,7 @@ class MyApp extends StatelessWidget {
 
   const MyApp({super.key, this.showIntro = false, this.showWelcome = false});
 
-  /// 開発中の確かめ用。デバッグ版で --dart-define=START_SCREEN=plus を付けると、起動したら Plus の画面を出す
+  /// 開発中の確かめ用。デバッグ版で --dart-define=START_SCREEN=plus を付けると、起動したら Plus の画面を出す（home・settings・finder も同じ）
   /// （ストアの審査用のスクリーンショットをシミュレータで撮るため）。START_SCREEN=loading なら読み込み画面を出し続ける
   static const String _startScreen = kDebugMode ? String.fromEnvironment('START_SCREEN') : '';
 
@@ -83,16 +87,94 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '入道雲サーチ',
       theme: AppTheme.light,
-      home: _startScreen == 'plus'
+      home: _startScreen == 'tour'
+          ? const _ScreenTour()
+          : _startScreen == 'plus'
           ? const PlusScreen()
           : _startScreen == 'loading'
               ? const LoadingView()
-              : showIntro
-                  ? const IntroScreen()
-                  : showWelcome
-                      ? const WelcomeScreen()
-                      : const HomeScreen(),
+              : _startScreen == 'home'
+                  ? const HomeScreen()
+                  : _startScreen == 'settings'
+                      ? const SettingsScreen()
+                      : _startScreen == 'finder'
+                          ? const FinderScreen(
+                              target: FinderTarget(
+                                cloudId: null,
+                                bearingDeg: 45,
+                                distanceKm: 24,
+                                elevationDeg: 25.6,
+                                fists: 2.6,
+                                source: FinderSource.home,
+                              ),
+                            )
+                          : showIntro
+                              ? const IntroScreen()
+                              : showWelcome
+                                  ? const WelcomeScreen()
+                                  : const HomeScreen(),
       debugShowCheckedModeBanner: false,
     );
+  }
+}
+
+/// ストアのスクリーンショットを撮るための、画面の自動切り替え（デバッグ版で START_SCREEN=tour のときだけ）
+///
+/// 20秒ごとに、ホーム → 方角ガイド（向きがずれている）→ 方角ガイド（合った）→ Plus → 設定 の順に切り替え、
+/// 切り替えるたびに「TOUR 番号 名前」をログに出す（撮る側がそれを待つ）。
+class _ScreenTour extends StatefulWidget {
+  const _ScreenTour();
+
+  @override
+  State<_ScreenTour> createState() => _ScreenTourState();
+}
+
+class _ScreenTourState extends State<_ScreenTour> {
+  static const _names = ['home', 'finder', 'finder_aligned', 'plus', 'settings'];
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('TOUR 0 ${_names[0]}');
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (_index >= _names.length - 1) return;
+      setState(() => _index++);
+      debugPrint('TOUR $_index ${_names[_index]}');
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  static FinderTarget _target(double bearing) => FinderTarget(
+        cloudId: null,
+        bearingDeg: bearing,
+        distanceKm: 24,
+        elevationDeg: 25.6,
+        fists: 2.6,
+        source: FinderSource.home,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    switch (_names[_index]) {
+      case 'finder':
+        CompassService.debugHeading = 20;
+        return FinderScreen(key: const ValueKey('f1'), target: _target(45));
+      case 'finder_aligned':
+        CompassService.debugHeading = 45;
+        return FinderScreen(key: const ValueKey('f2'), target: _target(45));
+      case 'plus':
+        return const PlusScreen();
+      case 'settings':
+        return const SettingsScreen();
+      default:
+        return const HomeScreen();
+    }
   }
 }

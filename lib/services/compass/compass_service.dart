@@ -46,6 +46,9 @@ class CompassService {
   /// 方位センサーのないシミュレータでも、その方角を向いているとして動く
   static const String _fakeHeading = kDebugMode ? String.fromEnvironment('FAKE_HEADING') : '';
 
+  /// スクリーンショット用（画面の自動切り替え）に、実行中に見本の向きを変える。FAKE_HEADING があるときだけ効く
+  static double? debugHeading;
+
   /// 方位センサーの値。センサーがない端末（シミュレータなど）では何も届かない
   ///
   /// iPhone は、位置情報を許可する前は本当の北の角度が負（使えない）で届く。[allowMagneticFallback] が true なら、
@@ -53,7 +56,7 @@ class CompassService {
   static Stream<Heading> headings({double declinationDeg = 0, bool allowMagneticFallback = false}) {
     final fake = double.tryParse(_fakeHeading);
     if (fake != null) {
-      return Stream.periodic(const Duration(milliseconds: 200), (_) => Heading(fake, 10));
+      return Stream.periodic(const Duration(milliseconds: 200), (_) => Heading(debugHeading ?? fake, 10));
     }
     final events = FlutterCompass.events;
     if (events == null) return const Stream.empty();

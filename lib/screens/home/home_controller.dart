@@ -182,6 +182,10 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   /// 開発中の確かめ用。デバッグ版で --dart-define=FORCE_DAYTIME=true を付けると、夜でも昼として扱う
   static const bool _forceDaytime = kDebugMode && bool.fromEnvironment('FORCE_DAYTIME');
 
+  /// ストアに載せるスクリーンショットを撮るための見本。デバッグ版で --dart-define=DEMO_CLOUDS=true を付けると、
+  /// 本物の雲のかわりに、いる場所の北東と東に見本の雲を2つ（30km 以内）出す（リリース版には入らない）
+  static const bool _demoClouds = kDebugMode && bool.fromEnvironment('DEMO_CLOUDS');
+
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cloudSub;
   StreamSubscription<DateTime?>? _observedSub;
   StreamSubscription<Map<String, dynamic>?>? _amedasSub;
@@ -381,7 +385,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
   void _listenSky() {
     _cloudSub ??= SkyRepository.watchActiveClouds().listen((snap) {
-      _activeClouds = snap.docs.map(SkyCloud.fromDoc).whereType<SkyCloud>().toList();
+      _activeClouds = _demoClouds ? _demoCloudList() : snap.docs.map(SkyCloud.fromDoc).whereType<SkyCloud>().toList();
       if (snap.metadata.isFromCache) {
         // つながっていないと、端末に残っている分だけが届く。しばらく待ってもサーバーから来なければ通信できない
         _offlineTimer ??= Timer(offlineAfter, () {
@@ -407,6 +411,29 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       _amedas = data;
       _recompute();
     }, onError: (Object e) => AppLogger.warning('system/amedas_latest を読めません: $e', tag: 'HomeController'));
+  }
+
+  /// 見本の雲（DEMO_CLOUDS）。いる場所から、北東 24km と東 28km のところ
+  List<SkyCloud> _demoCloudList() {
+    final base = _gps ?? const LatLng(39.7300, 141.0700);
+    final now = DateTime.now();
+    SkyCloud at(String id, double bearingDeg, double km, double topKm) {
+      final rad = bearingDeg * math.pi / 180;
+      final dLat = km * math.cos(rad) / 111.0;
+      final dLng = km * math.sin(rad) / (111.0 * math.cos(base.latitude * math.pi / 180));
+      final center = LatLng(base.latitude + dLat, base.longitude + dLng);
+      return SkyCloud(
+        id: id,
+        center: center,
+        firstSeenAt: now.subtract(const Duration(minutes: 25)),
+        lastSeenAt: now,
+        isVisible: true,
+        topHeightKm: topKm,
+        edgePoints: [center],
+      );
+    }
+
+    return [at('demo-1', 45, 24, 11.5), at('demo-2', 100, 28, 12.5)];
   }
 
   void _cancelSky() {
