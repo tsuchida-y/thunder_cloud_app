@@ -120,7 +120,7 @@ class MyApp extends StatelessWidget {
 
 /// ストアのスクリーンショットを撮るための、画面の自動切り替え（デバッグ版で START_SCREEN=tour のときだけ）
 ///
-/// 20秒ごとに、ホーム → 方角ガイド（向きがずれている）→ 方角ガイド（合った）→ Plus → 設定 の順に切り替え、
+/// 合図のファイル（なければ20秒ごと）で、ホーム → 方角ガイド（向きがずれている）→ 方角ガイド（合った）→ Plus → 設定 の順に切り替え、
 /// 切り替えるたびに「TOUR 番号 名前」をログに出す（撮る側がそれを待つ）。
 class _ScreenTour extends StatefulWidget {
   const _ScreenTour();
@@ -138,9 +138,21 @@ class _ScreenTourState extends State<_ScreenTour> {
   void initState() {
     super.initState();
     debugPrint('TOUR 0 ${_names[0]}');
-    _timer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (_index >= _names.length - 1) return;
-      setState(() => _index++);
+    // TOUR_FILE（シミュレータから見える、撮る側が書く合図のファイル）があれば、そこに書かれた番号の画面にする。なければ20秒ごとに進む
+    const signalFile = String.fromEnvironment('TOUR_FILE');
+    _timer = Timer.periodic(signalFile.isEmpty ? const Duration(seconds: 20) : const Duration(milliseconds: 500), (_) {
+      var next = _index;
+      if (signalFile.isEmpty) {
+        next = _index + 1;
+      } else {
+        try {
+          next = int.parse(File(signalFile).readAsStringSync().trim());
+        } catch (_) {
+          return;
+        }
+      }
+      if (next == _index || next < 0 || next >= _names.length) return;
+      setState(() => _index = next);
       debugPrint('TOUR $_index ${_names[_index]}');
     });
   }
