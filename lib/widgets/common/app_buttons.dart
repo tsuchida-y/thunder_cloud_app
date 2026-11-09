@@ -101,7 +101,7 @@ class ChoiceButton extends StatelessWidget {
   }
 }
 
-/// 文字だけの控えめなボタン（例: 「あとで設定する」「いまのままにする」）
+/// 文字だけの控えめなボタン（許可のお願いの前の案内には使わない。先送りできてしまうため）
 class TextLinkButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
