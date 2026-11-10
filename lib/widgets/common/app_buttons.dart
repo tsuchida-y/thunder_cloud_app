@@ -6,7 +6,7 @@ import '../../theme/app_theme.dart';
 
 /// いちばん大事な操作のボタン（高さ56・角丸28・紺）
 ///
-/// 例: 「雲の方角を調べる」「許可してはじめる」「写真を撮る」
+/// 例: 「雲の方角を調べる」「続ける」「写真を撮る」
 /// [compact] が true のときはカードの中の小さいボタン（高さ44・影なし、例: 「設定アプリを開く」）。
 class PrimaryButton extends StatelessWidget {
   final String label;

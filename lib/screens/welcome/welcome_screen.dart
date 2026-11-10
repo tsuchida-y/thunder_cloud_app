@@ -94,7 +94,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          PrimaryButton(label: '許可してはじめる', onPressed: _busy ? null : _allowAndStart),
+          PrimaryButton(label: '続ける', onPressed: _busy ? null : _allowAndStart),
           const SizedBox(height: 16),
           Text(
             '移動先の空も見張る設定は、あとでご案内します。',

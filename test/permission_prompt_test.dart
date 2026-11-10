@@ -8,7 +8,8 @@ void main() {
   testWidgets('はじめての起動: 許可のお願いに進むボタンだけで、先送りするボタンはない', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
 
-    expect(find.text('許可してはじめる'), findsOneWidget);
+    expect(find.text('続ける'), findsOneWidget);
+    expect(find.text('許可してはじめる'), findsNothing); // 許可を決めさせるような言葉にしない（「続ける」「次へ」にする）
     expect(find.text('あとで設定する'), findsNothing);
     expect(find.textContaining('あとで'), findsOneWidget); // 「移動先の空も見張る設定は、あとでご案内します。」の案内文だけ
   });
@@ -27,15 +28,16 @@ void main() {
     await tester.tap(find.text('開く'));
     await tester.pumpAndSettle();
 
-    expect(find.text('「常に」にする'), findsOneWidget);
+    expect(find.text('続ける'), findsOneWidget);
+    expect(find.text('「常に」にする'), findsNothing);
     expect(find.text('いまのままにする'), findsNothing);
 
     // 外側をタップしても、下へ引いても閉じない
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
-    expect(find.text('「常に」にする'), findsOneWidget);
-    await tester.drag(find.text('「常に」にする'), const Offset(0, 500));
+    expect(find.text('続ける'), findsOneWidget);
+    await tester.drag(find.text('続ける'), const Offset(0, 500));
     await tester.pumpAndSettle();
-    expect(find.text('「常に」にする'), findsOneWidget);
+    expect(find.text('続ける'), findsOneWidget);
   });
 }

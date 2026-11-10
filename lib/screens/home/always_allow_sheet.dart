@@ -84,7 +84,7 @@ class AlwaysAllowSheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             PrimaryButton(
-              label: '「常に」にする',
+              label: '続ける',
               onPressed: () async {
                 Navigator.of(context).pop();
                 await onAllow();
