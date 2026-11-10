@@ -145,6 +145,210 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'移動先の空も見張る設定は、あとでご案内します。'**
   String get welcomeLaterNote;
+
+  /// No description provided for @cancel.
+  ///
+  /// In ja, this message translates to:
+  /// **'やめる'**
+  String get cancel;
+
+  /// No description provided for @none.
+  ///
+  /// In ja, this message translates to:
+  /// **'なし'**
+  String get none;
+
+  /// No description provided for @currentPlace.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまいる場所'**
+  String get currentPlace;
+
+  /// No description provided for @daysCount.
+  ///
+  /// In ja, this message translates to:
+  /// **'{count}日'**
+  String daysCount(int count);
+
+  /// No description provided for @kmValue.
+  ///
+  /// In ja, this message translates to:
+  /// **'{km}km'**
+  String kmValue(int km);
+
+  /// No description provided for @rangePlusOption.
+  ///
+  /// In ja, this message translates to:
+  /// **'{km}km（Plus）'**
+  String rangePlusOption(int km);
+
+  /// No description provided for @freeTrial7Days.
+  ///
+  /// In ja, this message translates to:
+  /// **'7日間無料'**
+  String get freeTrial7Days;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'設定'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsSectionNotification.
+  ///
+  /// In ja, this message translates to:
+  /// **'通知'**
+  String get settingsSectionNotification;
+
+  /// No description provided for @settingsNotifyAppeared.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲が見えたら知らせる'**
+  String get settingsNotifyAppeared;
+
+  /// No description provided for @settingsSectionRange.
+  ///
+  /// In ja, this message translates to:
+  /// **'どこまでの空を見守るか'**
+  String get settingsSectionRange;
+
+  /// No description provided for @settingsRangeNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'60kmより遠い雲は「見えるかもしれません」とお知らせします。山や建物で隠れることもあります。'**
+  String get settingsRangeNote;
+
+  /// No description provided for @settingsSectionOther.
+  ///
+  /// In ja, this message translates to:
+  /// **'そのほか'**
+  String get settingsSectionOther;
+
+  /// No description provided for @settingsQuietHours.
+  ///
+  /// In ja, this message translates to:
+  /// **'通知しない時間'**
+  String get settingsQuietHours;
+
+  /// No description provided for @settingsQuietHoursNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'空が暗いあいだ（夜）は自動で休みます'**
+  String get settingsQuietHoursNote;
+
+  /// No description provided for @settingsRecord.
+  ///
+  /// In ja, this message translates to:
+  /// **'記録（見えた雲）'**
+  String get settingsRecord;
+
+  /// No description provided for @settingsPlaces.
+  ///
+  /// In ja, this message translates to:
+  /// **'見張る場所'**
+  String get settingsPlaces;
+
+  /// No description provided for @settingsSectionAbout.
+  ///
+  /// In ja, this message translates to:
+  /// **'このアプリについて'**
+  String get settingsSectionAbout;
+
+  /// No description provided for @settingsHowToUse.
+  ///
+  /// In ja, this message translates to:
+  /// **'使い方'**
+  String get settingsHowToUse;
+
+  /// No description provided for @settingsDataSource.
+  ///
+  /// In ja, this message translates to:
+  /// **'データの出典'**
+  String get settingsDataSource;
+
+  /// No description provided for @settingsTerms.
+  ///
+  /// In ja, this message translates to:
+  /// **'利用規約'**
+  String get settingsTerms;
+
+  /// No description provided for @settingsPrivacy.
+  ///
+  /// In ja, this message translates to:
+  /// **'プライバシーポリシー'**
+  String get settingsPrivacy;
+
+  /// No description provided for @settingsDeleteData.
+  ///
+  /// In ja, this message translates to:
+  /// **'データを削除'**
+  String get settingsDeleteData;
+
+  /// No description provided for @settingsDeleting.
+  ///
+  /// In ja, this message translates to:
+  /// **'削除しています…'**
+  String get settingsDeleting;
+
+  /// No description provided for @settingsDeleteDataNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'見張る場所・設定・記録をサーバーから消します'**
+  String get settingsDeleteDataNote;
+
+  /// No description provided for @settingsDeleteConfirmTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'データを削除しますか'**
+  String get settingsDeleteConfirmTitle;
+
+  /// No description provided for @settingsDeleteConfirmBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'見張る場所、設定、通知の宛先、見えた雲の記録を、サーバーから削除します。元には戻せません。\n\nPlus の購入は消えません。削除したあとも、Plus はそのまま使えます。'**
+  String get settingsDeleteConfirmBody;
+
+  /// No description provided for @settingsDeleteAction.
+  ///
+  /// In ja, this message translates to:
+  /// **'削除する'**
+  String get settingsDeleteAction;
+
+  /// No description provided for @settingsDeletedTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'削除しました'**
+  String get settingsDeletedTitle;
+
+  /// No description provided for @settingsDeletedBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'もう一度はじめから使えます。'**
+  String get settingsDeletedBody;
+
+  /// No description provided for @settingsDeleteFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'削除できませんでした。通信を確かめて、もう一度お試しください。'**
+  String get settingsDeleteFailed;
+
+  /// No description provided for @settingsPlusManage.
+  ///
+  /// In ja, this message translates to:
+  /// **'プランの確認・解約'**
+  String get settingsPlusManage;
+
+  /// No description provided for @settingsPlusInUse.
+  ///
+  /// In ja, this message translates to:
+  /// **'利用中'**
+  String get settingsPlusInUse;
+
+  /// No description provided for @settingsPlusBanner.
+  ///
+  /// In ja, this message translates to:
+  /// **'Plus で、もっと遠くまで見張る'**
+  String get settingsPlusBanner;
 }
 
 class _AppLocalizationsDelegate

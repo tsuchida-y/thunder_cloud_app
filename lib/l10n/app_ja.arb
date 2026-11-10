@@ -7,5 +7,60 @@
   "welcomeNotificationTitle": "通知",
   "welcomeNotificationBody": "入道雲が見えたときに、1つの雲につき1回だけお知らせします。",
   "welcomeContinue": "続ける",
-  "welcomeLaterNote": "移動先の空も見張る設定は、あとでご案内します。"
+  "welcomeLaterNote": "移動先の空も見張る設定は、あとでご案内します。",
+  "cancel": "やめる",
+  "none": "なし",
+  "currentPlace": "いまいる場所",
+  "daysCount": "{count}日",
+  "@daysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kmValue": "{km}km",
+  "@kmValue": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "rangePlusOption": "{km}km（Plus）",
+  "@rangePlusOption": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "freeTrial7Days": "7日間無料",
+  "settingsTitle": "設定",
+  "settingsSectionNotification": "通知",
+  "settingsNotifyAppeared": "入道雲が見えたら知らせる",
+  "settingsSectionRange": "どこまでの空を見守るか",
+  "settingsRangeNote": "60kmより遠い雲は「見えるかもしれません」とお知らせします。山や建物で隠れることもあります。",
+  "settingsSectionOther": "そのほか",
+  "settingsQuietHours": "通知しない時間",
+  "settingsQuietHoursNote": "空が暗いあいだ（夜）は自動で休みます",
+  "settingsRecord": "記録（見えた雲）",
+  "settingsPlaces": "見張る場所",
+  "settingsSectionAbout": "このアプリについて",
+  "settingsHowToUse": "使い方",
+  "settingsDataSource": "データの出典",
+  "settingsTerms": "利用規約",
+  "settingsPrivacy": "プライバシーポリシー",
+  "settingsDeleteData": "データを削除",
+  "settingsDeleting": "削除しています…",
+  "settingsDeleteDataNote": "見張る場所・設定・記録をサーバーから消します",
+  "settingsDeleteConfirmTitle": "データを削除しますか",
+  "settingsDeleteConfirmBody": "見張る場所、設定、通知の宛先、見えた雲の記録を、サーバーから削除します。元には戻せません。\n\nPlus の購入は消えません。削除したあとも、Plus はそのまま使えます。",
+  "settingsDeleteAction": "削除する",
+  "settingsDeletedTitle": "削除しました",
+  "settingsDeletedBody": "もう一度はじめから使えます。",
+  "settingsDeleteFailed": "削除できませんでした。通信を確かめて、もう一度お試しください。",
+  "settingsPlusManage": "プランの確認・解約",
+  "settingsPlusInUse": "利用中",
+  "settingsPlusBanner": "Plus で、もっと遠くまで見張る"
 }

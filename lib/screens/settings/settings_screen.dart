@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/sky_cloud.dart';
 import '../../navigation/app_routes.dart';
 import '../../services/member/member_service.dart';
@@ -66,17 +67,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _confirmDeleteData() async {
     if (_deleting) return;
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('データを削除しますか'),
-        content: const Text(
-          '見張る場所、設定、通知の宛先、見えた雲の記録を、サーバーから削除します。元には戻せません。\n\n'
-          'Plus の購入は消えません。削除したあとも、Plus はそのまま使えます。',
-        ),
+        title: Text(l10n.settingsDeleteConfirmTitle),
+        content: Text(l10n.settingsDeleteConfirmBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('やめる')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('削除する')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.settingsDeleteAction)),
         ],
       ),
     );
@@ -89,8 +88,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('削除しました'),
-          content: const Text('もう一度はじめから使えます。'),
+          title: Text(l10n.settingsDeletedTitle),
+          content: Text(l10n.settingsDeletedBody),
           actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))],
         ),
       );
@@ -99,7 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       AppLogger.error('データの削除に失敗', error: e, stackTrace: stackTrace, tag: 'SettingsScreen');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('削除できませんでした。通信を確かめて、もう一度お試しください。')),
+          SnackBar(content: Text(l10n.settingsDeleteFailed)),
         );
       }
     } finally {
@@ -115,6 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final settings = MemberSettings.fromMember(_member);
     final isPlus = _isPlus;
     final rangeKm = SkyRules.rangeKm(isPlus: isPlus, settingKm: settings.rangeKm);
@@ -125,24 +125,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const PageHeader(title: '設定'),
+          PageHeader(title: l10n.settingsTitle),
           const SizedBox(height: 6),
-          const SettingsSectionLabel('通知'),
+          SettingsSectionLabel(l10n.settingsSectionNotification),
           const SizedBox(height: 14),
           SettingsCard(
             children: [
               SettingsRow.text(
-                '入道雲が見えたら知らせる',
+                l10n.settingsNotifyAppeared,
                 trailing: SkySwitch(
                   value: settings.notifyAppeared,
-                  semanticLabel: '入道雲が見えたら知らせる',
+                  semanticLabel: l10n.settingsNotifyAppeared,
                   onChanged: (v) => MemberService.updateSettings({'notifyAppeared': v}),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          const SettingsSectionLabel('どこまでの空を見守るか'),
+          SettingsSectionLabel(l10n.settingsSectionRange),
           const SizedBox(height: 14),
           _RangeSelector(
             rangeKm: rangeKm,
@@ -153,47 +153,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              '60kmより遠い雲は「見えるかもしれません」とお知らせします。山や建物で隠れることもあります。',
+              l10n.settingsRangeNote,
               style: AppTextStyles.note(),
             ),
           ),
           const SizedBox(height: 14),
-          const SettingsSectionLabel('そのほか'),
+          SettingsSectionLabel(l10n.settingsSectionOther),
           const SizedBox(height: 14),
           SettingsCard(
             children: [
               SettingsRow.text(
-                '通知しない時間',
-                subtitle: '空が暗いあいだ（夜）は自動で休みます',
-                trailing: SettingsValue(settings.quietHours?.label ?? 'なし'),
+                l10n.settingsQuietHours,
+                subtitle: l10n.settingsQuietHoursNote,
+                trailing: SettingsValue(settings.quietHours?.label ?? l10n.none),
                 onTap: () => _editQuietHours(settings.quietHours),
               ),
               SettingsRow.text(
-                '記録（見えた雲）',
-                trailing: _seenDays == null ? null : SettingsValue('$_seenDays日'),
+                l10n.settingsRecord,
+                trailing: _seenDays == null ? null : SettingsValue(l10n.daysCount(_seenDays!)),
                 onTap: () => AppRoutes.openRecord(context),
               ),
               SettingsRow.text(
-                '見張る場所',
-                trailing: SettingsValue(places.isEmpty ? 'いまいる場所' : places.first.label),
+                l10n.settingsPlaces,
+                trailing: SettingsValue(places.isEmpty ? l10n.currentPlace : places.first.label),
                 onTap: () => AppRoutes.openPlaces(context),
               ),
             ],
           ),
           const SizedBox(height: 14),
           // デザインにない行。仕様書の「デザインしない画面」（利用規約、プライバシーポリシー、データの出典）への入り口
-          const SettingsSectionLabel('このアプリについて'),
+          SettingsSectionLabel(l10n.settingsSectionAbout),
           const SizedBox(height: 14),
           SettingsCard(
             children: [
-              SettingsRow.text('使い方', onTap: () => AppRoutes.openIntro(context)),
-              SettingsRow.text('データの出典', onTap: () => AppRoutes.openDataSource(context)),
+              SettingsRow.text(l10n.settingsHowToUse, onTap: () => AppRoutes.openIntro(context)),
+              SettingsRow.text(l10n.settingsDataSource, onTap: () => AppRoutes.openDataSource(context)),
               SettingsRow.text(
-                '利用規約',
+                l10n.settingsTerms,
                 onTap: () => launchUrl(SettingsScreen.termsOfUse, mode: LaunchMode.externalApplication),
               ),
               SettingsRow.text(
-                'プライバシーポリシー',
+                l10n.settingsPrivacy,
                 onTap: () => launchUrl(SettingsScreen.privacyPolicy, mode: LaunchMode.externalApplication),
               ),
             ],
@@ -202,8 +202,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SettingsCard(
             children: [
               SettingsRow.text(
-                'データを削除',
-                subtitle: _deleting ? '削除しています…' : '見張る場所・設定・記録をサーバーから消します',
+                l10n.settingsDeleteData,
+                subtitle: _deleting ? l10n.settingsDeleting : l10n.settingsDeleteDataNote,
                 onTap: _deleting ? null : _confirmDeleteData,
               ),
             ],
@@ -215,8 +215,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 SettingsRow.text(
                   'Plus',
-                  subtitle: 'プランの確認・解約',
-                  trailing: const SettingsValue('利用中'),
+                  subtitle: l10n.settingsPlusManage,
+                  trailing: SettingsValue(l10n.settingsPlusInUse),
                   onTap: () => AppRoutes.openPlus(context),
                 ),
               ],
@@ -239,6 +239,7 @@ class _RangeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     Widget option(int km, String label, {bool locked = false}) {
       final selected = rangeKm.round() == km;
       return Expanded(
@@ -284,9 +285,9 @@ class _RangeSelector extends StatelessWidget {
         padding: const EdgeInsets.all(6),
         child: Row(
           children: [
-            option(SkyRules.freeRangeKm.round(), '30km'),
+            option(SkyRules.freeRangeKm.round(), l10n.kmValue(30)),
             const SizedBox(width: 6),
-            option(SkyRules.plusRangeKm.round(), isPlus ? '90km' : '90km（Plus）', locked: !isPlus),
+            option(SkyRules.plusRangeKm.round(), isPlus ? l10n.kmValue(90) : l10n.rangePlusOption(90), locked: !isPlus),
           ],
         ),
       ),
@@ -302,6 +303,7 @@ class _PlusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Material(
       color: AppColors.primary,
       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -313,9 +315,9 @@ class _PlusBanner extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text('Plus で、もっと遠くまで見張る', style: AppTextStyles.button(fontSize: 15)),
+                child: Text(l10n.settingsPlusBanner, style: AppTextStyles.button(fontSize: 15)),
               ),
-              Text('7日間無料', style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 13, height: 1.2)),
+              Text(l10n.freeTrial7Days, style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 13, height: 1.2)),
             ],
           ),
         ),
