@@ -1,0 +1,11 @@
+{
+  "@@locale": "ja",
+  "appName": "入道雲サーチ",
+  "welcomeLead": "あなたの場所から見える空に入道雲が現れたら、どの方角かをお知らせします。",
+  "welcomeLocationTitle": "位置情報（アプリの使用中）",
+  "welcomeLocationBody": "開いた場所の空を調べ、その場所の空を見張ります。",
+  "welcomeNotificationTitle": "通知",
+  "welcomeNotificationBody": "入道雲が見えたときに、1つの雲につき1回だけお知らせします。",
+  "welcomeContinue": "続ける",
+  "welcomeLaterNote": "移動先の空も見張る設定は、あとでご案内します。"
+}

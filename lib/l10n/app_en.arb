@@ -1,0 +1,11 @@
+{
+  "@@locale": "en",
+  "appName": "Thunderhead Watch",
+  "welcomeLead": "When a thunderhead appears in the sky you can see from where you are, we'll tell you which direction to look.",
+  "welcomeLocationTitle": "Location (while using the app)",
+  "welcomeLocationBody": "Checks the sky where you open the app and keeps watch over that place.",
+  "welcomeNotificationTitle": "Notifications",
+  "welcomeNotificationBody": "When a thunderhead is visible, we'll let you know once per cloud.",
+  "welcomeContinue": "Continue",
+  "welcomeLaterNote": "We'll show you how to watch the sky where you travel later."
+}
