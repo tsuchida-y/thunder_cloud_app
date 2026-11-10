@@ -62,5 +62,96 @@
   "settingsDeleteFailed": "削除できませんでした。通信を確かめて、もう一度お試しください。",
   "settingsPlusManage": "プランの確認・解約",
   "settingsPlusInUse": "利用中",
-  "settingsPlusBanner": "Plus で、もっと遠くまで見張る"
+  "settingsPlusBanner": "Plus で、もっと遠くまで見張る",
+  "dirN": "北",
+  "dirNE": "北東",
+  "dirE": "東",
+  "dirSE": "南東",
+  "dirS": "南",
+  "dirSW": "南西",
+  "dirW": "西",
+  "dirNW": "北西",
+  "fistsWhole": "こぶし{n}つ",
+  "@fistsWhole": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "fistsHalfMore": "{n, plural, =0{こぶし半分} other{こぶし{n}つ半}}",
+  "@fistsHalfMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoMinutes": "{n}分前",
+  "@agoMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoHours": "{n}時間前",
+  "@agoHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoDays": "{n}日前",
+  "@agoDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "morningSameDay": "朝 {time} ごろ",
+  "@morningSameDay": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "morningNextDay": "あすの朝 {time} ごろ",
+  "@morningNextDay": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "skySunny": "日が差しています",
+  "skySometimesSunny": "ときどき日が差しています",
+  "skyNoSun": "日が差していません",
+  "skyTemp": "気温{c}℃",
+  "@skyTemp": {
+    "placeholders": {
+      "c": {
+        "type": "int"
+      }
+    }
+  },
+  "skyVisibilityMax": "見通し{km}km以上",
+  "@skyVisibilityMax": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "skyVisibility": "見通し約{km}km",
+  "@skyVisibility": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  }
 }

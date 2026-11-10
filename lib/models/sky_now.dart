@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../l10n/l10n.dart';
 import '../utils/sky_geometry.dart';
 import '../utils/sun_times.dart';
 import 'lat_lng.dart';
@@ -67,13 +68,13 @@ class SkyNow {
   List<String> get parts => [
         if (sun1h != null)
           sun1h! >= 0.7
-              ? '日が差しています'
+              ? L.t.skySunny
               : sun1h! > 0
-                  ? 'ときどき日が差しています'
-                  : '日が差していません',
-        if (tempC != null) '気温${tempC!.round()}℃',
+                  ? L.t.skySometimesSunny
+                  : L.t.skyNoSun,
+        if (tempC != null) L.t.skyTemp(tempC!.round()),
         if (visibilityKm != null)
-          visibilityKm! >= visibilityMaxKm ? '見通し20km以上' : '見通し約${visibilityKm!.round()}km',
+          visibilityKm! >= visibilityMaxKm ? L.t.skyVisibilityMax(visibilityMaxKm.round()) : L.t.skyVisibility(visibilityKm!.round()),
       ];
 }
 

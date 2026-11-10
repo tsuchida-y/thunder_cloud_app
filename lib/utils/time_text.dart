@@ -1,3 +1,5 @@
+import '../l10n/l10n.dart';
+
 /// 画面に出す時刻の書き方
 class TimeText {
   TimeText._();
@@ -19,11 +21,12 @@ class TimeText {
   /// 「3分前」「2時間前」
   static String ago(DateTime time, DateTime now) {
     final minutes = now.difference(time).inMinutes;
-    if (minutes < 1) return '1分前';
-    if (minutes < 60) return '$minutes分前';
+    final l10n = L.t;
+    if (minutes < 1) return l10n.agoMinutes(1);
+    if (minutes < 60) return l10n.agoMinutes(minutes);
     final hours = minutes ~/ 60;
-    if (hours < 24) return '$hours時間前';
-    return '${hours ~/ 24}日前';
+    if (hours < 24) return l10n.agoHours(hours);
+    return l10n.agoDays(hours ~/ 24);
   }
 
   /// 夜の画面の再開時刻: 「あすの朝 5:10 ごろ」（日付が変わったあとは「朝 5:10 ごろ」）
@@ -31,6 +34,6 @@ class TimeText {
     final s = sunrise.toLocal();
     final n = now.toLocal();
     final sameDay = s.year == n.year && s.month == n.month && s.day == n.day;
-    return '${sameDay ? '朝' : 'あすの朝'} ${clock(s)} ごろ';
+    return sameDay ? L.t.morningSameDay(clock(s)) : L.t.morningNextDay(clock(s));
   }
 }

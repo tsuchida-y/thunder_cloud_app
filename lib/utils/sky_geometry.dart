@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../l10n/l10n.dart';
 import '../models/lat_lng.dart';
 
 /// 利用者から見た雲の方角・距離・見上げる高さ
@@ -17,7 +18,6 @@ class SkyGeometry {
   static const double earthRadiusKm = 6371;
   static const double cloudTopKm = 12;
   static const double degreesPerFist = 10;
-  static const List<String> directionNames = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
 
   static double _toRad(double deg) => deg * math.pi / 180;
   static double _toDeg(double rad) => rad * 180 / math.pi;
@@ -42,7 +42,13 @@ class SkyGeometry {
   }
 
   /// 角度を8方位の名前にする
-  static String directionName(double bearing) => directionNames[(bearing / 45).round() % 8];
+  static String directionName(double bearing) {
+    final l10n = L.t;
+    final names = [
+      l10n.dirN, l10n.dirNE, l10n.dirE, l10n.dirSE, l10n.dirS, l10n.dirSW, l10n.dirW, l10n.dirNW,
+    ];
+    return names[(bearing / 45).round() % 8];
+  }
 
   /// 雲のてっぺんを見上げる角度（°）
   static double elevationDeg(double distance, {double topKm = cloudTopKm}) {
@@ -58,7 +64,6 @@ class SkyGeometry {
   static String fistsLabel(double fists) {
     final whole = fists.floor();
     final half = fists - whole >= 0.5;
-    if (whole == 0) return 'こぶし半分';
-    return 'こぶし$wholeつ${half ? '半' : ''}';
+    return half ? L.t.fistsHalfMore(whole) : L.t.fistsWhole(whole);
   }
 }

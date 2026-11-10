@@ -349,6 +349,132 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'Plus で、もっと遠くまで見張る'**
   String get settingsPlusBanner;
+
+  /// No description provided for @dirN.
+  ///
+  /// In ja, this message translates to:
+  /// **'北'**
+  String get dirN;
+
+  /// No description provided for @dirNE.
+  ///
+  /// In ja, this message translates to:
+  /// **'北東'**
+  String get dirNE;
+
+  /// No description provided for @dirE.
+  ///
+  /// In ja, this message translates to:
+  /// **'東'**
+  String get dirE;
+
+  /// No description provided for @dirSE.
+  ///
+  /// In ja, this message translates to:
+  /// **'南東'**
+  String get dirSE;
+
+  /// No description provided for @dirS.
+  ///
+  /// In ja, this message translates to:
+  /// **'南'**
+  String get dirS;
+
+  /// No description provided for @dirSW.
+  ///
+  /// In ja, this message translates to:
+  /// **'南西'**
+  String get dirSW;
+
+  /// No description provided for @dirW.
+  ///
+  /// In ja, this message translates to:
+  /// **'西'**
+  String get dirW;
+
+  /// No description provided for @dirNW.
+  ///
+  /// In ja, this message translates to:
+  /// **'北西'**
+  String get dirNW;
+
+  /// No description provided for @fistsWhole.
+  ///
+  /// In ja, this message translates to:
+  /// **'こぶし{n}つ'**
+  String fistsWhole(int n);
+
+  /// No description provided for @fistsHalfMore.
+  ///
+  /// In ja, this message translates to:
+  /// **'{n, plural, =0{こぶし半分} other{こぶし{n}つ半}}'**
+  String fistsHalfMore(int n);
+
+  /// No description provided for @agoMinutes.
+  ///
+  /// In ja, this message translates to:
+  /// **'{n}分前'**
+  String agoMinutes(int n);
+
+  /// No description provided for @agoHours.
+  ///
+  /// In ja, this message translates to:
+  /// **'{n}時間前'**
+  String agoHours(int n);
+
+  /// No description provided for @agoDays.
+  ///
+  /// In ja, this message translates to:
+  /// **'{n}日前'**
+  String agoDays(int n);
+
+  /// No description provided for @morningSameDay.
+  ///
+  /// In ja, this message translates to:
+  /// **'朝 {time} ごろ'**
+  String morningSameDay(String time);
+
+  /// No description provided for @morningNextDay.
+  ///
+  /// In ja, this message translates to:
+  /// **'あすの朝 {time} ごろ'**
+  String morningNextDay(String time);
+
+  /// No description provided for @skySunny.
+  ///
+  /// In ja, this message translates to:
+  /// **'日が差しています'**
+  String get skySunny;
+
+  /// No description provided for @skySometimesSunny.
+  ///
+  /// In ja, this message translates to:
+  /// **'ときどき日が差しています'**
+  String get skySometimesSunny;
+
+  /// No description provided for @skyNoSun.
+  ///
+  /// In ja, this message translates to:
+  /// **'日が差していません'**
+  String get skyNoSun;
+
+  /// No description provided for @skyTemp.
+  ///
+  /// In ja, this message translates to:
+  /// **'気温{c}℃'**
+  String skyTemp(int c);
+
+  /// No description provided for @skyVisibilityMax.
+  ///
+  /// In ja, this message translates to:
+  /// **'見通し{km}km以上'**
+  String skyVisibilityMax(int km);
+
+  /// No description provided for @skyVisibility.
+  ///
+  /// In ja, this message translates to:
+  /// **'見通し約{km}km'**
+  String skyVisibility(int km);
 }
 
 class _AppLocalizationsDelegate

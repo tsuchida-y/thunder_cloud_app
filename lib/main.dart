@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'l10n/app_localizations.dart';
+import 'l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -85,6 +86,10 @@ class MyApp extends StatelessWidget {
       onGenerateTitle: (context) => AppLocalizations.of(context).appName,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) {
+        L.update(AppLocalizations.of(context)); // 画面以外（モデル、サービス）の文言も、同じ言語にそろえる
+        return child ?? const SizedBox.shrink();
+      },
       theme: AppTheme.light,
       home: _startScreen == 'plus'
           ? const PlusScreen()

@@ -141,4 +141,93 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsPlusBanner => 'Plus で、もっと遠くまで見張る';
+
+  @override
+  String get dirN => '北';
+
+  @override
+  String get dirNE => '北東';
+
+  @override
+  String get dirE => '東';
+
+  @override
+  String get dirSE => '南東';
+
+  @override
+  String get dirS => '南';
+
+  @override
+  String get dirSW => '南西';
+
+  @override
+  String get dirW => '西';
+
+  @override
+  String get dirNW => '北西';
+
+  @override
+  String fistsWhole(int n) {
+    return 'こぶし$nつ';
+  }
+
+  @override
+  String fistsHalfMore(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'こぶし$nつ半',
+      zero: 'こぶし半分',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agoMinutes(int n) {
+    return '$n分前';
+  }
+
+  @override
+  String agoHours(int n) {
+    return '$n時間前';
+  }
+
+  @override
+  String agoDays(int n) {
+    return '$n日前';
+  }
+
+  @override
+  String morningSameDay(String time) {
+    return '朝 $time ごろ';
+  }
+
+  @override
+  String morningNextDay(String time) {
+    return 'あすの朝 $time ごろ';
+  }
+
+  @override
+  String get skySunny => '日が差しています';
+
+  @override
+  String get skySometimesSunny => 'ときどき日が差しています';
+
+  @override
+  String get skyNoSun => '日が差していません';
+
+  @override
+  String skyTemp(int c) {
+    return '気温$c℃';
+  }
+
+  @override
+  String skyVisibilityMax(int km) {
+    return '見通し${km}km以上';
+  }
+
+  @override
+  String skyVisibility(int km) {
+    return '見通し約${km}km';
+  }
 }

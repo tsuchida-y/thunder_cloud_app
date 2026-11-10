@@ -155,4 +155,106 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPlusBanner => 'Watch farther with Plus';
+
+  @override
+  String get dirN => 'north';
+
+  @override
+  String get dirNE => 'northeast';
+
+  @override
+  String get dirE => 'east';
+
+  @override
+  String get dirSE => 'southeast';
+
+  @override
+  String get dirS => 'south';
+
+  @override
+  String get dirSW => 'southwest';
+
+  @override
+  String get dirW => 'west';
+
+  @override
+  String get dirNW => 'northwest';
+
+  @override
+  String fistsWhole(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n fists',
+      one: '1 fist',
+      zero: 'half a fist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String fistsHalfMore(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n½ fists',
+      zero: 'half a fist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agoMinutes(int n) {
+    return '$n min ago';
+  }
+
+  @override
+  String agoHours(int n) {
+    return '$n h ago';
+  }
+
+  @override
+  String agoDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days ago',
+      one: '1 day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String morningSameDay(String time) {
+    return 'around $time this morning';
+  }
+
+  @override
+  String morningNextDay(String time) {
+    return 'around $time tomorrow morning';
+  }
+
+  @override
+  String get skySunny => 'Sunny';
+
+  @override
+  String get skySometimesSunny => 'Occasional sun';
+
+  @override
+  String get skyNoSun => 'No direct sun';
+
+  @override
+  String skyTemp(int c) {
+    return '$c°C';
+  }
+
+  @override
+  String skyVisibilityMax(int km) {
+    return 'Visibility $km km or more';
+  }
+
+  @override
+  String skyVisibility(int km) {
+    return 'Visibility about $km km';
+  }
 }
