@@ -157,28 +157,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPlusBanner => 'Watch farther with Plus';
 
   @override
-  String get dirN => 'north';
+  String get dirN => 'North';
 
   @override
-  String get dirNE => 'northeast';
+  String get dirNE => 'Northeast';
 
   @override
-  String get dirE => 'east';
+  String get dirE => 'East';
 
   @override
-  String get dirSE => 'southeast';
+  String get dirSE => 'Southeast';
 
   @override
-  String get dirS => 'south';
+  String get dirS => 'South';
 
   @override
-  String get dirSW => 'southwest';
+  String get dirSW => 'Southwest';
 
   @override
-  String get dirW => 'west';
+  String get dirW => 'West';
 
   @override
-  String get dirNW => 'northwest';
+  String get dirNW => 'Northwest';
 
   @override
   String fistsWhole(int n) {
@@ -257,4 +257,130 @@ class AppLocalizationsEn extends AppLocalizations {
   String skyVisibility(int km) {
     return 'Visibility about $km km';
   }
+
+  @override
+  String badgePlace(String place) {
+    return '$place · ';
+  }
+
+  @override
+  String skyObservedAgo(String ago) {
+    return 'Sky checked $ago';
+  }
+
+  @override
+  String homeCloudBodyMaybe(int km, String fists) {
+    return 'About $km km away, so it may be visible. It rises about $fists above the horizon.';
+  }
+
+  @override
+  String homeCloudBody(int km, String fists) {
+    return 'About $km km away. It rises about $fists above the horizon.';
+  }
+
+  @override
+  String get homeBadgeMaybe => 'May be visible';
+
+  @override
+  String get homeBadgeVisible => 'Visible now';
+
+  @override
+  String homeCloudTitle(String direction) {
+    return 'Thunderhead\nto the $direction.';
+  }
+
+  @override
+  String get homeFindDirection => 'Find the cloud';
+
+  @override
+  String get homeBadgeWatching => 'Watching the sky';
+
+  @override
+  String get homeCalmTitle => 'The sky is\nquiet right now.';
+
+  @override
+  String get homeCalmBody =>
+      'We\'ll tell you as soon as a thunderhead appears.';
+
+  @override
+  String get homeBadgeResting => 'Watch is resting';
+
+  @override
+  String get homeNightTitle => 'It\'s night.\nToo dark to see clouds.';
+
+  @override
+  String get homeNightBody =>
+      'We\'ll start watching again when it gets light. No notifications at night.';
+
+  @override
+  String homeNightBodyResume(String when) {
+    return 'We\'ll start watching again when it gets light, $when. No notifications at night.';
+  }
+
+  @override
+  String get homeTodayCloud => 'Today\'s thunderhead';
+
+  @override
+  String homeTodayCloudDetail(
+      String from, String to, String direction, int km) {
+    return 'From $from to $to, to the $direction (about $km km away)';
+  }
+
+  @override
+  String get homeOffline => 'Offline';
+
+  @override
+  String get homeOfflineTitle => 'Can\'t get\nsky information.';
+
+  @override
+  String get homeOfflineBody => 'Please reload where you have a connection.';
+
+  @override
+  String homeLastSky(String time) {
+    return 'Last sky check ($time)';
+  }
+
+  @override
+  String homeLastCloud(String direction, int km) {
+    return 'Thunderhead to the $direction (about $km km away)';
+  }
+
+  @override
+  String get homeLastUnknown => 'We can\'t tell if it\'s still visible.';
+
+  @override
+  String get homeReload => 'Reload';
+
+  @override
+  String get homeNoPlace => 'Location unknown';
+
+  @override
+  String get homeNoPermissionTitle => 'We can\'t watch\nthe sky yet.';
+
+  @override
+  String get homeNoPermissionBody =>
+      'Turn on the two items below and we\'ll tell you when a thunderhead appears.';
+
+  @override
+  String get homeLocationOffTitle => 'Location is off';
+
+  @override
+  String get homeLocationOffBody =>
+      'In the Settings app, set Location to \"While Using the App\" or \"Always\".';
+
+  @override
+  String get homeOpenSettings => 'Open Settings';
+
+  @override
+  String get homeNotificationOffTitle => 'Notifications are off';
+
+  @override
+  String get homeNotificationOffBody =>
+      'You\'ll only see cloud positions when you open the app.';
+
+  @override
+  String get homeEnableNotifications => 'Turn on notifications';
+
+  @override
+  String get homeAddPlaceManually => 'Add a place manually';
 }

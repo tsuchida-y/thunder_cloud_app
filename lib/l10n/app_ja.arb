@@ -153,5 +153,120 @@
         "type": "int"
       }
     }
-  }
+  },
+  "badgePlace": "{place} ・ ",
+  "@badgePlace": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "skyObservedAgo": "{ago}に空を見ました",
+  "@skyObservedAgo": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCloudBodyMaybe": "約{km}km先なので、見えるかもしれません。{fists}くらいの高さに立っています。",
+  "@homeCloudBodyMaybe": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      },
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCloudBody": "約{km}km先。{fists}くらいの高さに立っています。",
+  "@homeCloudBody": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      },
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "homeBadgeMaybe": "見えるかもしれません",
+  "homeBadgeVisible": "いま、見えています",
+  "homeCloudTitle": "{direction}の空に、\n入道雲。",
+  "@homeCloudTitle": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "homeFindDirection": "雲の方角を調べる",
+  "homeBadgeWatching": "空を見守っています",
+  "homeCalmTitle": "いまは、\n静かな空です。",
+  "homeCalmBody": "入道雲が現れたら、すぐにお知らせします。",
+  "homeBadgeResting": "見張りはお休み中",
+  "homeNightTitle": "いまは夜。\n空が暗くて見えません。",
+  "homeNightBody": "明るくなったら見張りを再開します。夜のあいだは通知しません。",
+  "homeNightBodyResume": "{when}、明るくなったら見張りを再開します。夜のあいだは通知しません。",
+  "@homeNightBodyResume": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTodayCloud": "きょう見えた入道雲",
+  "homeTodayCloudDetail": "{from} から {to} まで、{direction}の空（約{km}km先）",
+  "@homeTodayCloudDetail": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOffline": "オフライン",
+  "homeOfflineTitle": "空の情報が\n受け取れません。",
+  "homeOfflineBody": "電波の届く場所で、もう一度読み込んでください。",
+  "homeLastSky": "最後に見た空（{time}）",
+  "@homeLastSky": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "homeLastCloud": "{direction}の空に入道雲（約{km}km先）",
+  "@homeLastCloud": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeLastUnknown": "いまも見えるかは分かりません。",
+  "homeReload": "もう一度読み込む",
+  "homeNoPlace": "場所が分かりません",
+  "homeNoPermissionTitle": "このままでは\n空を見張れません。",
+  "homeNoPermissionBody": "下の2つをオンにすると、入道雲が現れたときにお知らせできます。",
+  "homeLocationOffTitle": "位置情報がオフです",
+  "homeLocationOffBody": "設定アプリで「位置情報」を「使用中のみ」か「常に」にしてください。",
+  "homeOpenSettings": "設定アプリを開く",
+  "homeNotificationOffTitle": "通知がオフです",
+  "homeNotificationOffBody": "アプリを開いたときだけ、雲の場所を確かめられます。",
+  "homeEnableNotifications": "通知をオンにする",
+  "homeAddPlaceManually": "場所を手で登録する"
 }

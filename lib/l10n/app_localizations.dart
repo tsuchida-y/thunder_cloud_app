@@ -475,6 +475,210 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'見通し約{km}km'**
   String skyVisibility(int km);
+
+  /// No description provided for @badgePlace.
+  ///
+  /// In ja, this message translates to:
+  /// **'{place} ・ '**
+  String badgePlace(String place);
+
+  /// No description provided for @skyObservedAgo.
+  ///
+  /// In ja, this message translates to:
+  /// **'{ago}に空を見ました'**
+  String skyObservedAgo(String ago);
+
+  /// No description provided for @homeCloudBodyMaybe.
+  ///
+  /// In ja, this message translates to:
+  /// **'約{km}km先なので、見えるかもしれません。{fists}くらいの高さに立っています。'**
+  String homeCloudBodyMaybe(int km, String fists);
+
+  /// No description provided for @homeCloudBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'約{km}km先。{fists}くらいの高さに立っています。'**
+  String homeCloudBody(int km, String fists);
+
+  /// No description provided for @homeBadgeMaybe.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えるかもしれません'**
+  String get homeBadgeMaybe;
+
+  /// No description provided for @homeBadgeVisible.
+  ///
+  /// In ja, this message translates to:
+  /// **'いま、見えています'**
+  String get homeBadgeVisible;
+
+  /// No description provided for @homeCloudTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction}の空に、\n入道雲。'**
+  String homeCloudTitle(String direction);
+
+  /// No description provided for @homeFindDirection.
+  ///
+  /// In ja, this message translates to:
+  /// **'雲の方角を調べる'**
+  String get homeFindDirection;
+
+  /// No description provided for @homeBadgeWatching.
+  ///
+  /// In ja, this message translates to:
+  /// **'空を見守っています'**
+  String get homeBadgeWatching;
+
+  /// No description provided for @homeCalmTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまは、\n静かな空です。'**
+  String get homeCalmTitle;
+
+  /// No description provided for @homeCalmBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲が現れたら、すぐにお知らせします。'**
+  String get homeCalmBody;
+
+  /// No description provided for @homeBadgeResting.
+  ///
+  /// In ja, this message translates to:
+  /// **'見張りはお休み中'**
+  String get homeBadgeResting;
+
+  /// No description provided for @homeNightTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまは夜。\n空が暗くて見えません。'**
+  String get homeNightTitle;
+
+  /// No description provided for @homeNightBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'明るくなったら見張りを再開します。夜のあいだは通知しません。'**
+  String get homeNightBody;
+
+  /// No description provided for @homeNightBodyResume.
+  ///
+  /// In ja, this message translates to:
+  /// **'{when}、明るくなったら見張りを再開します。夜のあいだは通知しません。'**
+  String homeNightBodyResume(String when);
+
+  /// No description provided for @homeTodayCloud.
+  ///
+  /// In ja, this message translates to:
+  /// **'きょう見えた入道雲'**
+  String get homeTodayCloud;
+
+  /// No description provided for @homeTodayCloudDetail.
+  ///
+  /// In ja, this message translates to:
+  /// **'{from} から {to} まで、{direction}の空（約{km}km先）'**
+  String homeTodayCloudDetail(String from, String to, String direction, int km);
+
+  /// No description provided for @homeOffline.
+  ///
+  /// In ja, this message translates to:
+  /// **'オフライン'**
+  String get homeOffline;
+
+  /// No description provided for @homeOfflineTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'空の情報が\n受け取れません。'**
+  String get homeOfflineTitle;
+
+  /// No description provided for @homeOfflineBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'電波の届く場所で、もう一度読み込んでください。'**
+  String get homeOfflineBody;
+
+  /// No description provided for @homeLastSky.
+  ///
+  /// In ja, this message translates to:
+  /// **'最後に見た空（{time}）'**
+  String homeLastSky(String time);
+
+  /// No description provided for @homeLastCloud.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction}の空に入道雲（約{km}km先）'**
+  String homeLastCloud(String direction, int km);
+
+  /// No description provided for @homeLastUnknown.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまも見えるかは分かりません。'**
+  String get homeLastUnknown;
+
+  /// No description provided for @homeReload.
+  ///
+  /// In ja, this message translates to:
+  /// **'もう一度読み込む'**
+  String get homeReload;
+
+  /// No description provided for @homeNoPlace.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所が分かりません'**
+  String get homeNoPlace;
+
+  /// No description provided for @homeNoPermissionTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'このままでは\n空を見張れません。'**
+  String get homeNoPermissionTitle;
+
+  /// No description provided for @homeNoPermissionBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'下の2つをオンにすると、入道雲が現れたときにお知らせできます。'**
+  String get homeNoPermissionBody;
+
+  /// No description provided for @homeLocationOffTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'位置情報がオフです'**
+  String get homeLocationOffTitle;
+
+  /// No description provided for @homeLocationOffBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'設定アプリで「位置情報」を「使用中のみ」か「常に」にしてください。'**
+  String get homeLocationOffBody;
+
+  /// No description provided for @homeOpenSettings.
+  ///
+  /// In ja, this message translates to:
+  /// **'設定アプリを開く'**
+  String get homeOpenSettings;
+
+  /// No description provided for @homeNotificationOffTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'通知がオフです'**
+  String get homeNotificationOffTitle;
+
+  /// No description provided for @homeNotificationOffBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'アプリを開いたときだけ、雲の場所を確かめられます。'**
+  String get homeNotificationOffBody;
+
+  /// No description provided for @homeEnableNotifications.
+  ///
+  /// In ja, this message translates to:
+  /// **'通知をオンにする'**
+  String get homeEnableNotifications;
+
+  /// No description provided for @homeAddPlaceManually.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所を手で登録する'**
+  String get homeAddPlaceManually;
 }
 
 class _AppLocalizationsDelegate

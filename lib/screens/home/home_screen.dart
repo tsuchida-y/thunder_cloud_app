@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n.dart';
 import '../../models/finder_target.dart';
 import '../../models/sky_cloud.dart';
 
@@ -117,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 /// 見出しの上の札の頭（「滝沢市 ・ 」「家（盛岡市） ・ 」）
-String _badgePlace(HomeState state) => state.placeName == null ? '' : '${state.placeName} ・ ';
+String _badgePlace(HomeState state) => state.placeName == null ? '' : L.t.badgePlace(state.placeName!);
 
 /// 「3分前に空を見ました ・ 出典：気象庁」
 class _SkyFooter extends StatelessWidget {
@@ -129,7 +131,7 @@ class _SkyFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final observedAt = state.observedAt;
-    return SourceNote(prefix: observedAt == null ? null : '${TimeText.ago(observedAt, now)}に空を見ました');
+    return SourceNote(prefix: observedAt == null ? null : AppLocalizations.of(context).skyObservedAgo(TimeText.ago(observedAt, now)));
   }
 }
 
@@ -144,10 +146,11 @@ class _CloudsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final nearest = state.clouds.first;
     final body = nearest.maybeVisible
-        ? '約${nearest.roundedKm}km先なので、見えるかもしれません。${nearest.fistsLabel}くらいの高さに立っています。'
-        : '約${nearest.roundedKm}km先。${nearest.fistsLabel}くらいの高さに立っています。';
+        ? l10n.homeCloudBodyMaybe(nearest.roundedKm, nearest.fistsLabel)
+        : l10n.homeCloudBody(nearest.roundedKm, nearest.fistsLabel);
     return SkyPage(
       // 朝や夕方は、外の空に合わせて少し藤色寄りにする
       gradient: state.lowSun ? SkyGradient.dayLow : SkyGradient.day,
@@ -158,12 +161,12 @@ class _CloudsView extends StatelessWidget {
           const SizedBox(height: 14),
           HomeHeadline(
             badge: StatusBadge(
-              text: '${_badgePlace(state)}${nearest.maybeVisible ? '見えるかもしれません' : 'いま、見えています'}',
+              text: '${_badgePlace(state)}${nearest.maybeVisible ? l10n.homeBadgeMaybe : l10n.homeBadgeVisible}',
               icon: Icons.flare_rounded,
               foreground: AppColors.accent,
               background: Colors.white,
             ),
-            title: '${nearest.directionName}の空に、\n入道雲。',
+            title: l10n.homeCloudTitle(nearest.directionName),
             body: body,
             titleSize: 32,
           ),
@@ -175,7 +178,7 @@ class _CloudsView extends StatelessWidget {
           const Spacer(),
           const SizedBox(height: 14),
           PrimaryButton(
-            label: '雲の方角を調べる',
+            label: l10n.homeFindDirection,
             icon: Icons.explore_outlined,
             onPressed: () => AppRoutes.openFinder(context, FinderTarget.fromView(nearest)),
           ),
@@ -202,6 +205,7 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SkyPage(
       // 朝や夕方は、外の空に合わせて少し藤色寄りにする
       gradient: state.lowSun ? SkyGradient.calmLow : SkyGradient.calm,
@@ -212,12 +216,12 @@ class _EmptyView extends StatelessWidget {
           const SizedBox(height: 16),
           HomeHeadline(
             badge: StatusBadge(
-              text: '${_badgePlace(state)}空を見守っています',
+              text: '${_badgePlace(state)}${l10n.homeBadgeWatching}',
               foreground: AppColors.text,
               background: Colors.white.withValues(alpha: 0.85),
             ),
-            title: 'いまは、\n静かな空です。',
-            body: '入道雲が現れたら、すぐにお知らせします。',
+            title: l10n.homeCalmTitle,
+            body: l10n.homeCalmBody,
           ),
           // レーダーは見出しと下のカードの間の真ん中に置く（間が大きく空かないように）。
           // 下の「見えた入道雲の記録」まで1画面に収まるよう、画面の高さに合わせて大きさを決める
@@ -267,8 +271,8 @@ class _NightView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final sunrise = state.nextSunrise;
-    final resume = sunrise == null ? '' : '${TimeText.morning(sunrise, now)}、';
     final today = state.todaysCloud;
     return SkyPage(
       gradient: SkyGradient.night,
@@ -279,12 +283,12 @@ class _NightView extends StatelessWidget {
           const SizedBox(height: 16),
           HomeHeadline(
             badge: StatusBadge(
-              text: '${_badgePlace(state)}見張りはお休み中',
+              text: '${_badgePlace(state)}${l10n.homeBadgeResting}',
               foreground: const Color(0xFF14295A),
               background: const Color(0xFFBFE3FF),
             ),
-            title: 'いまは夜。\n空が暗くて見えません。',
-            body: '$resume明るくなったら見張りを再開します。夜のあいだは通知しません。',
+            title: l10n.homeNightTitle,
+            body: sunrise == null ? l10n.homeNightBody : l10n.homeNightBodyResume(TimeText.morning(sunrise, now)),
           ),
           const Expanded(
             child: Center(
@@ -303,12 +307,11 @@ class _NightView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('きょう見えた入道雲',
+                    Text(l10n.homeTodayCloud,
                         style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
                     Text(
-                      '${TimeText.clock(today.from)} から ${TimeText.clock(today.to)} まで、'
-                      '${today.directionName}の空（約${today.distanceKm}km先）',
+                      l10n.homeTodayCloudDetail(TimeText.clock(today.from), TimeText.clock(today.to), today.directionName, today.distanceKm),
                       style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 14),
                     ),
                   ],
@@ -331,6 +334,7 @@ class _OfflineView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final last = state.lastSky;
     return SkyPage(
       gradient: SkyGradient.offline,
@@ -339,10 +343,10 @@ class _OfflineView extends StatelessWidget {
         children: [
           HomeHeader(label: HomeHeader.skyOf(state.placeName), showRecord: false, showSettings: false),
           const SizedBox(height: 16),
-          const HomeHeadline(
-            badge: StatusBadge(text: 'オフライン', foreground: Color(0xFF2F4766), background: Colors.white),
-            title: '空の情報が\n受け取れません。',
-            body: '電波の届く場所で、もう一度読み込んでください。',
+          HomeHeadline(
+            badge: StatusBadge(text: l10n.homeOffline, foreground: const Color(0xFF2F4766), background: Colors.white),
+            title: l10n.homeOfflineTitle,
+            body: l10n.homeOfflineBody,
           ),
           const Expanded(
             child: Center(
@@ -354,20 +358,20 @@ class _OfflineView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('最後に見た空（${TimeText.clockWithDate(last.checkedAt, now)}）', style: AppTextStyles.note()),
+                  Text(l10n.homeLastSky(TimeText.clockWithDate(last.checkedAt, now)), style: AppTextStyles.note()),
                   const SizedBox(height: 4),
                   Text(
-                    '${last.directionName}の空に入道雲（約${last.distanceKm}km先）',
+                    l10n.homeLastCloud(last.directionName, last.distanceKm),
                     style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
-                  Text('いまも見えるかは分かりません。', style: AppTextStyles.note()),
+                  Text(l10n.homeLastUnknown, style: AppTextStyles.note()),
                 ],
               ),
             ),
             const SizedBox(height: 16),
           ],
-          PrimaryButton(label: 'もう一度読み込む', onPressed: onRetry),
+          PrimaryButton(label: l10n.homeReload, onPressed: onRetry),
         ],
       ),
     );
@@ -383,40 +387,41 @@ class _NoPermissionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SkyPage(
       gradient: SkyGradient.day,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const HomeHeader(label: '場所が分かりません', showPin: false, showRecord: false),
+          HomeHeader(label: l10n.homeNoPlace, showPin: false, showRecord: false),
           const SizedBox(height: 16),
-          const HomeHeadline(
-            title: 'このままでは\n空を見張れません。',
-            body: '下の2つをオンにすると、入道雲が現れたときにお知らせできます。',
+          HomeHeadline(
+            title: l10n.homeNoPermissionTitle,
+            body: l10n.homeNoPermissionBody,
           ),
           const Spacer(),
           const SizedBox(height: 16),
           if (state.locationOff) ...[
             _PermissionCard(
               icon: Icons.place_outlined,
-              title: '位置情報がオフです',
-              body: '設定アプリで「位置情報」を「使用中のみ」か「常に」にしてください。',
-              button: PrimaryButton(label: '設定アプリを開く', compact: true, onPressed: controller.openLocationSettings),
+              title: l10n.homeLocationOffTitle,
+              body: l10n.homeLocationOffBody,
+              button: PrimaryButton(label: l10n.homeOpenSettings, compact: true, onPressed: controller.openLocationSettings),
             ),
             const SizedBox(height: 16),
           ],
           if (state.notificationsOff) ...[
             _PermissionCard(
               icon: Icons.notifications_none_rounded,
-              title: '通知がオフです',
-              body: 'アプリを開いたときだけ、雲の場所を確かめられます。',
-              button: OutlinePillButton(label: '通知をオンにする', height: 44, onPressed: controller.enableNotifications),
+              title: l10n.homeNotificationOffTitle,
+              body: l10n.homeNotificationOffBody,
+              button: OutlinePillButton(label: l10n.homeEnableNotifications, height: 44, onPressed: controller.enableNotifications),
             ),
             const SizedBox(height: 16),
           ],
           Center(
             child: TextLinkButton(
-              label: '場所を手で登録する',
+              label: l10n.homeAddPlaceManually,
               color: AppColors.text,
               onPressed: () => AppRoutes.openPlaces(context),
             ),

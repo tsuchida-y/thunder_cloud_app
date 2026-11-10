@@ -230,4 +230,125 @@ class AppLocalizationsJa extends AppLocalizations {
   String skyVisibility(int km) {
     return '見通し約${km}km';
   }
+
+  @override
+  String badgePlace(String place) {
+    return '$place ・ ';
+  }
+
+  @override
+  String skyObservedAgo(String ago) {
+    return '$agoに空を見ました';
+  }
+
+  @override
+  String homeCloudBodyMaybe(int km, String fists) {
+    return '約${km}km先なので、見えるかもしれません。$fistsくらいの高さに立っています。';
+  }
+
+  @override
+  String homeCloudBody(int km, String fists) {
+    return '約${km}km先。$fistsくらいの高さに立っています。';
+  }
+
+  @override
+  String get homeBadgeMaybe => '見えるかもしれません';
+
+  @override
+  String get homeBadgeVisible => 'いま、見えています';
+
+  @override
+  String homeCloudTitle(String direction) {
+    return '$directionの空に、\n入道雲。';
+  }
+
+  @override
+  String get homeFindDirection => '雲の方角を調べる';
+
+  @override
+  String get homeBadgeWatching => '空を見守っています';
+
+  @override
+  String get homeCalmTitle => 'いまは、\n静かな空です。';
+
+  @override
+  String get homeCalmBody => '入道雲が現れたら、すぐにお知らせします。';
+
+  @override
+  String get homeBadgeResting => '見張りはお休み中';
+
+  @override
+  String get homeNightTitle => 'いまは夜。\n空が暗くて見えません。';
+
+  @override
+  String get homeNightBody => '明るくなったら見張りを再開します。夜のあいだは通知しません。';
+
+  @override
+  String homeNightBodyResume(String when) {
+    return '$when、明るくなったら見張りを再開します。夜のあいだは通知しません。';
+  }
+
+  @override
+  String get homeTodayCloud => 'きょう見えた入道雲';
+
+  @override
+  String homeTodayCloudDetail(
+      String from, String to, String direction, int km) {
+    return '$from から $to まで、$directionの空（約${km}km先）';
+  }
+
+  @override
+  String get homeOffline => 'オフライン';
+
+  @override
+  String get homeOfflineTitle => '空の情報が\n受け取れません。';
+
+  @override
+  String get homeOfflineBody => '電波の届く場所で、もう一度読み込んでください。';
+
+  @override
+  String homeLastSky(String time) {
+    return '最後に見た空（$time）';
+  }
+
+  @override
+  String homeLastCloud(String direction, int km) {
+    return '$directionの空に入道雲（約${km}km先）';
+  }
+
+  @override
+  String get homeLastUnknown => 'いまも見えるかは分かりません。';
+
+  @override
+  String get homeReload => 'もう一度読み込む';
+
+  @override
+  String get homeNoPlace => '場所が分かりません';
+
+  @override
+  String get homeNoPermissionTitle => 'このままでは\n空を見張れません。';
+
+  @override
+  String get homeNoPermissionBody => '下の2つをオンにすると、入道雲が現れたときにお知らせできます。';
+
+  @override
+  String get homeLocationOffTitle => '位置情報がオフです';
+
+  @override
+  String get homeLocationOffBody => '設定アプリで「位置情報」を「使用中のみ」か「常に」にしてください。';
+
+  @override
+  String get homeOpenSettings => '設定アプリを開く';
+
+  @override
+  String get homeNotificationOffTitle => '通知がオフです';
+
+  @override
+  String get homeNotificationOffBody => 'アプリを開いたときだけ、雲の場所を確かめられます。';
+
+  @override
+  String get homeEnableNotifications => '通知をオンにする';
+
+  @override
+  String get homeAddPlaceManually => '場所を手で登録する';
 }
