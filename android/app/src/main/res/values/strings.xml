@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 英語（既定）。日本語は values-ja/strings.xml。端末の言語が日本語以外なら英語になる -->
+<resources>
+    <string name="app_name">Thunderhead Watch</string>
+    <string name="widget_small_label">Thunderhead (small)</string>
+    <string name="widget_medium_label">Thunderhead (medium)</string>
+    <string name="widget_title">Thunderhead</string>
+    <string name="widget_compass_description">Direction of the cloud</string>
+    <string name="widget_plus_only">A Plus feature</string>
+    <string name="widget_headline_cloud">Thunderhead to the %1$s</string>
+    <string name="widget_distance">About %1$s km away</string>
+    <string name="widget_distance_short">%1$s km</string>
+    <string name="widget_height">%1$s high</string>
+    <string name="widget_night">Watch is resting</string>
+    <string name="widget_quiet">Quiet sky</string>
+    <string name="widget_open_app">Open the app to check the sky</string>
+    <string name="widget_time_source">As of %1$s · Source: Japan Meteorological Agency</string>
+    <string name="configure_title">Place for this widget</string>
+    <string name="configure_empty">Open the app once and you can choose from the places you watch. For now, it shows where you are.</string>
+    <string name="configure_hint">Tap the widget to open that place on the home screen.</string>
+    <string name="configure_current_location">Current location</string>
+    <string name="configure_place_with_name">%1$s (%2$s)</string>
+</resources>

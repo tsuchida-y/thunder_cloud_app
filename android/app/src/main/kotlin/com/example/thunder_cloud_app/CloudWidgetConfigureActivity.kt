@@ -41,29 +41,29 @@ class CloudWidgetConfigureActivity : Activity() {
             setBackgroundColor(Color.parseColor("#F4F8FC"))
         }
         column.addView(TextView(this).apply {
-            text = "ウィジェットで見る場所"
+            text = getString(R.string.configure_title)
             setTextColor(Color.parseColor("#14284A"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
             setPadding(0, 0, 0, dp(8))
         })
         column.addView(TextView(this).apply {
             text = if (spots.isEmpty()) {
-                "アプリを一度開くと、見張っている場所から選べます。いまは、いまいる場所を出します。"
+                getString(R.string.configure_empty)
             } else {
-                "タップすると、その場所のホームが開きます。"
+                getString(R.string.configure_hint)
             }
             setTextColor(Color.parseColor("#47597A"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(0, 0, 0, dp(16))
         })
 
-        val choices = spots.ifEmpty { listOf(org.json.JSONObject().put("id", "now").put("label", "現在地").put("placeName", "")) }
+        val choices = spots.ifEmpty { listOf(org.json.JSONObject().put("id", "now").put("label", getString(R.string.configure_current_location)).put("placeName", "")) }
         for (spot in choices) {
             val id = spot.optString("id")
             val name = spot.optString("placeName")
             val label = spot.optString("label")
             column.addView(Button(this).apply {
-                text = if (name.isNotEmpty() && name != label) "$label（$name）" else label
+                text = if (name.isNotEmpty() && name != label) getString(R.string.configure_place_with_name, label, name) else label
                 isAllCaps = false
                 setTextColor(Color.parseColor("#14284A"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
