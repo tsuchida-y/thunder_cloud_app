@@ -1,0 +1,5 @@
+/* App name and the explanations shown when asking for location access (English) */
+"CFBundleDisplayName" = "Thunderhead Watch";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "If you allow \"Always\", we can keep watching the sky wherever you go, even when you move a long way while the app is closed, and notify you when a thunderhead is visible. Your location is rounded to about 1 km before it is saved.";
+"NSLocationAlwaysUsageDescription" = "If you allow \"Always\", we can keep watching the sky wherever you go, even when you move a long way while the app is closed, and notify you when a thunderhead is visible. Your location is rounded to about 1 km before it is saved.";
+"NSLocationWhenInUseUsageDescription" = "Uses your location to check whether there is a thunderhead in the sky you can see from where you are, and to work out its direction and distance. Your location is rounded to about 1 km before it is saved.";

@@ -90,8 +90,10 @@ import UserNotifications
 
   private func registerCloudCategory() {
     // アプリを開かずに答えられるよう、ボタンは前に出さない（options: []）
-    let seen = UNNotificationAction(identifier: AppDelegate.seenAction, title: "見えた", options: [])
-    let notSeen = UNNotificationAction(identifier: AppDelegate.notSeenAction, title: "見えなかった", options: [])
+    // 端末の言語が日本語なら日本語、それ以外は英語（アプリの文言の決め方と同じ）
+    let japanese = (Locale.preferredLanguages.first ?? "en").hasPrefix("ja")
+    let seen = UNNotificationAction(identifier: AppDelegate.seenAction, title: japanese ? "見えた" : "Seen", options: [])
+    let notSeen = UNNotificationAction(identifier: AppDelegate.notSeenAction, title: japanese ? "見えなかった" : "Not seen", options: [])
     let category = UNNotificationCategory(identifier: AppDelegate.cloudCategory, actions: [seen, notSeen], intentIdentifiers: [], options: [])
     UNUserNotificationCenter.current().setNotificationCategories([category])
   }
