@@ -755,5 +755,29 @@
   "backToHome": "ホームに戻る",
   "notificationChannelDescription": "入道雲が見える範囲に現れたときのお知らせ",
   "notificationChannelName": "入道雲のお知らせ",
-  "savedPlace": "登録した場所"
+  "savedPlace": "登録した場所",
+  "areaAround": "{place}のあたり",
+  "@areaAround": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "areaOver": "{place}の上",
+  "@areaOver": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "areaOffshore": "{place}の沖",
+  "@areaOffshore": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  }
 }

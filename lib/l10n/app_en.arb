@@ -264,5 +264,8 @@
   "backToHome": "Back to home",
   "notificationChannelDescription": "Notifications for when a thunderhead appears within range",
   "notificationChannelName": "Thunderhead alerts",
-  "savedPlace": "Saved place"
+  "savedPlace": "Saved place",
+  "areaAround": "Around {place}",
+  "areaOver": "Over {place}",
+  "areaOffshore": "Off {place}"
 }

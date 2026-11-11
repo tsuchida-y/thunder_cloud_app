@@ -1687,6 +1687,24 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'登録した場所'**
   String get savedPlace;
+
+  /// No description provided for @areaAround.
+  ///
+  /// In ja, this message translates to:
+  /// **'{place}のあたり'**
+  String areaAround(String place);
+
+  /// No description provided for @areaOver.
+  ///
+  /// In ja, this message translates to:
+  /// **'{place}の上'**
+  String areaOver(String place);
+
+  /// No description provided for @areaOffshore.
+  ///
+  /// In ja, this message translates to:
+  /// **'{place}の沖'**
+  String areaOffshore(String place);
 }
 
 class _AppLocalizationsDelegate

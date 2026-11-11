@@ -1026,4 +1026,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get savedPlace => 'Saved place';
+
+  @override
+  String areaAround(String place) {
+    return 'Around $place';
+  }
+
+  @override
+  String areaOver(String place) {
+    return 'Over $place';
+  }
+
+  @override
+  String areaOffshore(String place) {
+    return 'Off $place';
+  }
 }

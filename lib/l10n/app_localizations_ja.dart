@@ -949,4 +949,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get savedPlace => '登録した場所';
+
+  @override
+  String areaAround(String place) {
+    return '$placeのあたり';
+  }
+
+  @override
+  String areaOver(String place) {
+    return '$placeの上';
+  }
+
+  @override
+  String areaOffshore(String place) {
+    return '$placeの沖';
+  }
 }
