@@ -18,6 +18,12 @@ class TimeText {
     return today ? clock(t) : '${t.month}/${t.day} ${clock(t)}';
   }
 
+  /// 「2026年11月11日」「Nov 11, 2026」
+  static String fullDate(DateTime time) {
+    final t = time.toLocal();
+    return L.t.dateFull('${t.year}', '${t.month}', '${t.day}');
+  }
+
   /// 「3分前」「2時間前」
   static String ago(DateTime time, DateTime now) {
     final minutes = now.difference(time).inMinutes;

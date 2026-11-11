@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n.dart';
 import '../../services/member/member_service.dart';
 import '../../services/plus/plus_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/logger.dart';
+import '../../utils/time_text.dart';
 import '../../widgets/common/app_buttons.dart';
 import '../../widgets/common/sky_page.dart';
 import '../settings/settings_screen.dart';
@@ -90,7 +93,7 @@ class _PlusScreenState extends State<PlusScreen> {
       if (ok && mounted) setState(() => _isPlus = true);
     } catch (e) {
       AppLogger.warning('購入に失敗: $e', tag: 'PlusScreen');
-      if (mounted) _toast('購入できませんでした。時間をおいて、もう一度お試しください。');
+      if (mounted) _toast(L.t.plusPurchaseFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -105,10 +108,10 @@ class _PlusScreenState extends State<PlusScreen> {
       if (ok) {
         setState(() => _isPlus = true);
       } else {
-        _toast('復元できる Plus の購入が見つかりませんでした。');
+        _toast(L.t.plusRestoreNone);
       }
     } catch (e) {
-      if (mounted) _toast('復元できませんでした。時間をおいて、もう一度お試しください。');
+      if (mounted) _toast(L.t.plusRestoreFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -116,21 +119,22 @@ class _PlusScreenState extends State<PlusScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final plans = _plans;
-    final monthlyPrice = plans == null ? '200円' : _yen(plans.monthly.storeProduct);
-    final lifetimePrice = plans == null ? '1,200円' : _yen(plans.lifetime.storeProduct);
+    final monthlyPrice = plans == null ? l10n.plusFallbackMonthly : _yen(plans.monthly.storeProduct);
+    final lifetimePrice = plans == null ? l10n.plusFallbackLifetime : _yen(plans.lifetime.storeProduct);
     final trial = plans != null && !_lifetime && plans.monthlyTrial;
     final String buyTitle;
     final String buySubtitle;
     if (_lifetime) {
-      buyTitle = 'Plus を買う';
-      buySubtitle = '$lifetimePrice（1回だけのお支払い）';
+      buyTitle = l10n.plusBuy;
+      buySubtitle = l10n.plusBuyLifetimeNote(lifetimePrice);
     } else if (trial) {
-      buyTitle = '7日間 無料で試す';
-      buySubtitle = 'そのあと月額$monthlyPrice（自動更新）';
+      buyTitle = l10n.plusTryFree;
+      buySubtitle = l10n.plusTryFreeNote(monthlyPrice);
     } else {
-      buyTitle = 'Plus をはじめる';
-      buySubtitle = '月額$monthlyPrice（自動更新）';
+      buyTitle = l10n.plusStart;
+      buySubtitle = l10n.plusStartNote(monthlyPrice);
     }
 
     return SkyPage(
@@ -143,7 +147,7 @@ class _PlusScreenState extends State<PlusScreen> {
             alignment: Alignment.centerRight,
             child: IconTapButton(
               icon: Icons.close_rounded,
-              semanticLabel: '閉じる',
+              semanticLabel: l10n.close,
               onPressed: () => Navigator.of(context).maybePop(),
             ),
           ),
@@ -153,7 +157,7 @@ class _PlusScreenState extends State<PlusScreen> {
             header: true,
             child: Text(
               // 場所の見せ方_画面一覧.png（2026-10-22）
-              'もっと遠くまで、\nいくつもの空を。',
+              l10n.plusHeadline,
               style: AppTextStyles.headline(fontSize: 28).copyWith(height: 1.4),
             ),
           ),
@@ -168,9 +172,9 @@ class _PlusScreenState extends State<PlusScreen> {
                 Expanded(
                   child: _PlanButton(
                     selected: !_lifetime,
-                    badge: '7日間無料',
-                    title: '月額 $monthlyPrice',
-                    subtitle: 'いつでも解約できます',
+                    badge: l10n.freeTrial7Days,
+                    title: l10n.plusPlanMonthly(monthlyPrice),
+                    subtitle: l10n.plusPlanMonthlyNote,
                     onTap: () => setState(() => _lifetime = false),
                   ),
                 ),
@@ -178,8 +182,8 @@ class _PlusScreenState extends State<PlusScreen> {
                 Expanded(
                   child: _PlanButton(
                     selected: _lifetime,
-                    title: '買い切り $lifetimePrice',
-                    subtitle: '1回払いでずっと使える',
+                    title: l10n.plusPlanLifetime(lifetimePrice),
+                    subtitle: l10n.plusPlanLifetimeNote,
                     onTap: () => setState(() => _lifetime = true),
                   ),
                 ),
@@ -195,7 +199,7 @@ class _PlusScreenState extends State<PlusScreen> {
             if (!_loading && plans == null) ...[
               const SizedBox(height: 8),
               Text(
-                'いまは購入の準備中です。',
+                l10n.plusNotReady,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.note(),
               ),
@@ -204,10 +208,10 @@ class _PlusScreenState extends State<PlusScreen> {
           const SizedBox(height: 12),
           Text(
             _lifetime
-                ? '買い切りは1回のお支払いで、自動更新はありません。\nあとから追加の料金はかかりません。'
+                ? l10n.plusTermsLifetime
                 : trial
-                    ? '終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。'
-                    : '期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。',
+                    ? l10n.plusTermsTrial
+                    : l10n.plusTermsMonthly,
             textAlign: TextAlign.center,
             style: AppTextStyles.caption().copyWith(height: 1.6),
           ),
@@ -215,16 +219,16 @@ class _PlusScreenState extends State<PlusScreen> {
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              TextLinkButton(label: '購入を復元', color: AppColors.accent, onPressed: _busy ? null : _restore),
+              TextLinkButton(label: l10n.plusRestore, color: AppColors.accent, onPressed: _busy ? null : _restore),
               Text('・', style: AppTextStyles.caption()),
               TextLinkButton(
-                label: '利用規約',
+                label: l10n.settingsTerms,
                 color: AppColors.accent,
                 onPressed: () => launchUrl(SettingsScreen.termsOfUse, mode: LaunchMode.externalApplication),
               ),
               Text('・', style: AppTextStyles.caption()),
               TextLinkButton(
-                label: 'プライバシー',
+                label: l10n.plusPrivacy,
                 color: AppColors.accent,
                 onPressed: () => launchUrl(SettingsScreen.privacyPolicy, mode: LaunchMode.externalApplication),
               ),
@@ -237,7 +241,7 @@ class _PlusScreenState extends State<PlusScreen> {
 
   /// 「1,200円」。日本円でなければストアの書き方のまま
   static String _yen(StoreProduct product) {
-    if (product.currencyCode != 'JPY') return product.priceString;
+    if (product.currencyCode != 'JPY' || L.isEnglish) return product.priceString;
     return '${_comma(product.price.round())}円';
   }
 
@@ -251,11 +255,12 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const features = [
-      (Icons.place_outlined, 'いまいる場所＋3か所', '家や学校、職場の空も見張って、ホームで切り替え'),
-      (Icons.radar_rounded, '90km先まで見張る', '無料は30kmまで'),
+    final l10n = AppLocalizations.of(context);
+    final features = [
+      (Icons.place_outlined, l10n.plusFeaturePlaces, l10n.plusFeaturePlacesNote),
+      (Icons.radar_rounded, l10n.plusFeatureRange, l10n.plusFeatureRangeNote),
       // 画像では「ウィジェットと写真の共有」だが、写真と共有は v2.0 で外した（2026-10-21 決定）ので、ウィジェットだけ
-      (Icons.widgets_outlined, 'ホーム画面のウィジェット', 'アプリを開かずに方角と距離が分かる'),
+      (Icons.widgets_outlined, l10n.plusFeatureWidget, l10n.plusFeatureWidgetNote),
     ];
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -395,12 +400,13 @@ class PlusActiveCard extends StatelessWidget {
   const PlusActiveCard({super.key, required this.status});
 
   String _detail(PlusStatus status) {
-    if (status.lifetime) return '買い切り（ずっと使えます。追加の料金はかかりません）';
+    final l10n = L.t;
+    if (status.lifetime) return l10n.plusActiveLifetime;
     final date = status.expiresAt;
-    final day = date == null ? '' : '${date.year}年${date.month}月${date.day}日';
-    if (!status.willRenew) return '月額（解約済み）\n$dayまで使えます。それ以降は料金がかかりません';
-    final trial = status.inTrial ? '7日間の無料体験中\n' : '月額（自動更新）\n';
-    return '$trial$dayに更新されます';
+    final day = date == null ? '' : TimeText.fullDate(date);
+    if (!status.willRenew) return '${l10n.plusActiveCancelledTitle}\n${l10n.plusActiveCancelledUntil(day)}';
+    final trial = status.inTrial ? l10n.plusActiveTrial : l10n.plusActiveMonthly;
+    return '$trial\n${l10n.plusRenewsOn(day)}';
   }
 
   @override
@@ -412,7 +418,7 @@ class PlusActiveCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Column(
           children: [
-            Text('Plus を使っています。ありがとうございます。', textAlign: TextAlign.center, style: AppTextStyles.body()),
+            Text(AppLocalizations.of(context).plusActiveThanks, textAlign: TextAlign.center, style: AppTextStyles.body()),
             if (status != null) ...[
               const SizedBox(height: 8),
               Text(_detail(status), textAlign: TextAlign.center, style: AppTextStyles.note().copyWith(height: 1.6)),
@@ -422,12 +428,12 @@ class PlusActiveCard extends StatelessWidget {
               const SizedBox.shrink()
             else ...[
               Text(
-                '月額の更新や解約は、ストアの設定から行えます。',
+                AppLocalizations.of(context).plusActiveManageNote,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.note(),
               ),
               TextLinkButton(
-                label: 'サブスクリプションを管理',
+                label: AppLocalizations.of(context).plusManageSubscription,
                 color: AppColors.accent,
                 onPressed: () => launchUrl(
                   status?.managementUrl ?? Uri.parse('https://apps.apple.com/account/subscriptions'),

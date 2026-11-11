@@ -431,4 +431,140 @@ class AppLocalizationsJa extends AppLocalizations {
   String homeSinceVisible(String since) {
     return '$sinceから見えています';
   }
+
+  @override
+  String get close => '閉じる';
+
+  @override
+  String get plusPurchaseFailed => '購入できませんでした。時間をおいて、もう一度お試しください。';
+
+  @override
+  String get plusRestoreNone => '復元できる Plus の購入が見つかりませんでした。';
+
+  @override
+  String get plusRestoreFailed => '復元できませんでした。時間をおいて、もう一度お試しください。';
+
+  @override
+  String get plusFallbackMonthly => '200円';
+
+  @override
+  String get plusFallbackLifetime => '1,200円';
+
+  @override
+  String get plusBuy => 'Plus を買う';
+
+  @override
+  String plusBuyLifetimeNote(String price) {
+    return '$price（1回だけのお支払い）';
+  }
+
+  @override
+  String get plusTryFree => '7日間 無料で試す';
+
+  @override
+  String plusTryFreeNote(String price) {
+    return 'そのあと月額$price（自動更新）';
+  }
+
+  @override
+  String get plusStart => 'Plus をはじめる';
+
+  @override
+  String plusStartNote(String price) {
+    return '月額$price（自動更新）';
+  }
+
+  @override
+  String get plusHeadline => 'もっと遠くまで、\nいくつもの空を。';
+
+  @override
+  String plusPlanMonthly(String price) {
+    return '月額 $price';
+  }
+
+  @override
+  String get plusPlanMonthlyNote => 'いつでも解約できます';
+
+  @override
+  String plusPlanLifetime(String price) {
+    return '買い切り $price';
+  }
+
+  @override
+  String get plusPlanLifetimeNote => '1回払いでずっと使える';
+
+  @override
+  String get plusNotReady => 'いまは購入の準備中です。';
+
+  @override
+  String get plusTermsLifetime =>
+      '買い切りは1回のお支払いで、自動更新はありません。\nあとから追加の料金はかかりません。';
+
+  @override
+  String get plusTermsTrial =>
+      '終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。';
+
+  @override
+  String get plusTermsMonthly =>
+      '期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。';
+
+  @override
+  String get plusRestore => '購入を復元';
+
+  @override
+  String get plusPrivacy => 'プライバシー';
+
+  @override
+  String get plusFeaturePlaces => 'いまいる場所＋3か所';
+
+  @override
+  String get plusFeaturePlacesNote => '家や学校、職場の空も見張って、ホームで切り替え';
+
+  @override
+  String get plusFeatureRange => '90km先まで見張る';
+
+  @override
+  String get plusFeatureRangeNote => '無料は30kmまで';
+
+  @override
+  String get plusFeatureWidget => 'ホーム画面のウィジェット';
+
+  @override
+  String get plusFeatureWidgetNote => 'アプリを開かずに方角と距離が分かる';
+
+  @override
+  String get plusActiveLifetime => '買い切り（ずっと使えます。追加の料金はかかりません）';
+
+  @override
+  String get plusActiveCancelledTitle => '月額（解約済み）';
+
+  @override
+  String plusActiveCancelledUntil(String day) {
+    return '$dayまで使えます。それ以降は料金がかかりません';
+  }
+
+  @override
+  String get plusActiveTrial => '7日間の無料体験中';
+
+  @override
+  String get plusActiveMonthly => '月額（自動更新）';
+
+  @override
+  String plusRenewsOn(String day) {
+    return '$dayに更新されます';
+  }
+
+  @override
+  String get plusActiveThanks => 'Plus を使っています。ありがとうございます。';
+
+  @override
+  String get plusActiveManageNote => '月額の更新や解約は、ストアの設定から行えます。';
+
+  @override
+  String get plusManageSubscription => 'サブスクリプションを管理';
+
+  @override
+  String dateFull(String year, String month, String day) {
+    return '$year年$month月$day日';
+  }
 }

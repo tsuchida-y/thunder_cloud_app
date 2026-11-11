@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:thunder_cloud_app/l10n/app_localizations.dart';
 import 'package:thunder_cloud_app/screens/plus/plus_screen.dart';
 import 'package:thunder_cloud_app/services/plus/plus_service.dart';
 
@@ -11,7 +12,12 @@ void main() {
   final renewAt = DateTime(2026, 11, 6, 11, 55);
 
   Future<void> show(WidgetTester tester, PlusStatus? status) => tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: SingleChildScrollView(child: PlusActiveCard(status: status)))),
+        MaterialApp(
+          locale: const Locale('ja'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: SingleChildScrollView(child: PlusActiveCard(status: status))),
+        ),
       );
 
   PlusStatus status({bool lifetime = false, bool willRenew = true, bool inTrial = false, DateTime? expiresAt}) => PlusStatus(

@@ -469,4 +469,163 @@ class AppLocalizationsEn extends AppLocalizations {
   String homeSinceVisible(String since) {
     return 'Visible since $since';
   }
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get plusPurchaseFailed =>
+      'Could not complete the purchase. Please try again later.';
+
+  @override
+  String get plusRestoreNone => 'No Plus purchase was found to restore.';
+
+  @override
+  String get plusRestoreFailed => 'Could not restore. Please try again later.';
+
+  @override
+  String get plusFallbackMonthly => '¥200';
+
+  @override
+  String get plusFallbackLifetime => '¥1,200';
+
+  @override
+  String get plusBuy => 'Buy Plus';
+
+  @override
+  String plusBuyLifetimeNote(String price) {
+    return '$price (one-time payment)';
+  }
+
+  @override
+  String get plusTryFree => 'Try free for 7 days';
+
+  @override
+  String plusTryFreeNote(String price) {
+    return 'Then $price/month (auto-renews)';
+  }
+
+  @override
+  String get plusStart => 'Start Plus';
+
+  @override
+  String plusStartNote(String price) {
+    return '$price/month (auto-renews)';
+  }
+
+  @override
+  String get plusHeadline => 'Watch farther,\nand more skies.';
+
+  @override
+  String plusPlanMonthly(String price) {
+    return 'Monthly $price';
+  }
+
+  @override
+  String get plusPlanMonthlyNote => 'Cancel anytime';
+
+  @override
+  String plusPlanLifetime(String price) {
+    return 'One-time $price';
+  }
+
+  @override
+  String get plusPlanLifetimeNote => 'Pay once, use forever';
+
+  @override
+  String get plusNotReady => 'Purchases are not available right now.';
+
+  @override
+  String get plusTermsLifetime =>
+      'A one-time payment. It does not auto-renew.\nThere are no additional charges later.';
+
+  @override
+  String get plusTermsTrial =>
+      'Cancel at least 24 hours before the trial ends and you won\'t be charged.\nYou can stop renewal anytime in the store settings.';
+
+  @override
+  String get plusTermsMonthly =>
+      'Renews automatically unless you cancel at least 24 hours before the period ends.\nYou can stop renewal anytime in the store settings.';
+
+  @override
+  String get plusRestore => 'Restore purchases';
+
+  @override
+  String get plusPrivacy => 'Privacy';
+
+  @override
+  String get plusFeaturePlaces => 'Current location + 3 more';
+
+  @override
+  String get plusFeaturePlacesNote =>
+      'Watch the sky at home, school or work, and switch on the home screen';
+
+  @override
+  String get plusFeatureRange => 'Watch up to 90 km away';
+
+  @override
+  String get plusFeatureRangeNote => 'Free is up to 30 km';
+
+  @override
+  String get plusFeatureWidget => 'Home screen widget';
+
+  @override
+  String get plusFeatureWidgetNote =>
+      'See direction and distance without opening the app';
+
+  @override
+  String get plusActiveLifetime =>
+      'One-time purchase (yours to keep; no additional charges)';
+
+  @override
+  String get plusActiveCancelledTitle => 'Monthly (cancelled)';
+
+  @override
+  String plusActiveCancelledUntil(String day) {
+    return 'You can use it until $day. You will not be charged after that.';
+  }
+
+  @override
+  String get plusActiveTrial => 'In your 7-day free trial';
+
+  @override
+  String get plusActiveMonthly => 'Monthly (auto-renews)';
+
+  @override
+  String plusRenewsOn(String day) {
+    return 'Renews on $day';
+  }
+
+  @override
+  String get plusActiveThanks => 'You\'re using Plus. Thank you.';
+
+  @override
+  String get plusActiveManageNote =>
+      'You can manage or cancel your monthly plan in the store settings.';
+
+  @override
+  String get plusManageSubscription => 'Manage subscription';
+
+  @override
+  String dateFull(String year, String month, String day) {
+    String _temp0 = intl.Intl.selectLogic(
+      month,
+      {
+        '1': 'Jan',
+        '2': 'Feb',
+        '3': 'Mar',
+        '4': 'Apr',
+        '5': 'May',
+        '6': 'Jun',
+        '7': 'Jul',
+        '8': 'Aug',
+        '9': 'Sep',
+        '10': 'Oct',
+        '11': 'Nov',
+        '12': 'Dec',
+        'other': '',
+      },
+    );
+    return '$_temp0 $day, $year';
+  }
 }

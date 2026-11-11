@@ -373,5 +373,106 @@
         "type": "String"
       }
     }
+  },
+  "close": "閉じる",
+  "plusPurchaseFailed": "購入できませんでした。時間をおいて、もう一度お試しください。",
+  "plusRestoreNone": "復元できる Plus の購入が見つかりませんでした。",
+  "plusRestoreFailed": "復元できませんでした。時間をおいて、もう一度お試しください。",
+  "plusFallbackMonthly": "200円",
+  "plusFallbackLifetime": "1,200円",
+  "plusBuy": "Plus を買う",
+  "plusBuyLifetimeNote": "{price}（1回だけのお支払い）",
+  "@plusBuyLifetimeNote": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusTryFree": "7日間 無料で試す",
+  "plusTryFreeNote": "そのあと月額{price}（自動更新）",
+  "@plusTryFreeNote": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusStart": "Plus をはじめる",
+  "plusStartNote": "月額{price}（自動更新）",
+  "@plusStartNote": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusHeadline": "もっと遠くまで、\nいくつもの空を。",
+  "plusPlanMonthly": "月額 {price}",
+  "@plusPlanMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusPlanMonthlyNote": "いつでも解約できます",
+  "plusPlanLifetime": "買い切り {price}",
+  "@plusPlanLifetime": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusPlanLifetimeNote": "1回払いでずっと使える",
+  "plusNotReady": "いまは購入の準備中です。",
+  "plusTermsLifetime": "買い切りは1回のお支払いで、自動更新はありません。\nあとから追加の料金はかかりません。",
+  "plusTermsTrial": "終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。",
+  "plusTermsMonthly": "期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。",
+  "plusRestore": "購入を復元",
+  "plusPrivacy": "プライバシー",
+  "plusFeaturePlaces": "いまいる場所＋3か所",
+  "plusFeaturePlacesNote": "家や学校、職場の空も見張って、ホームで切り替え",
+  "plusFeatureRange": "90km先まで見張る",
+  "plusFeatureRangeNote": "無料は30kmまで",
+  "plusFeatureWidget": "ホーム画面のウィジェット",
+  "plusFeatureWidgetNote": "アプリを開かずに方角と距離が分かる",
+  "plusActiveLifetime": "買い切り（ずっと使えます。追加の料金はかかりません）",
+  "plusActiveCancelledTitle": "月額（解約済み）",
+  "plusActiveCancelledUntil": "{day}まで使えます。それ以降は料金がかかりません",
+  "@plusActiveCancelledUntil": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "plusActiveTrial": "7日間の無料体験中",
+  "plusActiveMonthly": "月額（自動更新）",
+  "plusRenewsOn": "{day}に更新されます",
+  "@plusRenewsOn": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "plusActiveThanks": "Plus を使っています。ありがとうございます。",
+  "plusActiveManageNote": "月額の更新や解約は、ストアの設定から行えます。",
+  "plusManageSubscription": "サブスクリプションを管理",
+  "dateFull": "{year}年{month}月{day}日",
+  "@dateFull": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -799,6 +799,240 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'{since}から見えています'**
   String homeSinceVisible(String since);
+
+  /// No description provided for @close.
+  ///
+  /// In ja, this message translates to:
+  /// **'閉じる'**
+  String get close;
+
+  /// No description provided for @plusPurchaseFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'購入できませんでした。時間をおいて、もう一度お試しください。'**
+  String get plusPurchaseFailed;
+
+  /// No description provided for @plusRestoreNone.
+  ///
+  /// In ja, this message translates to:
+  /// **'復元できる Plus の購入が見つかりませんでした。'**
+  String get plusRestoreNone;
+
+  /// No description provided for @plusRestoreFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'復元できませんでした。時間をおいて、もう一度お試しください。'**
+  String get plusRestoreFailed;
+
+  /// No description provided for @plusFallbackMonthly.
+  ///
+  /// In ja, this message translates to:
+  /// **'200円'**
+  String get plusFallbackMonthly;
+
+  /// No description provided for @plusFallbackLifetime.
+  ///
+  /// In ja, this message translates to:
+  /// **'1,200円'**
+  String get plusFallbackLifetime;
+
+  /// No description provided for @plusBuy.
+  ///
+  /// In ja, this message translates to:
+  /// **'Plus を買う'**
+  String get plusBuy;
+
+  /// No description provided for @plusBuyLifetimeNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'{price}（1回だけのお支払い）'**
+  String plusBuyLifetimeNote(String price);
+
+  /// No description provided for @plusTryFree.
+  ///
+  /// In ja, this message translates to:
+  /// **'7日間 無料で試す'**
+  String get plusTryFree;
+
+  /// No description provided for @plusTryFreeNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'そのあと月額{price}（自動更新）'**
+  String plusTryFreeNote(String price);
+
+  /// No description provided for @plusStart.
+  ///
+  /// In ja, this message translates to:
+  /// **'Plus をはじめる'**
+  String get plusStart;
+
+  /// No description provided for @plusStartNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'月額{price}（自動更新）'**
+  String plusStartNote(String price);
+
+  /// No description provided for @plusHeadline.
+  ///
+  /// In ja, this message translates to:
+  /// **'もっと遠くまで、\nいくつもの空を。'**
+  String get plusHeadline;
+
+  /// No description provided for @plusPlanMonthly.
+  ///
+  /// In ja, this message translates to:
+  /// **'月額 {price}'**
+  String plusPlanMonthly(String price);
+
+  /// No description provided for @plusPlanMonthlyNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'いつでも解約できます'**
+  String get plusPlanMonthlyNote;
+
+  /// No description provided for @plusPlanLifetime.
+  ///
+  /// In ja, this message translates to:
+  /// **'買い切り {price}'**
+  String plusPlanLifetime(String price);
+
+  /// No description provided for @plusPlanLifetimeNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'1回払いでずっと使える'**
+  String get plusPlanLifetimeNote;
+
+  /// No description provided for @plusNotReady.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまは購入の準備中です。'**
+  String get plusNotReady;
+
+  /// No description provided for @plusTermsLifetime.
+  ///
+  /// In ja, this message translates to:
+  /// **'買い切りは1回のお支払いで、自動更新はありません。\nあとから追加の料金はかかりません。'**
+  String get plusTermsLifetime;
+
+  /// No description provided for @plusTermsTrial.
+  ///
+  /// In ja, this message translates to:
+  /// **'終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。'**
+  String get plusTermsTrial;
+
+  /// No description provided for @plusTermsMonthly.
+  ///
+  /// In ja, this message translates to:
+  /// **'期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。'**
+  String get plusTermsMonthly;
+
+  /// No description provided for @plusRestore.
+  ///
+  /// In ja, this message translates to:
+  /// **'購入を復元'**
+  String get plusRestore;
+
+  /// No description provided for @plusPrivacy.
+  ///
+  /// In ja, this message translates to:
+  /// **'プライバシー'**
+  String get plusPrivacy;
+
+  /// No description provided for @plusFeaturePlaces.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまいる場所＋3か所'**
+  String get plusFeaturePlaces;
+
+  /// No description provided for @plusFeaturePlacesNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'家や学校、職場の空も見張って、ホームで切り替え'**
+  String get plusFeaturePlacesNote;
+
+  /// No description provided for @plusFeatureRange.
+  ///
+  /// In ja, this message translates to:
+  /// **'90km先まで見張る'**
+  String get plusFeatureRange;
+
+  /// No description provided for @plusFeatureRangeNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'無料は30kmまで'**
+  String get plusFeatureRangeNote;
+
+  /// No description provided for @plusFeatureWidget.
+  ///
+  /// In ja, this message translates to:
+  /// **'ホーム画面のウィジェット'**
+  String get plusFeatureWidget;
+
+  /// No description provided for @plusFeatureWidgetNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'アプリを開かずに方角と距離が分かる'**
+  String get plusFeatureWidgetNote;
+
+  /// No description provided for @plusActiveLifetime.
+  ///
+  /// In ja, this message translates to:
+  /// **'買い切り（ずっと使えます。追加の料金はかかりません）'**
+  String get plusActiveLifetime;
+
+  /// No description provided for @plusActiveCancelledTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'月額（解約済み）'**
+  String get plusActiveCancelledTitle;
+
+  /// No description provided for @plusActiveCancelledUntil.
+  ///
+  /// In ja, this message translates to:
+  /// **'{day}まで使えます。それ以降は料金がかかりません'**
+  String plusActiveCancelledUntil(String day);
+
+  /// No description provided for @plusActiveTrial.
+  ///
+  /// In ja, this message translates to:
+  /// **'7日間の無料体験中'**
+  String get plusActiveTrial;
+
+  /// No description provided for @plusActiveMonthly.
+  ///
+  /// In ja, this message translates to:
+  /// **'月額（自動更新）'**
+  String get plusActiveMonthly;
+
+  /// No description provided for @plusRenewsOn.
+  ///
+  /// In ja, this message translates to:
+  /// **'{day}に更新されます'**
+  String plusRenewsOn(String day);
+
+  /// No description provided for @plusActiveThanks.
+  ///
+  /// In ja, this message translates to:
+  /// **'Plus を使っています。ありがとうございます。'**
+  String get plusActiveThanks;
+
+  /// No description provided for @plusActiveManageNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'月額の更新や解約は、ストアの設定から行えます。'**
+  String get plusActiveManageNote;
+
+  /// No description provided for @plusManageSubscription.
+  ///
+  /// In ja, this message translates to:
+  /// **'サブスクリプションを管理'**
+  String get plusManageSubscription;
+
+  /// No description provided for @dateFull.
+  ///
+  /// In ja, this message translates to:
+  /// **'{year}年{month}月{day}日'**
+  String dateFull(String year, String month, String day);
 }
 
 class _AppLocalizationsDelegate
