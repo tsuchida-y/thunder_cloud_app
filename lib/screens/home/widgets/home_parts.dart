@@ -415,7 +415,7 @@ class SkyNowCard extends StatelessWidget {
       if (sky != null)
         _InfoRow(
           title: l10n.homeNowSky,
-          text: sky.parts.join(' ・ '),
+          text: sky.parts.join(l10n.listSeparator),
           note: l10n.homeAmedas(TimeText.clock(sky.observedAt)),
         ),
       _InfoRow(

@@ -232,6 +232,14 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String spotBadgeName(String label, String place) {
+    return '$label（$place）';
+  }
+
+  @override
+  String get listSeparator => ' ・ ';
+
+  @override
   String badgePlace(String place) {
     return '$place ・ ';
   }

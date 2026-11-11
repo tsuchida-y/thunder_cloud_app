@@ -476,6 +476,18 @@ abstract class AppLocalizations {
   /// **'見通し約{km}km'**
   String skyVisibility(int km);
 
+  /// No description provided for @spotBadgeName.
+  ///
+  /// In ja, this message translates to:
+  /// **'{label}（{place}）'**
+  String spotBadgeName(String label, String place);
+
+  /// No description provided for @listSeparator.
+  ///
+  /// In ja, this message translates to:
+  /// **' ・ '**
+  String get listSeparator;
+
   /// No description provided for @badgePlace.
   ///
   /// In ja, this message translates to:

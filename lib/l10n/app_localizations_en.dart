@@ -259,6 +259,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String spotBadgeName(String label, String place) {
+    return '$label ($place)';
+  }
+
+  @override
+  String get listSeparator => ' · ';
+
+  @override
   String badgePlace(String place) {
     return '$place · ';
   }
@@ -323,7 +331,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String homeTodayCloudDetail(
       String from, String to, String direction, int km) {
-    return 'From $from to $to, to the $direction (about $km km away)';
+    return 'Visible from $from to $to, to the $direction, about $km km away';
   }
 
   @override
@@ -704,8 +712,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPlaceLabelTitle => 'Nickname';
 
   @override
-  String get addPlaceLabelHint =>
-      'The place name is filled in when you pick a place';
+  String get addPlaceLabelHint => 'Filled in when you pick a place';
 
   @override
   String addPlaceButton(int remaining) {

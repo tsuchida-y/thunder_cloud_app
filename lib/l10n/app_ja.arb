@@ -154,6 +154,18 @@
       }
     }
   },
+  "spotBadgeName": "{label}（{place}）",
+  "@spotBadgeName": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "listSeparator": " ・ ",
   "badgePlace": "{place} ・ ",
   "@badgePlace": {
     "placeholders": {

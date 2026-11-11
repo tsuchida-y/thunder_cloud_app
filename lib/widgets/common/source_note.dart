@@ -18,7 +18,7 @@ class SourceNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      prefix == null ? source : '$prefix ・ $source',
+      prefix == null ? source : '$prefix${L.t.listSeparator}$source',
       textAlign: TextAlign.center,
       style: AppTextStyles.caption(),
     );

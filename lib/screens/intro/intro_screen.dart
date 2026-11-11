@@ -20,7 +20,10 @@ import '../welcome/welcome_screen.dart';
 class IntroScreen extends StatefulWidget {
   final bool fromSettings;
 
-  const IntroScreen({super.key, this.fromSettings = false});
+  /// 最初に開く枚数（0 から。開発中の確かめ用）
+  final int initialPage;
+
+  const IntroScreen({super.key, this.fromSettings = false, this.initialPage = 0});
 
   static const String _doneKey = 'intro_done';
 
@@ -34,8 +37,8 @@ class IntroScreen extends StatefulWidget {
 class _IntroScreenState extends State<IntroScreen> {
   static const int _pageCount = 3;
 
-  final PageController _pages = PageController();
-  int _index = 0;
+  late final PageController _pages = PageController(initialPage: widget.initialPage);
+  late int _index = widget.initialPage;
 
   bool get _isLast => _index == _pageCount - 1;
 

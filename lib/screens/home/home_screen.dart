@@ -29,7 +29,10 @@ import 'widgets/sky_radar.dart';
 
 /// ホーム（docs/design/Main.html, Empty.html, Night.html, Offline.html, NoPermission.html）
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  /// 開発中の確かめ用（lib/debug/preview_screens.dart）。渡すと、通信も許可の確認もせず、この状態の画面だけを出す
+  final HomeState? previewState;
+
+  const HomeScreen({super.key, this.previewState});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -43,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.previewState != null) return;
     _controller.onAskAlways = _askAlways;
     _controller.start();
     // 通知から開いたときは、方角ガイドを直接開く
@@ -101,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
-        final state = _controller.state;
+        final state = widget.previewState ?? _controller.state;
         final now = DateTime.now();
         final header = SpotHeader(state: state, onSelect: _controller.selectSpot, onAdd: _addSpot);
         return switch (state.mode) {

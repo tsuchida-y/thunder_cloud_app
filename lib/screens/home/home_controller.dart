@@ -77,7 +77,7 @@ class WatchSpot {
   /// 見出しの上の札に出す名前（「滝沢市」「家（盛岡市）」）
   String get badgeName {
     if (isCurrent) return placeName ?? L.t.currentPlace;
-    return placeName == null || placeName == label ? label : '$label（$placeName）';
+    return placeName == null || placeName == label ? label : L.t.spotBadgeName(label, placeName!);
   }
 }
 

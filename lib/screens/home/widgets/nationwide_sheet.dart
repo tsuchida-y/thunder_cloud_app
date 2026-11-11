@@ -124,7 +124,7 @@ class _NationwideRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '${view.directionName} ${view.roundedKm}km',
+            '${view.directionName} ${AppLocalizations.of(context).kmValue(view.roundedKm)}',
             style: AppTextStyles.item(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700),
           ),
         ],
