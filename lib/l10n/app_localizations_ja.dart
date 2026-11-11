@@ -886,4 +886,67 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get alwaysHint =>
       '次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。';
+
+  @override
+  String compassTapeLabel(String heading, String target) {
+    return '方位テープ。いまは$headingを向いていて、入道雲は$target';
+  }
+
+  @override
+  String elevationLabel(int deg) {
+    return '地平線から約$deg度上に入道雲が見える';
+  }
+
+  @override
+  String get horizon => '地平線';
+
+  @override
+  String get figureEightLabel => 'スマホを8の字に動かす図';
+
+  @override
+  String get calibrateTitle => '方位がずれています';
+
+  @override
+  String get calibrateBody =>
+      'スマホを大きく8の字に、3回ほど動かしてください。磁石や金属の近くから離れると直りやすくなります。';
+
+  @override
+  String get calibrateAccuracy => '方位の精度: もう少し';
+
+  @override
+  String get calibrateContinue => 'このまま続ける';
+
+  @override
+  String get radarEmptyLabel => '空のレーダー。雲は見つかっていません';
+
+  @override
+  String radarCloudLabel(String direction, int km) {
+    return '$direction${km}kmに入道雲';
+  }
+
+  @override
+  String radarLabel(String parts) {
+    return '現在地を中心にした空のレーダー。$parts';
+  }
+
+  @override
+  String get sourceJma => '出典：気象庁';
+
+  @override
+  String get loadingSemantic => '読み込んでいます';
+
+  @override
+  String get loading => '読み込み中';
+
+  @override
+  String get backToHome => 'ホームに戻る';
+
+  @override
+  String get notificationChannelDescription => '入道雲が見える範囲に現れたときのお知らせ';
+
+  @override
+  String get notificationChannelName => '入道雲のお知らせ';
+
+  @override
+  String get savedPlace => '登録した場所';
 }

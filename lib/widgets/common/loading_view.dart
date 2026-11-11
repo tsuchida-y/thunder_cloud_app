@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/l10n.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import 'cloud_loading.dart';
@@ -15,7 +16,7 @@ class LoadingView extends StatelessWidget {
   const LoadingView({super.key});
 
   /// 読み上げる文
-  static const String semanticLabel = '読み込んでいます';
+  static String get semanticLabel => L.t.loadingSemantic;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +37,7 @@ class LoadingView extends StatelessWidget {
                     const CloudLoading(size: 64),
                     const SizedBox(height: 6),
                     Text(
-                      '読み込み中',
+                      L.t.loading,
                       style: AppTextStyles.caption(color: colors.text).copyWith(fontSize: 12, letterSpacing: 12 * 0.08),
                     ),
                   ],

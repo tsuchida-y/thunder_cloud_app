@@ -703,5 +703,57 @@
       }
     }
   },
-  "alwaysHint": "次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。"
+  "alwaysHint": "次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。",
+  "compassTapeLabel": "方位テープ。いまは{heading}を向いていて、入道雲は{target}",
+  "@compassTapeLabel": {
+    "placeholders": {
+      "heading": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "elevationLabel": "地平線から約{deg}度上に入道雲が見える",
+  "@elevationLabel": {
+    "placeholders": {
+      "deg": {
+        "type": "int"
+      }
+    }
+  },
+  "horizon": "地平線",
+  "figureEightLabel": "スマホを8の字に動かす図",
+  "calibrateTitle": "方位がずれています",
+  "calibrateBody": "スマホを大きく8の字に、3回ほど動かしてください。磁石や金属の近くから離れると直りやすくなります。",
+  "calibrateAccuracy": "方位の精度: もう少し",
+  "calibrateContinue": "このまま続ける",
+  "radarEmptyLabel": "空のレーダー。雲は見つかっていません",
+  "radarCloudLabel": "{direction}{km}kmに入道雲",
+  "@radarCloudLabel": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "radarLabel": "現在地を中心にした空のレーダー。{parts}",
+  "@radarLabel": {
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceJma": "出典：気象庁",
+  "loadingSemantic": "読み込んでいます",
+  "loading": "読み込み中",
+  "backToHome": "ホームに戻る",
+  "notificationChannelDescription": "入道雲が見える範囲に現れたときのお知らせ",
+  "notificationChannelName": "入道雲のお知らせ",
+  "savedPlace": "登録した場所"
 }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/l10n.dart';
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
 import '../../models/sky_now.dart';
@@ -75,7 +76,7 @@ class WatchSpot {
 
   /// 見出しの上の札に出す名前（「滝沢市」「家（盛岡市）」）
   String get badgeName {
-    if (isCurrent) return placeName ?? 'いまいる場所';
+    if (isCurrent) return placeName ?? L.t.currentPlace;
     return placeName == null || placeName == label ? label : '$label（$placeName）';
   }
 }
@@ -427,7 +428,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   List<WatchSpot> _spots(bool isPlus) {
     final spots = <WatchSpot>[];
     if (_gps != null) {
-      spots.add(WatchSpot(id: 'now', label: '現在地', placeName: _gpsName, point: _gps!, isCurrent: true));
+      spots.add(WatchSpot(id: 'now', label: L.t.homeCurrentLocation, placeName: _gpsName, point: _gps!, isCurrent: true));
     }
     final places = MemberService.placesOf(_member);
     final watched = places.take(SkyRules.maxPlaces(isPlus: isPlus));

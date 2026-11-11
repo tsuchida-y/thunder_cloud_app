@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../theme/app_text_styles.dart';
 import 'app_buttons.dart';
 
@@ -20,7 +21,7 @@ class PageHeader extends StatelessWidget {
           offset: const Offset(-10, 0),
           child: IconTapButton(
             icon: Icons.chevron_left_rounded,
-            semanticLabel: 'ホームに戻る',
+            semanticLabel: L.t.backToHome,
             onPressed: onBack ?? () => Navigator.of(context).maybePop(),
           ),
         ),

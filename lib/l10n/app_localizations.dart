@@ -1579,6 +1579,114 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。'**
   String get alwaysHint;
+
+  /// No description provided for @compassTapeLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'方位テープ。いまは{heading}を向いていて、入道雲は{target}'**
+  String compassTapeLabel(String heading, String target);
+
+  /// No description provided for @elevationLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'地平線から約{deg}度上に入道雲が見える'**
+  String elevationLabel(int deg);
+
+  /// No description provided for @horizon.
+  ///
+  /// In ja, this message translates to:
+  /// **'地平線'**
+  String get horizon;
+
+  /// No description provided for @figureEightLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'スマホを8の字に動かす図'**
+  String get figureEightLabel;
+
+  /// No description provided for @calibrateTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'方位がずれています'**
+  String get calibrateTitle;
+
+  /// No description provided for @calibrateBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'スマホを大きく8の字に、3回ほど動かしてください。磁石や金属の近くから離れると直りやすくなります。'**
+  String get calibrateBody;
+
+  /// No description provided for @calibrateAccuracy.
+  ///
+  /// In ja, this message translates to:
+  /// **'方位の精度: もう少し'**
+  String get calibrateAccuracy;
+
+  /// No description provided for @calibrateContinue.
+  ///
+  /// In ja, this message translates to:
+  /// **'このまま続ける'**
+  String get calibrateContinue;
+
+  /// No description provided for @radarEmptyLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'空のレーダー。雲は見つかっていません'**
+  String get radarEmptyLabel;
+
+  /// No description provided for @radarCloudLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction}{km}kmに入道雲'**
+  String radarCloudLabel(String direction, int km);
+
+  /// No description provided for @radarLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'現在地を中心にした空のレーダー。{parts}'**
+  String radarLabel(String parts);
+
+  /// No description provided for @sourceJma.
+  ///
+  /// In ja, this message translates to:
+  /// **'出典：気象庁'**
+  String get sourceJma;
+
+  /// No description provided for @loadingSemantic.
+  ///
+  /// In ja, this message translates to:
+  /// **'読み込んでいます'**
+  String get loadingSemantic;
+
+  /// No description provided for @loading.
+  ///
+  /// In ja, this message translates to:
+  /// **'読み込み中'**
+  String get loading;
+
+  /// No description provided for @backToHome.
+  ///
+  /// In ja, this message translates to:
+  /// **'ホームに戻る'**
+  String get backToHome;
+
+  /// No description provided for @notificationChannelDescription.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲が見える範囲に現れたときのお知らせ'**
+  String get notificationChannelDescription;
+
+  /// No description provided for @notificationChannelName.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲のお知らせ'**
+  String get notificationChannelName;
+
+  /// No description provided for @savedPlace.
+  ///
+  /// In ja, this message translates to:
+  /// **'登録した場所'**
+  String get savedPlace;
 }
 
 class _AppLocalizationsDelegate

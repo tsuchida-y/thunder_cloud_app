@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../../models/sky_cloud.dart';
 import '../../../theme/app_text_styles.dart';
 
@@ -55,9 +56,9 @@ class SkyRadar extends StatelessWidget {
   }
 
   String _semanticLabel() {
-    if (clouds.isEmpty) return '空のレーダー。雲は見つかっていません';
-    final parts = clouds.map((c) => '${c.directionName}${c.roundedKm}kmに入道雲').join('、');
-    return '現在地を中心にした空のレーダー。$parts';
+    if (clouds.isEmpty) return L.t.radarEmptyLabel;
+    final parts = clouds.map((c) => L.t.radarCloudLabel(c.directionName, c.roundedKm)).join(', ');
+    return L.t.radarLabel(parts);
   }
 }
 

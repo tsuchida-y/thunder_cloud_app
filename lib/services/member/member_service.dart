@@ -118,7 +118,7 @@ class MemberService {
         .whereType<Map>()
         .where((p) => p['latitude'] is num && p['longitude'] is num)
         .map((p) => WatchPlace(
-              label: (p['label'] as String?) ?? '登録した場所',
+              label: (p['label'] as String?) ?? L.t.savedPlace,
               name: p['name'] as String?,
               location: LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble()),
             ))

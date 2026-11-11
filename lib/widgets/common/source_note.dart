@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../theme/app_text_styles.dart';
 
 /// 画面の下に出す出典の一行
@@ -12,7 +13,7 @@ class SourceNote extends StatelessWidget {
 
   const SourceNote({super.key, this.prefix});
 
-  static const String source = '出典：気象庁';
+  static String get source => L.t.sourceJma;
 
   @override
   Widget build(BuildContext context) {

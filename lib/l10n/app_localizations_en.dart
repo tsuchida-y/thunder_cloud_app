@@ -962,4 +962,68 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get alwaysHint =>
       'On the next screen, choose \"Always Allow\". On Android, the Settings app opens; choose \"Allow all the time\" and come back.';
+
+  @override
+  String compassTapeLabel(String heading, String target) {
+    return 'Compass tape. You are facing $heading; the thunderhead is to the $target';
+  }
+
+  @override
+  String elevationLabel(int deg) {
+    return 'The thunderhead is about $deg degrees above the horizon';
+  }
+
+  @override
+  String get horizon => 'Horizon';
+
+  @override
+  String get figureEightLabel => 'Diagram of moving the phone in a figure 8';
+
+  @override
+  String get calibrateTitle => 'The compass is off';
+
+  @override
+  String get calibrateBody =>
+      'Move your phone in a big figure 8 about 3 times. Moving away from magnets and metal helps.';
+
+  @override
+  String get calibrateAccuracy => 'Compass accuracy: almost there';
+
+  @override
+  String get calibrateContinue => 'Continue anyway';
+
+  @override
+  String get radarEmptyLabel => 'Sky radar. No clouds found';
+
+  @override
+  String radarCloudLabel(String direction, int km) {
+    return 'thunderhead $km km to the $direction';
+  }
+
+  @override
+  String radarLabel(String parts) {
+    return 'Sky radar centered on your location. $parts';
+  }
+
+  @override
+  String get sourceJma => 'Source: Japan Meteorological Agency';
+
+  @override
+  String get loadingSemantic => 'Loading';
+
+  @override
+  String get loading => 'Loading';
+
+  @override
+  String get backToHome => 'Back to home';
+
+  @override
+  String get notificationChannelDescription =>
+      'Notifications for when a thunderhead appears within range';
+
+  @override
+  String get notificationChannelName => 'Thunderhead alerts';
+
+  @override
+  String get savedPlace => 'Saved place';
 }
