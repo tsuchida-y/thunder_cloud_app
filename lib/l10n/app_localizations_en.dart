@@ -787,7 +787,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get introNext => 'Next';
 
   @override
-  String get introNotifyTitle => 'When a thunderhead appears,\nwe notify you.';
+  String get introNotifyTitle => 'We\'ll notify you\nof thunderheads.';
 
   @override
   String get introNotifyBody =>

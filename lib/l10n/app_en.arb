@@ -201,7 +201,7 @@
   "introSkip": "Skip",
   "introStart": "Get started",
   "introNext": "Next",
-  "introNotifyTitle": "When a thunderhead appears,\nwe notify you.",
+  "introNotifyTitle": "We'll notify you\nof thunderheads.",
   "introNotifyBody": "When a thunderhead appears in the sky you can see from your location, we notify you of its direction and distance. Once per cloud, up to 3 times a day. No notifications at night.",
   "introNow": "now",
   "introNotifyHeadline": "A thunderhead appeared to the southeast",
