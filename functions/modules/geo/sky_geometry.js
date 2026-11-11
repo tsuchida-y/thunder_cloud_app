@@ -12,6 +12,7 @@ const CLOUD_TOP_KM = 12;
 const DEGREES_PER_FIST = 10;
 
 const DIRECTION_NAMES = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+const DIRECTION_NAMES_EN = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
 
 const toRad = (deg) => (deg * Math.PI) / 180;
 const toDeg = (rad) => (rad * 180) / Math.PI;
@@ -51,10 +52,11 @@ function bearingDeg(from, to) {
 }
 
 /**
- * 角度を8方位の名前にする
+ * 角度を8方位の名前にする（lang が 'en' なら英語。文の中で使うので小文字）
  */
-function directionName(bearing) {
-  return DIRECTION_NAMES[Math.round(bearing / 45) % 8];
+function directionName(bearing, lang = 'ja') {
+  const names = lang === 'en' ? DIRECTION_NAMES_EN : DIRECTION_NAMES;
+  return names[Math.round(bearing / 45) % 8];
 }
 
 /**
@@ -75,9 +77,14 @@ function fistsFromElevation(elevation) {
 /**
  * こぶしの数を文章にする（1.5 → 「こぶし1つ半」）
  */
-function fistsLabel(fists) {
+function fistsLabel(fists, lang = 'ja') {
   const whole = Math.floor(fists);
   const half = fists - whole >= 0.5;
+  if (lang === 'en') {
+    if (whole === 0) return 'half a fist';
+    if (half) return `${whole}½ fists`;
+    return whole === 1 ? '1 fist' : `${whole} fists`;
+  }
   if (whole === 0) return 'こぶし半分';
   return `こぶし${whole}つ${half ? '半' : ''}`;
 }

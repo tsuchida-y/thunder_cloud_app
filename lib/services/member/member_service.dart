@@ -67,6 +67,8 @@ class MemberService {
     if (id == null) return;
     _db.collection(membersCollection).doc(id).set({
       'lastOpenedAt': FieldValue.serverTimestamp(),
+      // 通知の文を、この人の言語（'ja' か 'en'）で作るために、サーバーが読む
+      'locale': L.isEnglish ? 'en' : 'ja',
       if (location != null) ...{
         'location': {
           'latitude': _round2(location.latitude),
