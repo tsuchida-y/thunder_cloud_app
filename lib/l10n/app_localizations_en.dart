@@ -628,4 +628,87 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0 $day, $year';
   }
+
+  @override
+  String placesDeleteTitle(String label) {
+    return 'Delete \"$label\"?';
+  }
+
+  @override
+  String get placesDeleteAction => 'Delete';
+
+  @override
+  String get placesNameTitle => 'Place name';
+
+  @override
+  String get placesNameHint => 'e.g. Home, Grandma\'s house, Cram school';
+
+  @override
+  String get placesRegister => 'Save';
+
+  @override
+  String get placesIntro =>
+      'In addition to where you are now, you can watch up to 3 places you often go. Switch between them with the chips at the top of the home screen.';
+
+  @override
+  String get placesSearchTitle => 'Search for a place';
+
+  @override
+  String get placesSearchHint => 'City name or address';
+
+  @override
+  String get placesFreeNoteBefore =>
+      'The free plan covers your current location and 1 saved place.\nSaving 3 places is a ';
+
+  @override
+  String get placesFreeNoteAfter => ' feature.';
+
+  @override
+  String get placesNotWatching => 'Not watching';
+
+  @override
+  String get placesQuietSky => 'Quiet sky';
+
+  @override
+  String get placesRename => 'Rename';
+
+  @override
+  String placesDeleteLabel(String label) {
+    return 'Delete $label';
+  }
+
+  @override
+  String placesAddButton(int remaining) {
+    return '+ Add a place ($remaining more)';
+  }
+
+  @override
+  String get addPlaceIntro =>
+      'Places you add can be switched from the top of the home screen. You will also get notified when a cloud appears.';
+
+  @override
+  String get addPlaceSearchHint =>
+      'e.g. Morioka, Takizawa City Hall, Morioka Station';
+
+  @override
+  String get addPlaceSearchTooltip => 'Search';
+
+  @override
+  String get addPlaceSearchHelp =>
+      'Search by city or town name, address, or the name of a station or school. After typing, press the arrow or the keyboard\'s search key.';
+
+  @override
+  String get addPlaceNotFound => 'Not found. Please try a different spelling.';
+
+  @override
+  String get addPlaceLabelTitle => 'Nickname';
+
+  @override
+  String get addPlaceLabelHint =>
+      'The place name is filled in when you pick a place';
+
+  @override
+  String addPlaceButton(int remaining) {
+    return 'Add this place ($remaining more)';
+  }
 }

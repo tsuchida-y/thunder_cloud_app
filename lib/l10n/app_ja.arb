@@ -474,5 +474,56 @@
         "type": "String"
       }
     }
+  },
+  "placesDeleteTitle": "「{label}」を消しますか？",
+  "@placesDeleteTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "placesDeleteAction": "消す",
+  "placesNameTitle": "場所の名前",
+  "placesNameHint": "例：家、おばあちゃんの家、塾",
+  "placesRegister": "登録する",
+  "placesIntro": "いまいる場所に加えて、よく行く場所を3か所まで見張れます。ホームの上のチップで切り替えて見られます。",
+  "placesSearchTitle": "場所をさがす",
+  "placesSearchHint": "市町村名や住所",
+  "placesFreeNoteBefore": "無料プランは「いまいる場所」と、登録した1か所です。\n3か所の登録は ",
+  "placesFreeNoteAfter": " の機能です。",
+  "placesNotWatching": "見張っていません",
+  "placesQuietSky": "静かな空",
+  "placesRename": "変更",
+  "placesDeleteLabel": "{label} を消す",
+  "@placesDeleteLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "placesAddButton": "＋ 場所を追加（あと{remaining}か所）",
+  "@placesAddButton": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "addPlaceIntro": "追加した場所は、ホームの上から切り替えて見られます。雲が出たら通知も届きます。",
+  "addPlaceSearchHint": "例：盛岡市、滝沢市役所、盛岡駅",
+  "addPlaceSearchTooltip": "さがす",
+  "addPlaceSearchHelp": "市・町・村の名前、住所、駅や学校の名前でさがせます。入れたら「→」かキーボードの「検索」を押してください。",
+  "addPlaceNotFound": "見つかりませんでした。別の書き方でさがしてください。",
+  "addPlaceLabelTitle": "呼び名",
+  "addPlaceLabelHint": "場所を選ぶと地名が入ります",
+  "addPlaceButton": "この場所を追加（あと{remaining}か所）",
+  "@addPlaceButton": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
 import '../../theme/app_colors.dart';
@@ -125,16 +126,16 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
               ),
               Row(
                 children: [
-                  Expanded(child: Text('場所を追加', style: AppTextStyles.pageTitle().copyWith(fontSize: 18))),
+                  Expanded(child: Text(AppLocalizations.of(context).homeAddPlace, style: AppTextStyles.pageTitle().copyWith(fontSize: 18))),
                   IconTapButton(
                     icon: Icons.close_rounded,
-                    semanticLabel: '閉じる',
+                    semanticLabel: AppLocalizations.of(context).close,
                     onPressed: () => Navigator.of(context).pop(false),
                   ),
                 ],
               ),
               Text(
-                '追加した場所は、ホームの上から切り替えて見られます。雲が出たら通知も届きます。',
+                AppLocalizations.of(context).addPlaceIntro,
                 style: AppTextStyles.note(),
               ),
               const SizedBox(height: 14),
@@ -146,14 +147,14 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                 style: AppTextStyles.body().copyWith(height: 1.3),
                 decoration: InputDecoration(
                   // 何を入れればよいか分かるよう、例を出す（2026-10-29）
-                  hintText: '例：盛岡市、滝沢市役所、盛岡駅',
+                  hintText: AppLocalizations.of(context).addPlaceSearchHint,
                   filled: true,
                   fillColor: Colors.white,
                   isDense: true,
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSub),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.arrow_forward_rounded, color: AppColors.accent),
-                    tooltip: 'さがす',
+                    tooltip: AppLocalizations.of(context).addPlaceSearchTooltip,
                     onPressed: _search,
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -164,14 +165,14 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
               ),
               const SizedBox(height: 6),
               Text(
-                '市・町・村の名前、住所、駅や学校の名前でさがせます。入れたら「→」かキーボードの「検索」を押してください。',
+                AppLocalizations.of(context).addPlaceSearchHelp,
                 style: AppTextStyles.caption().copyWith(height: 1.5),
               ),
               const SizedBox(height: 12),
               if (_searching)
                 const Center(child: SizedBox.square(dimension: 22, child: CircularProgressIndicator(strokeWidth: 2)))
               else if (_results != null && _results!.isEmpty)
-                Text('見つかりませんでした。別の書き方でさがしてください。', style: AppTextStyles.note())
+                Text(AppLocalizations.of(context).addPlaceNotFound, style: AppTextStyles.note())
               else if (_results != null)
                 DecoratedBox(
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
@@ -188,7 +189,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                   ),
                 ),
               const SizedBox(height: 16),
-              Text('呼び名', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
+              Text(AppLocalizations.of(context).addPlaceLabelTitle, style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               TextField(
                 controller: _labelInput,
@@ -197,7 +198,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
                 textInputAction: TextInputAction.done,
                 style: AppTextStyles.body().copyWith(height: 1.3),
                 decoration: InputDecoration(
-                  hintText: '場所を選ぶと地名が入ります',
+                  hintText: AppLocalizations.of(context).addPlaceLabelHint,
                   filled: true,
                   fillColor: Colors.white,
                   isDense: true,
@@ -210,7 +211,7 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
               ),
               const SizedBox(height: 20),
               PrimaryButton(
-                label: 'この場所を追加（あと$remainingか所）',
+                label: AppLocalizations.of(context).addPlaceButton(remaining),
                 onPressed: _picked == null || _label.isEmpty || _saving || remaining <= 0 ? null : _add,
               ),
             ],

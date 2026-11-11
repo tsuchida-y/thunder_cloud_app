@@ -1033,6 +1033,144 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'{year}年{month}月{day}日'**
   String dateFull(String year, String month, String day);
+
+  /// No description provided for @placesDeleteTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'「{label}」を消しますか？'**
+  String placesDeleteTitle(String label);
+
+  /// No description provided for @placesDeleteAction.
+  ///
+  /// In ja, this message translates to:
+  /// **'消す'**
+  String get placesDeleteAction;
+
+  /// No description provided for @placesNameTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所の名前'**
+  String get placesNameTitle;
+
+  /// No description provided for @placesNameHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'例：家、おばあちゃんの家、塾'**
+  String get placesNameHint;
+
+  /// No description provided for @placesRegister.
+  ///
+  /// In ja, this message translates to:
+  /// **'登録する'**
+  String get placesRegister;
+
+  /// No description provided for @placesIntro.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまいる場所に加えて、よく行く場所を3か所まで見張れます。ホームの上のチップで切り替えて見られます。'**
+  String get placesIntro;
+
+  /// No description provided for @placesSearchTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所をさがす'**
+  String get placesSearchTitle;
+
+  /// No description provided for @placesSearchHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'市町村名や住所'**
+  String get placesSearchHint;
+
+  /// No description provided for @placesFreeNoteBefore.
+  ///
+  /// In ja, this message translates to:
+  /// **'無料プランは「いまいる場所」と、登録した1か所です。\n3か所の登録は '**
+  String get placesFreeNoteBefore;
+
+  /// No description provided for @placesFreeNoteAfter.
+  ///
+  /// In ja, this message translates to:
+  /// **' の機能です。'**
+  String get placesFreeNoteAfter;
+
+  /// No description provided for @placesNotWatching.
+  ///
+  /// In ja, this message translates to:
+  /// **'見張っていません'**
+  String get placesNotWatching;
+
+  /// No description provided for @placesQuietSky.
+  ///
+  /// In ja, this message translates to:
+  /// **'静かな空'**
+  String get placesQuietSky;
+
+  /// No description provided for @placesRename.
+  ///
+  /// In ja, this message translates to:
+  /// **'変更'**
+  String get placesRename;
+
+  /// No description provided for @placesDeleteLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'{label} を消す'**
+  String placesDeleteLabel(String label);
+
+  /// No description provided for @placesAddButton.
+  ///
+  /// In ja, this message translates to:
+  /// **'＋ 場所を追加（あと{remaining}か所）'**
+  String placesAddButton(int remaining);
+
+  /// No description provided for @addPlaceIntro.
+  ///
+  /// In ja, this message translates to:
+  /// **'追加した場所は、ホームの上から切り替えて見られます。雲が出たら通知も届きます。'**
+  String get addPlaceIntro;
+
+  /// No description provided for @addPlaceSearchHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'例：盛岡市、滝沢市役所、盛岡駅'**
+  String get addPlaceSearchHint;
+
+  /// No description provided for @addPlaceSearchTooltip.
+  ///
+  /// In ja, this message translates to:
+  /// **'さがす'**
+  String get addPlaceSearchTooltip;
+
+  /// No description provided for @addPlaceSearchHelp.
+  ///
+  /// In ja, this message translates to:
+  /// **'市・町・村の名前、住所、駅や学校の名前でさがせます。入れたら「→」かキーボードの「検索」を押してください。'**
+  String get addPlaceSearchHelp;
+
+  /// No description provided for @addPlaceNotFound.
+  ///
+  /// In ja, this message translates to:
+  /// **'見つかりませんでした。別の書き方でさがしてください。'**
+  String get addPlaceNotFound;
+
+  /// No description provided for @addPlaceLabelTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'呼び名'**
+  String get addPlaceLabelTitle;
+
+  /// No description provided for @addPlaceLabelHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所を選ぶと地名が入ります'**
+  String get addPlaceLabelHint;
+
+  /// No description provided for @addPlaceButton.
+  ///
+  /// In ja, this message translates to:
+  /// **'この場所を追加（あと{remaining}か所）'**
+  String addPlaceButton(int remaining);
 }
 
 class _AppLocalizationsDelegate

@@ -567,4 +567,83 @@ class AppLocalizationsJa extends AppLocalizations {
   String dateFull(String year, String month, String day) {
     return '$year年$month月$day日';
   }
+
+  @override
+  String placesDeleteTitle(String label) {
+    return '「$label」を消しますか？';
+  }
+
+  @override
+  String get placesDeleteAction => '消す';
+
+  @override
+  String get placesNameTitle => '場所の名前';
+
+  @override
+  String get placesNameHint => '例：家、おばあちゃんの家、塾';
+
+  @override
+  String get placesRegister => '登録する';
+
+  @override
+  String get placesIntro =>
+      'いまいる場所に加えて、よく行く場所を3か所まで見張れます。ホームの上のチップで切り替えて見られます。';
+
+  @override
+  String get placesSearchTitle => '場所をさがす';
+
+  @override
+  String get placesSearchHint => '市町村名や住所';
+
+  @override
+  String get placesFreeNoteBefore => '無料プランは「いまいる場所」と、登録した1か所です。\n3か所の登録は ';
+
+  @override
+  String get placesFreeNoteAfter => ' の機能です。';
+
+  @override
+  String get placesNotWatching => '見張っていません';
+
+  @override
+  String get placesQuietSky => '静かな空';
+
+  @override
+  String get placesRename => '変更';
+
+  @override
+  String placesDeleteLabel(String label) {
+    return '$label を消す';
+  }
+
+  @override
+  String placesAddButton(int remaining) {
+    return '＋ 場所を追加（あと$remainingか所）';
+  }
+
+  @override
+  String get addPlaceIntro => '追加した場所は、ホームの上から切り替えて見られます。雲が出たら通知も届きます。';
+
+  @override
+  String get addPlaceSearchHint => '例：盛岡市、滝沢市役所、盛岡駅';
+
+  @override
+  String get addPlaceSearchTooltip => 'さがす';
+
+  @override
+  String get addPlaceSearchHelp =>
+      '市・町・村の名前、住所、駅や学校の名前でさがせます。入れたら「→」かキーボードの「検索」を押してください。';
+
+  @override
+  String get addPlaceNotFound => '見つかりませんでした。別の書き方でさがしてください。';
+
+  @override
+  String get addPlaceLabelTitle => '呼び名';
+
+  @override
+  String get addPlaceLabelHint => '場所を選ぶと地名が入ります';
+
+  @override
+  String addPlaceButton(int remaining) {
+    return 'この場所を追加（あと$remainingか所）';
+  }
 }
