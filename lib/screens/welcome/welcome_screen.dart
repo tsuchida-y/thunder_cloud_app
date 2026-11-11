@@ -15,6 +15,9 @@ import '../home/home_screen.dart';
 /// はじめての起動（docs/design/Welcome.html）
 ///
 /// 「使用中の位置情報」と「通知」だけをお願いする。「常に」はここでは聞かない（AlwaysAllow.html で1回だけ）。
+///
+/// 許可のお願いの前に出す案内なので、先送りするボタンは置かない（必ずそのまま許可のお願いに進む。App Store 審査 5.1.1(iv)）。
+/// 許可しなかった人には、ホームに「位置情報がオフです」「通知がオフです」の案内が出る。
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -91,15 +94,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          PrimaryButton(label: '許可してはじめる', onPressed: _busy ? null : _allowAndStart),
+          PrimaryButton(label: '続ける', onPressed: _busy ? null : _allowAndStart),
           const SizedBox(height: 16),
           Text(
             '移動先の空も見張る設定は、あとでご案内します。',
             textAlign: TextAlign.center,
             style: AppTextStyles.note(),
           ),
-          const SizedBox(height: 4),
-          Center(child: TextLinkButton(label: 'あとで設定する', onPressed: _busy ? null : _finish)),
         ],
       ),
     );

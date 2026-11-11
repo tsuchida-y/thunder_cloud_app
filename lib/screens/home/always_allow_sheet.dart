@@ -7,6 +7,7 @@ import '../../widgets/common/app_buttons.dart';
 /// 移動先も見張るお願い（docs/design/AlwaysAllow.html、許可の2段目）
 ///
 /// 最初の入道雲の通知が届いたあとにアプリを開いたとき、1回だけホームの上に出す。
+/// 許可するかどうかは、そのあとに出る OS の画面で選ぶ（この案内からは先送りできない）。
 class AlwaysAllowSheet extends StatelessWidget {
   /// 「滝沢市」。分からなければ null
   final String? placeName;
@@ -18,6 +19,9 @@ class AlwaysAllowSheet extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      // 許可のお願いの前の案内なので、閉じて先送りはできない（必ず許可のお願いに進む。App Store 審査 5.1.1(iv)）
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.white,
       barrierColor: const Color(0x730B1630), // rgba(11, 22, 48, 0.45)
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -80,15 +84,11 @@ class AlwaysAllowSheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             PrimaryButton(
-              label: '「常に」にする',
+              label: '続ける',
               onPressed: () async {
                 Navigator.of(context).pop();
                 await onAllow();
               },
-            ),
-            const SizedBox(height: 10),
-            Center(
-              child: TextLinkButton(label: 'いまのままにする', onPressed: () => Navigator.of(context).pop()),
             ),
           ],
         ),
