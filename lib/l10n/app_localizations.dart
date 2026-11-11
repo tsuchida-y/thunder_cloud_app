@@ -1381,6 +1381,204 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'前のページに戻る'**
   String get introBack;
+
+  /// No description provided for @dataSourceCredit.
+  ///
+  /// In ja, this message translates to:
+  /// **'出典：気象庁ホームページ（加工して作成）'**
+  String get dataSourceCredit;
+
+  /// No description provided for @dataSourceClouds.
+  ///
+  /// In ja, this message translates to:
+  /// **'雲の場所は、気象庁ホームページの「高解像度降水ナウキャスト」と「雷ナウキャスト」をもとに、このアプリが強い雨や雷のある場所をまとめて作っています。'**
+  String get dataSourceClouds;
+
+  /// No description provided for @dataSourceHeights.
+  ///
+  /// In ja, this message translates to:
+  /// **'雲の背の高さは気象庁ホームページの「ひまわり」の赤外画像から、空が一面の曇りかと遠くまで見通せるかは「アメダス」の観測から、このアプリが見積もっています。'**
+  String get dataSourceHeights;
+
+  /// No description provided for @dataSourceFetch.
+  ///
+  /// In ja, this message translates to:
+  /// **'気象庁のデータは、このアプリのサーバーが5分ごとにまとめて受け取っています。'**
+  String get dataSourceFetch;
+
+  /// No description provided for @dataSourceDisclaimer.
+  ///
+  /// In ja, this message translates to:
+  /// **'アプリの表示は気象庁が発表したものではありません。入道雲が見えるかどうかは、山や建物、ほかの雲によって変わります。'**
+  String get dataSourceDisclaimer;
+
+  /// No description provided for @dataSourceJmaTerms.
+  ///
+  /// In ja, this message translates to:
+  /// **'気象庁ホームページの利用規約'**
+  String get dataSourceJmaTerms;
+
+  /// No description provided for @recordYear.
+  ///
+  /// In ja, this message translates to:
+  /// **'{year}年'**
+  String recordYear(int year);
+
+  /// No description provided for @recordDays.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲を見た日 {days}日'**
+  String recordDays(int days);
+
+  /// No description provided for @recordLoadFailed.
+  ///
+  /// In ja, this message translates to:
+  /// **'記録を読み込めませんでした。電波の届く場所で、もう一度開いてください。'**
+  String get recordLoadFailed;
+
+  /// No description provided for @recordEmpty.
+  ///
+  /// In ja, this message translates to:
+  /// **'まだ記録はありません。入道雲が見えたら、方角ガイドや通知で「見えた」を押すと、ここに残ります。'**
+  String get recordEmpty;
+
+  /// No description provided for @homeTodayCloudSeen.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えた入道雲'**
+  String get homeTodayCloudSeen;
+
+  /// No description provided for @timeRange.
+  ///
+  /// In ja, this message translates to:
+  /// **'{from}〜{to}'**
+  String timeRange(String from, String to);
+
+  /// No description provided for @aroundTime.
+  ///
+  /// In ja, this message translates to:
+  /// **'{time}ごろ'**
+  String aroundTime(String time);
+
+  /// No description provided for @recordRowText.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction} ・ {km}km ・ {time}'**
+  String recordRowText(String direction, int km, String time);
+
+  /// No description provided for @quietSet.
+  ///
+  /// In ja, this message translates to:
+  /// **'通知しない時間を決める'**
+  String get quietSet;
+
+  /// No description provided for @quietStart.
+  ///
+  /// In ja, this message translates to:
+  /// **'はじめ'**
+  String get quietStart;
+
+  /// No description provided for @quietEnd.
+  ///
+  /// In ja, this message translates to:
+  /// **'おわり'**
+  String get quietEnd;
+
+  /// No description provided for @quietDone.
+  ///
+  /// In ja, this message translates to:
+  /// **'決める'**
+  String get quietDone;
+
+  /// No description provided for @nationwideTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'全国で見えている入道雲（{count}か所）'**
+  String nationwideTitle(int count);
+
+  /// No description provided for @nationwideOrder.
+  ///
+  /// In ja, this message translates to:
+  /// **'見張っている場所から近い順です。'**
+  String get nationwideOrder;
+
+  /// No description provided for @nationwideMore.
+  ///
+  /// In ja, this message translates to:
+  /// **'ほか{count}か所'**
+  String nationwideMore(int count);
+
+  /// No description provided for @nationwideNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所は、雲の真ん中の位置のおおよその目安です。'**
+  String get nationwideNote;
+
+  /// No description provided for @nationwideSearching.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所を調べています'**
+  String get nationwideSearching;
+
+  /// No description provided for @nationwideSince.
+  ///
+  /// In ja, this message translates to:
+  /// **'{since}から見えています'**
+  String nationwideSince(String since);
+
+  /// No description provided for @whatsNew1.
+  ///
+  /// In ja, this message translates to:
+  /// **'気象庁のデータをもとに、いま見えている入道雲の方角と距離をお知らせするようになりました。'**
+  String get whatsNew1;
+
+  /// No description provided for @whatsNew2.
+  ///
+  /// In ja, this message translates to:
+  /// **'ホームの「雲の方角を調べる」で、スマホを向けて入道雲のある方角を確かめられます。'**
+  String get whatsNew2;
+
+  /// No description provided for @whatsNew3.
+  ///
+  /// In ja, this message translates to:
+  /// **'みんなの写真を見るコミュニティと、写真を撮る機能は終わりました。これまでに投稿された写真は削除します。スマホの写真アプリに保存した写真は、そのまま残ります。'**
+  String get whatsNew3;
+
+  /// No description provided for @whatsNew4.
+  ///
+  /// In ja, this message translates to:
+  /// **'遠くの雲（90kmまで）や、よく行く場所も見張れる「Plus」ができました。'**
+  String get whatsNew4;
+
+  /// No description provided for @whatsNewTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲サーチが\n新しくなりました。'**
+  String get whatsNewTitle;
+
+  /// No description provided for @understood.
+  ///
+  /// In ja, this message translates to:
+  /// **'わかりました'**
+  String get understood;
+
+  /// No description provided for @alwaysTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'出かけた先の空も、\n見張りましょうか。'**
+  String get alwaysTitle;
+
+  /// No description provided for @alwaysBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまは、最後にアプリを開いた場所{place}の空を見張っています。位置情報を「常に」にすると、移動しても、いまいる場所の空を見張れます。'**
+  String alwaysBody(String place);
+
+  /// No description provided for @alwaysHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。'**
+  String get alwaysHint;
 }
 
 class _AppLocalizationsDelegate

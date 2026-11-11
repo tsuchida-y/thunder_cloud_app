@@ -764,4 +764,126 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get introBack => '前のページに戻る';
+
+  @override
+  String get dataSourceCredit => '出典：気象庁ホームページ（加工して作成）';
+
+  @override
+  String get dataSourceClouds =>
+      '雲の場所は、気象庁ホームページの「高解像度降水ナウキャスト」と「雷ナウキャスト」をもとに、このアプリが強い雨や雷のある場所をまとめて作っています。';
+
+  @override
+  String get dataSourceHeights =>
+      '雲の背の高さは気象庁ホームページの「ひまわり」の赤外画像から、空が一面の曇りかと遠くまで見通せるかは「アメダス」の観測から、このアプリが見積もっています。';
+
+  @override
+  String get dataSourceFetch => '気象庁のデータは、このアプリのサーバーが5分ごとにまとめて受け取っています。';
+
+  @override
+  String get dataSourceDisclaimer =>
+      'アプリの表示は気象庁が発表したものではありません。入道雲が見えるかどうかは、山や建物、ほかの雲によって変わります。';
+
+  @override
+  String get dataSourceJmaTerms => '気象庁ホームページの利用規約';
+
+  @override
+  String recordYear(int year) {
+    return '$year年';
+  }
+
+  @override
+  String recordDays(int days) {
+    return '入道雲を見た日 $days日';
+  }
+
+  @override
+  String get recordLoadFailed => '記録を読み込めませんでした。電波の届く場所で、もう一度開いてください。';
+
+  @override
+  String get recordEmpty => 'まだ記録はありません。入道雲が見えたら、方角ガイドや通知で「見えた」を押すと、ここに残ります。';
+
+  @override
+  String get homeTodayCloudSeen => '見えた入道雲';
+
+  @override
+  String timeRange(String from, String to) {
+    return '$from〜$to';
+  }
+
+  @override
+  String aroundTime(String time) {
+    return '$timeごろ';
+  }
+
+  @override
+  String recordRowText(String direction, int km, String time) {
+    return '$direction ・ ${km}km ・ $time';
+  }
+
+  @override
+  String get quietSet => '通知しない時間を決める';
+
+  @override
+  String get quietStart => 'はじめ';
+
+  @override
+  String get quietEnd => 'おわり';
+
+  @override
+  String get quietDone => '決める';
+
+  @override
+  String nationwideTitle(int count) {
+    return '全国で見えている入道雲（$countか所）';
+  }
+
+  @override
+  String get nationwideOrder => '見張っている場所から近い順です。';
+
+  @override
+  String nationwideMore(int count) {
+    return 'ほか$countか所';
+  }
+
+  @override
+  String get nationwideNote => '場所は、雲の真ん中の位置のおおよその目安です。';
+
+  @override
+  String get nationwideSearching => '場所を調べています';
+
+  @override
+  String nationwideSince(String since) {
+    return '$sinceから見えています';
+  }
+
+  @override
+  String get whatsNew1 => '気象庁のデータをもとに、いま見えている入道雲の方角と距離をお知らせするようになりました。';
+
+  @override
+  String get whatsNew2 => 'ホームの「雲の方角を調べる」で、スマホを向けて入道雲のある方角を確かめられます。';
+
+  @override
+  String get whatsNew3 =>
+      'みんなの写真を見るコミュニティと、写真を撮る機能は終わりました。これまでに投稿された写真は削除します。スマホの写真アプリに保存した写真は、そのまま残ります。';
+
+  @override
+  String get whatsNew4 => '遠くの雲（90kmまで）や、よく行く場所も見張れる「Plus」ができました。';
+
+  @override
+  String get whatsNewTitle => '入道雲サーチが\n新しくなりました。';
+
+  @override
+  String get understood => 'わかりました';
+
+  @override
+  String get alwaysTitle => '出かけた先の空も、\n見張りましょうか。';
+
+  @override
+  String alwaysBody(String place) {
+    return 'いまは、最後にアプリを開いた場所$placeの空を見張っています。位置情報を「常に」にすると、移動しても、いまいる場所の空を見張れます。';
+  }
+
+  @override
+  String get alwaysHint =>
+      '次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。';
 }

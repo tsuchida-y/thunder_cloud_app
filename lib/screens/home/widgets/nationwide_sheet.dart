@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../models/sky_cloud.dart';
 import '../../../services/location/current_place.dart';
 import '../../../theme/app_colors.dart';
@@ -53,18 +54,18 @@ class NationwideSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '全国で見えている入道雲（${views.length}か所）',
+                      AppLocalizations.of(context).nationwideTitle(views.length),
                       style: AppTextStyles.pageTitle().copyWith(fontSize: 18),
                     ),
                   ),
                   IconTapButton(
                     icon: Icons.close_rounded,
-                    semanticLabel: '閉じる',
+                    semanticLabel: AppLocalizations.of(context).close,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
-              Text('見張っている場所から近い順です。', style: AppTextStyles.note()),
+              Text(AppLocalizations.of(context).nationwideOrder, style: AppTextStyles.note()),
               const SizedBox(height: 12),
               Flexible(
                 child: DecoratedBox(
@@ -79,11 +80,11 @@ class NationwideSheet extends StatelessWidget {
               ),
               if (views.length > maxRows) ...[
                 const SizedBox(height: 8),
-                Text('ほか${views.length - maxRows}か所', style: AppTextStyles.note(), textAlign: TextAlign.center),
+                Text(AppLocalizations.of(context).nationwideMore(views.length - maxRows), style: AppTextStyles.note(), textAlign: TextAlign.center),
               ],
               const SizedBox(height: 10),
               Text(
-                '場所は、雲の真ん中の位置のおおよその目安です。',
+                AppLocalizations.of(context).nationwideNote,
                 style: AppTextStyles.caption(),
                 textAlign: TextAlign.center,
               ),
@@ -114,10 +115,10 @@ class _NationwideRow extends StatelessWidget {
               children: [
                 FutureBuilder<String>(
                   future: CurrentPlace.areaName(view.cloud.center),
-                  builder: (_, snap) => Text(snap.data ?? '場所を調べています', style: AppTextStyles.item()),
+                  builder: (ctx, snap) => Text(snap.data ?? AppLocalizations.of(ctx).nationwideSearching, style: AppTextStyles.item()),
                 ),
                 const SizedBox(height: 2),
-                Text('${TimeText.clock(view.cloud.firstSeenAt)}から見えています', style: AppTextStyles.caption()),
+                Text(AppLocalizations.of(context).nationwideSince(TimeText.clock(view.cloud.firstSeenAt)), style: AppTextStyles.caption()),
               ],
             ),
           ),

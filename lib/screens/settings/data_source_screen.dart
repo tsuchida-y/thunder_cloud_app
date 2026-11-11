@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/common/app_buttons.dart';
@@ -24,7 +25,7 @@ class DataSourceScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const PageHeader(title: 'データの出典'),
+          PageHeader(title: AppLocalizations.of(context).settingsDataSource),
           const SizedBox(height: 14),
           SkyCard(
             solid: true,
@@ -32,24 +33,22 @@ class DataSourceScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('出典：気象庁ホームページ（加工して作成）', style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
+                Text(AppLocalizations.of(context).dataSourceCredit, style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 Text(
-                  '雲の場所は、気象庁ホームページの「高解像度降水ナウキャスト」と「雷ナウキャスト」をもとに、'
-                  'このアプリが強い雨や雷のある場所をまとめて作っています。',
+                  AppLocalizations.of(context).dataSourceClouds,
                   style: body,
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '雲の背の高さは気象庁ホームページの「ひまわり」の赤外画像から、空が一面の曇りかと遠くまで見通せるかは'
-                  '「アメダス」の観測から、このアプリが見積もっています。',
+                  AppLocalizations.of(context).dataSourceHeights,
                   style: body,
                 ),
                 const SizedBox(height: 10),
-                Text('気象庁のデータは、このアプリのサーバーが5分ごとにまとめて受け取っています。', style: body),
+                Text(AppLocalizations.of(context).dataSourceFetch, style: body),
                 const SizedBox(height: 10),
                 Text(
-                  'アプリの表示は気象庁が発表したものではありません。入道雲が見えるかどうかは、山や建物、ほかの雲によって変わります。',
+                  AppLocalizations.of(context).dataSourceDisclaimer,
                   style: body,
                 ),
               ],
@@ -59,7 +58,7 @@ class DataSourceScreen extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextLinkButton(
-              label: '気象庁ホームページの利用規約',
+              label: AppLocalizations.of(context).dataSourceJmaTerms,
               color: AppColors.accent,
               onPressed: () => launchUrl(jmaTerms, mode: LaunchMode.externalApplication),
             ),

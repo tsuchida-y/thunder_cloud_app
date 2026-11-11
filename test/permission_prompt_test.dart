@@ -36,6 +36,9 @@ void main() {
   testWidgets('「常に」のお願いの案内: 許可のお願いに進むボタンだけで、閉じて先送りできない', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('ja'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () => AlwaysAllowSheet.show(context, placeName: '滝沢市', onAllow: () async {}),

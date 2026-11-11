@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/l10n.dart';
 import '../../models/lat_lng.dart';
 import '../../utils/logger.dart';
 import '../plus/plus_service.dart';
@@ -201,7 +202,7 @@ class QuietHours {
   static String clock(int minutes) => '${minutes ~/ 60}:${(minutes % 60).toString().padLeft(2, '0')}';
 
   /// 「22:00〜6:00」
-  String get label => '${clock(startMinutes)}〜${clock(endMinutes)}';
+  String get label => L.t.timeRange(clock(startMinutes), clock(endMinutes));
 }
 
 /// 設定画面で使う、members.settings の中身

@@ -831,4 +831,135 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get introBack => 'Back to the previous page';
+
+  @override
+  String get dataSourceCredit =>
+      'Source: Japan Meteorological Agency website (processed by this app)';
+
+  @override
+  String get dataSourceClouds =>
+      'Cloud positions are made by this app from the Japan Meteorological Agency\'s \"High-resolution Precipitation Nowcast\" and \"Lightning Nowcast\", grouping the places with heavy rain or lightning.';
+
+  @override
+  String get dataSourceHeights =>
+      'Cloud heights are estimated by this app from the infrared images of the \"Himawari\" satellite, and whether the sky is fully overcast or you can see far is estimated from \"AMeDAS\" observations, all on the Japan Meteorological Agency website.';
+
+  @override
+  String get dataSourceFetch =>
+      'This app\'s server fetches the Japan Meteorological Agency data every 5 minutes.';
+
+  @override
+  String get dataSourceDisclaimer =>
+      'What the app shows is not issued by the Japan Meteorological Agency. Whether you can see a thunderhead depends on mountains, buildings and other clouds.';
+
+  @override
+  String get dataSourceJmaTerms =>
+      'Japan Meteorological Agency website terms of use';
+
+  @override
+  String recordYear(int year) {
+    return '$year';
+  }
+
+  @override
+  String recordDays(int days) {
+    return 'Days you saw a thunderhead: $days';
+  }
+
+  @override
+  String get recordLoadFailed =>
+      'Could not load your log. Please open it again where you have a connection.';
+
+  @override
+  String get recordEmpty =>
+      'No entries yet. When you see a thunderhead, tap \"Seen\" in the finder or the notification and it will be saved here.';
+
+  @override
+  String get homeTodayCloudSeen => 'Thunderheads you saw';
+
+  @override
+  String timeRange(String from, String to) {
+    return '$from–$to';
+  }
+
+  @override
+  String aroundTime(String time) {
+    return 'around $time';
+  }
+
+  @override
+  String recordRowText(String direction, int km, String time) {
+    return '$direction · $km km · $time';
+  }
+
+  @override
+  String get quietSet => 'Set quiet hours';
+
+  @override
+  String get quietStart => 'Start';
+
+  @override
+  String get quietEnd => 'End';
+
+  @override
+  String get quietDone => 'Done';
+
+  @override
+  String nationwideTitle(int count) {
+    return 'Thunderheads visible in Japan ($count)';
+  }
+
+  @override
+  String get nationwideOrder => 'Sorted by distance from the places you watch.';
+
+  @override
+  String nationwideMore(int count) {
+    return '$count more';
+  }
+
+  @override
+  String get nationwideNote =>
+      'Places are approximate, based on the center of each cloud.';
+
+  @override
+  String get nationwideSearching => 'Looking up the place';
+
+  @override
+  String nationwideSince(String since) {
+    return 'Visible since $since';
+  }
+
+  @override
+  String get whatsNew1 =>
+      'Based on Japan Meteorological Agency data, the app now tells you the direction and distance of thunderheads visible right now.';
+
+  @override
+  String get whatsNew2 =>
+      'Tap \"Find the cloud\" on the home screen and point your phone to check the direction of the thunderhead.';
+
+  @override
+  String get whatsNew3 =>
+      'The community for viewing everyone\'s photos and the photo-taking feature have ended. Photos posted so far will be deleted. Photos saved in your phone\'s Photos app will remain.';
+
+  @override
+  String get whatsNew4 =>
+      '\"Plus\" is here: watch farther clouds (up to 90 km) and the places you often go.';
+
+  @override
+  String get whatsNewTitle => 'Thunderhead Watch\nhas been renewed.';
+
+  @override
+  String get understood => 'Got it';
+
+  @override
+  String get alwaysTitle => 'Shall we watch the sky\nwherever you go?';
+
+  @override
+  String alwaysBody(String place) {
+    return 'Right now we are watching the sky at the last place you opened the app$place. If you set Location to \"Always\", we can watch the sky wherever you are as you move.';
+  }
+
+  @override
+  String get alwaysHint =>
+      'On the next screen, choose \"Always Allow\". On Android, the Settings app opens; choose \"Allow all the time\" and come back.';
 }
