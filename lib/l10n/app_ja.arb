@@ -525,5 +525,78 @@
         "type": "int"
       }
     }
-  }
+  },
+  "finderTitle": "{direction}の入道雲へ",
+  "@finderTitle": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "finderDirectionIs": "{direction}の方角です",
+  "@finderDirectionIs": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "finderNoSensor": "この端末では方位センサーが使えません。",
+  "finderChecking": "方角を調べています…",
+  "turnBehind": "後ろを向いて",
+  "finderSubBehind": "ゆっくり、体ごと後ろを向いて",
+  "turnRightPrefix": "右へ ",
+  "turnLeftPrefix": "左へ ",
+  "finderSubRight": "ゆっくり、体ごと右を向いて",
+  "finderSubLeft": "ゆっくり、体ごと左を向いて",
+  "finderLookUpTitle": "見上げる高さ",
+  "finderLookUpHint": "腕を伸ばして、{fists}くらい上。",
+  "@finderLookUpHint": {
+    "placeholders": {
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "alignedHere": "この方向です",
+  "finderAlignedHint": "正面の空、{fists}くらい上を\n見上げてみてください。",
+  "@finderAlignedHint": {
+    "placeholders": {
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "reportQuestion": "入道雲は見えましたか？",
+  "reportThanks": "教えてくれて、ありがとうございます。",
+  "reportWhy": "教えてもらうと、お知らせの精度が上がります。",
+  "seen": "見えた",
+  "notSeen": "見えなかった",
+  "introSkip": "スキップ",
+  "introStart": "はじめる",
+  "introNext": "次へ",
+  "introNotifyTitle": "入道雲が出たら、\n通知でお知らせ。",
+  "introNotifyBody": "あなたの場所から見える空に入道雲が現れたら、方角と距離を通知します。1つの雲につき1回、1日3回までです。夜は通知しません。",
+  "introNow": "いま",
+  "introNotifyHeadline": "南東の空に、入道雲が現れました",
+  "introNotifyDetail": "約42km先。こぶし1つ半の高さを見上げてみて。",
+  "introFinderTitle": "どっちを見るか、\n矢印で案内。",
+  "introFinderBody": "ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。",
+  "introFinderSample": "見本です。スマホの向きを変えると、矢印が変わります。",
+  "introPlacesTitle": "家や学校の空も、\n見張れます。",
+  "introPlacesBody": "いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。",
+  "introMockHome": "家",
+  "introPageOf": "{page}ページ目、全{count}ページ",
+  "@introPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "introBack": "前のページに戻る"
 }

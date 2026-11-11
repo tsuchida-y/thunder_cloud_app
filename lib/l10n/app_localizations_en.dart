@@ -711,4 +711,124 @@ class AppLocalizationsEn extends AppLocalizations {
   String addPlaceButton(int remaining) {
     return 'Add this place ($remaining more)';
   }
+
+  @override
+  String finderTitle(String direction) {
+    return 'To the thunderhead in the $direction';
+  }
+
+  @override
+  String finderDirectionIs(String direction) {
+    return 'It is to the $direction';
+  }
+
+  @override
+  String get finderNoSensor => 'This device\'s compass is not available.';
+
+  @override
+  String get finderChecking => 'Checking direction…';
+
+  @override
+  String get turnBehind => 'Turn around';
+
+  @override
+  String get finderSubBehind => 'Slowly turn your whole body around';
+
+  @override
+  String get turnRightPrefix => 'Right ';
+
+  @override
+  String get turnLeftPrefix => 'Left ';
+
+  @override
+  String get finderSubRight => 'Slowly turn your whole body to the right';
+
+  @override
+  String get finderSubLeft => 'Slowly turn your whole body to the left';
+
+  @override
+  String get finderLookUpTitle => 'How high to look';
+
+  @override
+  String finderLookUpHint(String fists) {
+    return 'With your arm stretched out, about $fists up.';
+  }
+
+  @override
+  String get alignedHere => 'That\'s the direction';
+
+  @override
+  String finderAlignedHint(String fists) {
+    return 'Look straight ahead,\nabout $fists up.';
+  }
+
+  @override
+  String get reportQuestion => 'Could you see the thunderhead?';
+
+  @override
+  String get reportThanks => 'Thank you for letting us know.';
+
+  @override
+  String get reportWhy => 'Your answer helps make notifications more accurate.';
+
+  @override
+  String get seen => 'Seen';
+
+  @override
+  String get notSeen => 'Not seen';
+
+  @override
+  String get introSkip => 'Skip';
+
+  @override
+  String get introStart => 'Get started';
+
+  @override
+  String get introNext => 'Next';
+
+  @override
+  String get introNotifyTitle => 'When a thunderhead appears,\nwe notify you.';
+
+  @override
+  String get introNotifyBody =>
+      'When a thunderhead appears in the sky you can see from your location, we notify you of its direction and distance. Once per cloud, up to 3 times a day. No notifications at night.';
+
+  @override
+  String get introNow => 'now';
+
+  @override
+  String get introNotifyHeadline => 'A thunderhead appeared to the southeast';
+
+  @override
+  String get introNotifyDetail =>
+      'About 42 km away. Look up about 1½ fists high.';
+
+  @override
+  String get introFinderTitle => 'Which way to look,\nshown by an arrow.';
+
+  @override
+  String get introFinderBody =>
+      'Tap \"Find the cloud\" on the home screen and point your phone, and we guide you with prompts like \"Right 35°\". The phone vibrates lightly when you are facing the right way. How high to look is given in \"fists\" held at arm\'s length.';
+
+  @override
+  String get introFinderSample =>
+      'This is a sample. Turn your phone and the arrow changes.';
+
+  @override
+  String get introPlacesTitle => 'Watch the sky at home\nor school too.';
+
+  @override
+  String get introPlacesBody =>
+      'Besides where you are now, you can save 1 place you often go. Switch with the chips on the home screen. With Plus, you can save 3 places and the range extends to 90 km.';
+
+  @override
+  String get introMockHome => 'Home';
+
+  @override
+  String introPageOf(int page, int count) {
+    return 'Page $page of $count';
+  }
+
+  @override
+  String get introBack => 'Back to the previous page';
 }

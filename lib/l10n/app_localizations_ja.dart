@@ -646,4 +646,122 @@ class AppLocalizationsJa extends AppLocalizations {
   String addPlaceButton(int remaining) {
     return 'この場所を追加（あと$remainingか所）';
   }
+
+  @override
+  String finderTitle(String direction) {
+    return '$directionの入道雲へ';
+  }
+
+  @override
+  String finderDirectionIs(String direction) {
+    return '$directionの方角です';
+  }
+
+  @override
+  String get finderNoSensor => 'この端末では方位センサーが使えません。';
+
+  @override
+  String get finderChecking => '方角を調べています…';
+
+  @override
+  String get turnBehind => '後ろを向いて';
+
+  @override
+  String get finderSubBehind => 'ゆっくり、体ごと後ろを向いて';
+
+  @override
+  String get turnRightPrefix => '右へ ';
+
+  @override
+  String get turnLeftPrefix => '左へ ';
+
+  @override
+  String get finderSubRight => 'ゆっくり、体ごと右を向いて';
+
+  @override
+  String get finderSubLeft => 'ゆっくり、体ごと左を向いて';
+
+  @override
+  String get finderLookUpTitle => '見上げる高さ';
+
+  @override
+  String finderLookUpHint(String fists) {
+    return '腕を伸ばして、$fistsくらい上。';
+  }
+
+  @override
+  String get alignedHere => 'この方向です';
+
+  @override
+  String finderAlignedHint(String fists) {
+    return '正面の空、$fistsくらい上を\n見上げてみてください。';
+  }
+
+  @override
+  String get reportQuestion => '入道雲は見えましたか？';
+
+  @override
+  String get reportThanks => '教えてくれて、ありがとうございます。';
+
+  @override
+  String get reportWhy => '教えてもらうと、お知らせの精度が上がります。';
+
+  @override
+  String get seen => '見えた';
+
+  @override
+  String get notSeen => '見えなかった';
+
+  @override
+  String get introSkip => 'スキップ';
+
+  @override
+  String get introStart => 'はじめる';
+
+  @override
+  String get introNext => '次へ';
+
+  @override
+  String get introNotifyTitle => '入道雲が出たら、\n通知でお知らせ。';
+
+  @override
+  String get introNotifyBody =>
+      'あなたの場所から見える空に入道雲が現れたら、方角と距離を通知します。1つの雲につき1回、1日3回までです。夜は通知しません。';
+
+  @override
+  String get introNow => 'いま';
+
+  @override
+  String get introNotifyHeadline => '南東の空に、入道雲が現れました';
+
+  @override
+  String get introNotifyDetail => '約42km先。こぶし1つ半の高さを見上げてみて。';
+
+  @override
+  String get introFinderTitle => 'どっちを見るか、\n矢印で案内。';
+
+  @override
+  String get introFinderBody =>
+      'ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。';
+
+  @override
+  String get introFinderSample => '見本です。スマホの向きを変えると、矢印が変わります。';
+
+  @override
+  String get introPlacesTitle => '家や学校の空も、\n見張れます。';
+
+  @override
+  String get introPlacesBody =>
+      'いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。';
+
+  @override
+  String get introMockHome => '家';
+
+  @override
+  String introPageOf(int page, int count) {
+    return '$pageページ目、全$countページ';
+  }
+
+  @override
+  String get introBack => '前のページに戻る';
 }

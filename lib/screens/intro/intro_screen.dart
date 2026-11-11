@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/compass/compass_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -81,7 +82,7 @@ class _IntroScreenState extends State<IntroScreen> {
                 const Spacer(),
                 if (!_isLast)
                   TextLinkButton(
-                    label: widget.fromSettings ? '閉じる' : 'スキップ',
+                    label: widget.fromSettings ? AppLocalizations.of(context).close : AppLocalizations.of(context).introSkip,
                     color: Colors.white,
                     onPressed: _finish,
                   ),
@@ -107,7 +108,7 @@ class _IntroScreenState extends State<IntroScreen> {
               ],
               Expanded(
                 child: PrimaryButton(
-                  label: _isLast ? (widget.fromSettings ? '閉じる' : 'はじめる') : '次へ',
+                  label: _isLast ? (widget.fromSettings ? AppLocalizations.of(context).close : AppLocalizations.of(context).introStart) : AppLocalizations.of(context).introNext,
                   onPressed: _next,
                 ),
               ),
@@ -157,8 +158,8 @@ class _NotifyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Page(
-      title: '入道雲が出たら、\n通知でお知らせ。',
-      body: 'あなたの場所から見える空に入道雲が現れたら、方角と距離を通知します。1つの雲につき1回、1日3回までです。夜は通知しません。',
+      title: AppLocalizations.of(context).introNotifyTitle,
+      body: AppLocalizations.of(context).introNotifyBody,
       picture: SkyCard(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -168,21 +169,21 @@ class _NotifyPage extends StatelessWidget {
               children: [
                 const Icon(Icons.cloud_rounded, size: 18, color: AppColors.accent),
                 const SizedBox(width: 8),
-                Text('入道雲サーチ', style: AppTextStyles.caption()),
+                Text(AppLocalizations.of(context).appName, style: AppTextStyles.caption()),
                 const Spacer(),
-                Text('いま', style: AppTextStyles.caption()),
+                Text(AppLocalizations.of(context).introNow, style: AppTextStyles.caption()),
               ],
             ),
             const SizedBox(height: 8),
-            Text('南東の空に、入道雲が現れました', style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
+            Text(AppLocalizations.of(context).introNotifyHeadline, style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Text('約42km先。こぶし1つ半の高さを見上げてみて。', style: AppTextStyles.note()),
+            Text(AppLocalizations.of(context).introNotifyDetail, style: AppTextStyles.note()),
             const SizedBox(height: 12),
-            const Row(
+            Row(
               children: [
-                Expanded(child: _FakeButton(label: '見えた')),
-                SizedBox(width: 8),
-                Expanded(child: _FakeButton(label: '見えなかった')),
+                Expanded(child: _FakeButton(label: AppLocalizations.of(context).seen)),
+                const SizedBox(width: 8),
+                Expanded(child: _FakeButton(label: AppLocalizations.of(context).notSeen)),
               ],
             ),
           ],
@@ -259,15 +260,15 @@ class _FinderPageState extends State<_FinderPage> {
     final Widget headline;
     if (aligned) {
       dial = const AlignedDial();
-      headline = Text('この方向です', textAlign: TextAlign.center, style: AppTextStyles.display());
+      headline = Text(AppLocalizations.of(context).alignedHere, textAlign: TextAlign.center, style: AppTextStyles.display());
     } else if (behind) {
       dial = TurnDial(diffDeg: diff);
-      headline = Text('後ろを向いて', textAlign: TextAlign.center, style: AppTextStyles.display());
+      headline = Text(AppLocalizations.of(context).turnBehind, textAlign: TextAlign.center, style: AppTextStyles.display());
     } else {
       dial = TurnDial(diffDeg: diff);
       headline = Text.rich(
         TextSpan(children: [
-          TextSpan(text: diff > 0 ? '右へ ' : '左へ '),
+          TextSpan(text: diff > 0 ? AppLocalizations.of(context).turnRightPrefix : AppLocalizations.of(context).turnLeftPrefix),
           TextSpan(text: '${diff.abs().round()}°', style: AppTextStyles.number(fontSize: 34, color: Colors.white)),
         ]),
         textAlign: TextAlign.center,
@@ -276,8 +277,8 @@ class _FinderPageState extends State<_FinderPage> {
     }
 
     return _Page(
-      title: 'どっちを見るか、\n矢印で案内。',
-      body: 'ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。',
+      title: AppLocalizations.of(context).introFinderTitle,
+      body: AppLocalizations.of(context).introFinderBody,
       picture: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -287,7 +288,7 @@ class _FinderPageState extends State<_FinderPage> {
           headline,
           if (heading != null) ...[
             const SizedBox(height: 6),
-            Text('見本です。スマホの向きを変えると、矢印が変わります。',
+            Text(AppLocalizations.of(context).introFinderSample,
                 textAlign: TextAlign.center, style: AppTextStyles.note(color: Colors.white)),
           ],
         ],
@@ -301,9 +302,10 @@ class _PlacesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const _Page(
-      title: '家や学校の空も、\n見張れます。',
-      body: 'いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。',
+    final l10n = AppLocalizations.of(context);
+    return _Page(
+      title: l10n.introPlacesTitle,
+      body: l10n.introPlacesBody,
       picture: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -312,19 +314,19 @@ class _PlacesPage extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _ChipMock(label: '現在地', icon: Icons.my_location_rounded, selected: true, cloud: true),
-              _ChipMock(label: '家', cloud: true),
-              _ChipMock(label: '＋ Plus', dashed: true),
+              _ChipMock(label: l10n.homeCurrentLocation, icon: Icons.my_location_rounded, selected: true, cloud: true),
+              _ChipMock(label: l10n.introMockHome, cloud: true),
+              const _ChipMock(label: '＋ Plus', dashed: true),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           SkyCard(
             padding: EdgeInsets.zero,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _RowMock(text: '南東 ・ 42km', trailing: '見えています', divider: true),
-                _RowMock(text: '家 ・ 北 ・ 55km', trailing: '見えています', cloud: true),
+                _RowMock(text: l10n.homeCloudLine(l10n.dirSE, 42), trailing: l10n.homeVisibleShort, divider: true),
+                _RowMock(text: l10n.homeOtherSpotLine(l10n.introMockHome, l10n.dirN, 55), trailing: l10n.homeVisibleShort, cloud: true),
               ],
             ),
           ),
@@ -419,7 +421,7 @@ class _Dots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '${index + 1}ページ目、全$countページ',
+      label: AppLocalizations.of(context).introPageOf(index + 1, count),
       excludeSemantics: true,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -451,7 +453,7 @@ class _BackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '前のページに戻る',
+      label: AppLocalizations.of(context).introBack,
       excludeSemantics: true,
       child: Material(
         color: Colors.white.withValues(alpha: 0.9),

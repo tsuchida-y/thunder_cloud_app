@@ -1171,6 +1171,216 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'この場所を追加（あと{remaining}か所）'**
   String addPlaceButton(int remaining);
+
+  /// No description provided for @finderTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction}の入道雲へ'**
+  String finderTitle(String direction);
+
+  /// No description provided for @finderDirectionIs.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction}の方角です'**
+  String finderDirectionIs(String direction);
+
+  /// No description provided for @finderNoSensor.
+  ///
+  /// In ja, this message translates to:
+  /// **'この端末では方位センサーが使えません。'**
+  String get finderNoSensor;
+
+  /// No description provided for @finderChecking.
+  ///
+  /// In ja, this message translates to:
+  /// **'方角を調べています…'**
+  String get finderChecking;
+
+  /// No description provided for @turnBehind.
+  ///
+  /// In ja, this message translates to:
+  /// **'後ろを向いて'**
+  String get turnBehind;
+
+  /// No description provided for @finderSubBehind.
+  ///
+  /// In ja, this message translates to:
+  /// **'ゆっくり、体ごと後ろを向いて'**
+  String get finderSubBehind;
+
+  /// No description provided for @turnRightPrefix.
+  ///
+  /// In ja, this message translates to:
+  /// **'右へ '**
+  String get turnRightPrefix;
+
+  /// No description provided for @turnLeftPrefix.
+  ///
+  /// In ja, this message translates to:
+  /// **'左へ '**
+  String get turnLeftPrefix;
+
+  /// No description provided for @finderSubRight.
+  ///
+  /// In ja, this message translates to:
+  /// **'ゆっくり、体ごと右を向いて'**
+  String get finderSubRight;
+
+  /// No description provided for @finderSubLeft.
+  ///
+  /// In ja, this message translates to:
+  /// **'ゆっくり、体ごと左を向いて'**
+  String get finderSubLeft;
+
+  /// No description provided for @finderLookUpTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'見上げる高さ'**
+  String get finderLookUpTitle;
+
+  /// No description provided for @finderLookUpHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'腕を伸ばして、{fists}くらい上。'**
+  String finderLookUpHint(String fists);
+
+  /// No description provided for @alignedHere.
+  ///
+  /// In ja, this message translates to:
+  /// **'この方向です'**
+  String get alignedHere;
+
+  /// No description provided for @finderAlignedHint.
+  ///
+  /// In ja, this message translates to:
+  /// **'正面の空、{fists}くらい上を\n見上げてみてください。'**
+  String finderAlignedHint(String fists);
+
+  /// No description provided for @reportQuestion.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲は見えましたか？'**
+  String get reportQuestion;
+
+  /// No description provided for @reportThanks.
+  ///
+  /// In ja, this message translates to:
+  /// **'教えてくれて、ありがとうございます。'**
+  String get reportThanks;
+
+  /// No description provided for @reportWhy.
+  ///
+  /// In ja, this message translates to:
+  /// **'教えてもらうと、お知らせの精度が上がります。'**
+  String get reportWhy;
+
+  /// No description provided for @seen.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えた'**
+  String get seen;
+
+  /// No description provided for @notSeen.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えなかった'**
+  String get notSeen;
+
+  /// No description provided for @introSkip.
+  ///
+  /// In ja, this message translates to:
+  /// **'スキップ'**
+  String get introSkip;
+
+  /// No description provided for @introStart.
+  ///
+  /// In ja, this message translates to:
+  /// **'はじめる'**
+  String get introStart;
+
+  /// No description provided for @introNext.
+  ///
+  /// In ja, this message translates to:
+  /// **'次へ'**
+  String get introNext;
+
+  /// No description provided for @introNotifyTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'入道雲が出たら、\n通知でお知らせ。'**
+  String get introNotifyTitle;
+
+  /// No description provided for @introNotifyBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'あなたの場所から見える空に入道雲が現れたら、方角と距離を通知します。1つの雲につき1回、1日3回までです。夜は通知しません。'**
+  String get introNotifyBody;
+
+  /// No description provided for @introNow.
+  ///
+  /// In ja, this message translates to:
+  /// **'いま'**
+  String get introNow;
+
+  /// No description provided for @introNotifyHeadline.
+  ///
+  /// In ja, this message translates to:
+  /// **'南東の空に、入道雲が現れました'**
+  String get introNotifyHeadline;
+
+  /// No description provided for @introNotifyDetail.
+  ///
+  /// In ja, this message translates to:
+  /// **'約42km先。こぶし1つ半の高さを見上げてみて。'**
+  String get introNotifyDetail;
+
+  /// No description provided for @introFinderTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'どっちを見るか、\n矢印で案内。'**
+  String get introFinderTitle;
+
+  /// No description provided for @introFinderBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。'**
+  String get introFinderBody;
+
+  /// No description provided for @introFinderSample.
+  ///
+  /// In ja, this message translates to:
+  /// **'見本です。スマホの向きを変えると、矢印が変わります。'**
+  String get introFinderSample;
+
+  /// No description provided for @introPlacesTitle.
+  ///
+  /// In ja, this message translates to:
+  /// **'家や学校の空も、\n見張れます。'**
+  String get introPlacesTitle;
+
+  /// No description provided for @introPlacesBody.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。'**
+  String get introPlacesBody;
+
+  /// No description provided for @introMockHome.
+  ///
+  /// In ja, this message translates to:
+  /// **'家'**
+  String get introMockHome;
+
+  /// No description provided for @introPageOf.
+  ///
+  /// In ja, this message translates to:
+  /// **'{page}ページ目、全{count}ページ'**
+  String introPageOf(int page, int count);
+
+  /// No description provided for @introBack.
+  ///
+  /// In ja, this message translates to:
+  /// **'前のページに戻る'**
+  String get introBack;
 }
 
 class _AppLocalizationsDelegate
