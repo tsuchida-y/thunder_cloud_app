@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/sky_cloud.dart';
 import '../../../models/sky_now.dart';
 import '../home_controller.dart';
@@ -26,7 +28,7 @@ class HomeHeader extends StatelessWidget {
   });
 
   /// 「滝沢市の空」。名前が分からなければ「いまいる場所の空」
-  static String skyOf(String? placeName) => '${placeName ?? 'いまいる場所'}の空';
+  static String skyOf(String? placeName) => L.t.homeSkyOf(placeName ?? L.t.currentPlace);
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +48,13 @@ class HomeHeader extends StatelessWidget {
           if (showRecord)
             IconTapButton(
               icon: Icons.event_note_outlined,
-              semanticLabel: '記録',
+              semanticLabel: AppLocalizations.of(context).recordLabel,
               onPressed: () => AppRoutes.openRecord(context),
             ),
           if (showSettings)
             IconTapButton(
               icon: Icons.tune_rounded,
-              semanticLabel: '設定',
+              semanticLabel: AppLocalizations.of(context).settingsTitle,
               onPressed: () => AppRoutes.openSettings(context),
             ),
         ],
@@ -171,7 +173,7 @@ class SpotHeader extends StatelessWidget {
           ),
           IconTapButton(
             icon: Icons.tune_rounded,
-            semanticLabel: '設定',
+            semanticLabel: AppLocalizations.of(context).settingsTitle,
             onPressed: () => AppRoutes.openSettings(context),
           ),
         ],
@@ -193,7 +195,9 @@ class _SpotChipButton extends StatelessWidget {
     return Semantics(
       selected: selected,
       button: true,
-      label: '${chip.spot.isCurrent ? 'いまいる場所' : chip.spot.label}${chip.hasCloud ? '、入道雲あり' : ''}',
+      label: chip.hasCloud
+          ? AppLocalizations.of(context).homeChipWithCloud(chip.spot.isCurrent ? AppLocalizations.of(context).currentPlace : chip.spot.label)
+          : (chip.spot.isCurrent ? AppLocalizations.of(context).currentPlace : chip.spot.label),
       excludeSemantics: true,
       child: Material(
         color: selected ? Colors.white : Colors.white.withValues(alpha: 0.2),
@@ -233,7 +237,7 @@ class _AddCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '場所を追加',
+      label: AppLocalizations.of(context).homeAddPlace,
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
@@ -256,7 +260,7 @@ class _AddPlusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '場所を追加。Plus の機能です',
+      label: AppLocalizations.of(context).homeAddPlacePlus,
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
@@ -356,7 +360,8 @@ class _OtherSpotRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = other.spot.isCurrent ? '現在地' : other.spot.label;
+    final l10n = AppLocalizations.of(context);
+    final name = other.spot.isCurrent ? l10n.homeCurrentLocation : other.spot.label;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -367,10 +372,10 @@ class _OtherSpotRow extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child:
-                  Text('$name ・ ${other.view.directionName} ・ ${other.view.roundedKm}km', style: AppTextStyles.item()),
+                  Text(l10n.homeOtherSpotLine(name, other.view.directionName, other.view.roundedKm), style: AppTextStyles.item()),
             ),
             Text(
-              other.view.maybeVisible ? '見えるかも' : '見えています',
+              other.view.maybeVisible ? l10n.homeMaybeShort : l10n.homeVisibleShort,
               style: AppTextStyles.note(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700, height: 1.3),
             ),
             const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.accent),
@@ -402,20 +407,21 @@ class SkyNowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final sky = skyNow;
     final nearest = nearestCloud;
-    final place = nearest?.placeName == null ? '' : '（${nearest!.placeName}）';
+    final place = nearest?.placeName == null ? '' : l10n.homeNearestPlace(nearest!.placeName!);
     final rows = <Widget>[
       if (sky != null)
         _InfoRow(
-          title: 'いまの空',
+          title: l10n.homeNowSky,
           text: sky.parts.join(' ・ '),
-          note: '近くのアメダス ${TimeText.clock(sky.observedAt)}',
+          note: l10n.homeAmedas(TimeText.clock(sky.observedAt)),
         ),
       _InfoRow(
-        title: 'いちばん近い入道雲',
-        text: nearest == null ? '全国で見つかっていません' : '${nearest.directionName} ${nearest.distanceKm}km$place',
-        note: nearest == null ? null : '全国で$nationwideCountか所 ・ 押すと一覧',
+        title: l10n.homeNearestCloud,
+        text: nearest == null ? l10n.homeNoneNationwide : l10n.homeNearestLine(nearest.directionName, nearest.distanceKm, place),
+        note: nearest == null ? null : l10n.homeNationwideNote(nationwideCount),
         highlight: nearest != null,
         onTap: nearest == null ? null : onOpenList,
       ),
@@ -498,7 +504,7 @@ class RecordLink extends StatelessWidget {
       child: TextButton.icon(
         onPressed: () => AppRoutes.openRecord(context),
         icon: const Icon(Icons.event_note_outlined, size: 18, color: AppColors.accent),
-        label: Text('見えた入道雲の記録',
+        label: Text(AppLocalizations.of(context).homeRecordLink,
             style: AppTextStyles.body(color: AppColors.accent)
                 .copyWith(fontSize: 14, fontWeight: FontWeight.w700, height: 1.2)),
         style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
@@ -521,12 +527,12 @@ class _CloudRow extends StatelessWidget {
         children: [
           view.maybeVisible ? const _DashedDot() : const _FilledDot(),
           const SizedBox(width: 12),
-          Expanded(child: Text('${view.directionName} ・ ${view.roundedKm}km', style: AppTextStyles.item())),
+          Expanded(child: Text(AppLocalizations.of(context).homeCloudLine(view.directionName, view.roundedKm), style: AppTextStyles.item())),
           const SizedBox(width: 8),
           view.maybeVisible
-              ? Text('$sinceから ・ 見えるかも', style: AppTextStyles.note().copyWith(height: 1.3))
+              ? Text(AppLocalizations.of(context).homeSinceMaybe(since), style: AppTextStyles.note().copyWith(height: 1.3))
               : Text(
-                  '$sinceから見えています',
+                  AppLocalizations.of(context).homeSinceVisible(since),
                   style: AppTextStyles.note(color: AppColors.accent).copyWith(fontWeight: FontWeight.w700, height: 1.3),
                 ),
         ],

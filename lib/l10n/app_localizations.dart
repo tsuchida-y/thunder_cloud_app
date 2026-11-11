@@ -679,6 +679,126 @@ abstract class AppLocalizations {
   /// In ja, this message translates to:
   /// **'場所を手で登録する'**
   String get homeAddPlaceManually;
+
+  /// No description provided for @homeSkyOf.
+  ///
+  /// In ja, this message translates to:
+  /// **'{place}の空'**
+  String homeSkyOf(String place);
+
+  /// No description provided for @recordLabel.
+  ///
+  /// In ja, this message translates to:
+  /// **'記録'**
+  String get recordLabel;
+
+  /// No description provided for @homeChipWithCloud.
+  ///
+  /// In ja, this message translates to:
+  /// **'{place}、入道雲あり'**
+  String homeChipWithCloud(String place);
+
+  /// No description provided for @homeAddPlace.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所を追加'**
+  String get homeAddPlace;
+
+  /// No description provided for @homeAddPlacePlus.
+  ///
+  /// In ja, this message translates to:
+  /// **'場所を追加。Plus の機能です'**
+  String get homeAddPlacePlus;
+
+  /// No description provided for @homeCurrentLocation.
+  ///
+  /// In ja, this message translates to:
+  /// **'現在地'**
+  String get homeCurrentLocation;
+
+  /// No description provided for @homeOtherSpotLine.
+  ///
+  /// In ja, this message translates to:
+  /// **'{name} ・ {direction} ・ {km}km'**
+  String homeOtherSpotLine(String name, String direction, int km);
+
+  /// No description provided for @homeMaybeShort.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えるかも'**
+  String get homeMaybeShort;
+
+  /// No description provided for @homeVisibleShort.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えています'**
+  String get homeVisibleShort;
+
+  /// No description provided for @homeNearestPlace.
+  ///
+  /// In ja, this message translates to:
+  /// **'（{place}）'**
+  String homeNearestPlace(String place);
+
+  /// No description provided for @homeNowSky.
+  ///
+  /// In ja, this message translates to:
+  /// **'いまの空'**
+  String get homeNowSky;
+
+  /// No description provided for @homeAmedas.
+  ///
+  /// In ja, this message translates to:
+  /// **'近くのアメダス {time}'**
+  String homeAmedas(String time);
+
+  /// No description provided for @homeNearestCloud.
+  ///
+  /// In ja, this message translates to:
+  /// **'いちばん近い入道雲'**
+  String get homeNearestCloud;
+
+  /// No description provided for @homeNoneNationwide.
+  ///
+  /// In ja, this message translates to:
+  /// **'全国で見つかっていません'**
+  String get homeNoneNationwide;
+
+  /// No description provided for @homeNearestLine.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction} {km}km{place}'**
+  String homeNearestLine(String direction, int km, String place);
+
+  /// No description provided for @homeNationwideNote.
+  ///
+  /// In ja, this message translates to:
+  /// **'全国で{count}か所 ・ 押すと一覧'**
+  String homeNationwideNote(int count);
+
+  /// No description provided for @homeRecordLink.
+  ///
+  /// In ja, this message translates to:
+  /// **'見えた入道雲の記録'**
+  String get homeRecordLink;
+
+  /// No description provided for @homeCloudLine.
+  ///
+  /// In ja, this message translates to:
+  /// **'{direction} ・ {km}km'**
+  String homeCloudLine(String direction, int km);
+
+  /// No description provided for @homeSinceMaybe.
+  ///
+  /// In ja, this message translates to:
+  /// **'{since}から ・ 見えるかも'**
+  String homeSinceMaybe(String since);
+
+  /// No description provided for @homeSinceVisible.
+  ///
+  /// In ja, this message translates to:
+  /// **'{since}から見えています'**
+  String homeSinceVisible(String since);
 }
 
 class _AppLocalizationsDelegate

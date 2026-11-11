@@ -383,4 +383,90 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeAddPlaceManually => 'Add a place manually';
+
+  @override
+  String homeSkyOf(String place) {
+    return 'Sky over $place';
+  }
+
+  @override
+  String get recordLabel => 'Log';
+
+  @override
+  String homeChipWithCloud(String place) {
+    return '$place, thunderhead present';
+  }
+
+  @override
+  String get homeAddPlace => 'Add a place';
+
+  @override
+  String get homeAddPlacePlus => 'Add a place. A Plus feature';
+
+  @override
+  String get homeCurrentLocation => 'Current location';
+
+  @override
+  String homeOtherSpotLine(String name, String direction, int km) {
+    return '$name · $direction · $km km';
+  }
+
+  @override
+  String get homeMaybeShort => 'May be visible';
+
+  @override
+  String get homeVisibleShort => 'Visible';
+
+  @override
+  String homeNearestPlace(String place) {
+    return ' ($place)';
+  }
+
+  @override
+  String get homeNowSky => 'Sky now';
+
+  @override
+  String homeAmedas(String time) {
+    return 'Nearby AMeDAS station $time';
+  }
+
+  @override
+  String get homeNearestCloud => 'Nearest thunderhead';
+
+  @override
+  String get homeNoneNationwide => 'None found in Japan';
+
+  @override
+  String homeNearestLine(String direction, int km, String place) {
+    return '$direction $km km$place';
+  }
+
+  @override
+  String homeNationwideNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count places',
+      one: '1 place',
+    );
+    return '$_temp0 in Japan · tap for the list';
+  }
+
+  @override
+  String get homeRecordLink => 'Log of thunderheads you saw';
+
+  @override
+  String homeCloudLine(String direction, int km) {
+    return '$direction · $km km';
+  }
+
+  @override
+  String homeSinceMaybe(String since) {
+    return 'Since $since · may be visible';
+  }
+
+  @override
+  String homeSinceVisible(String since) {
+    return 'Visible since $since';
+  }
 }

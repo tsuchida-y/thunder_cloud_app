@@ -351,4 +351,84 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get homeAddPlaceManually => '場所を手で登録する';
+
+  @override
+  String homeSkyOf(String place) {
+    return '$placeの空';
+  }
+
+  @override
+  String get recordLabel => '記録';
+
+  @override
+  String homeChipWithCloud(String place) {
+    return '$place、入道雲あり';
+  }
+
+  @override
+  String get homeAddPlace => '場所を追加';
+
+  @override
+  String get homeAddPlacePlus => '場所を追加。Plus の機能です';
+
+  @override
+  String get homeCurrentLocation => '現在地';
+
+  @override
+  String homeOtherSpotLine(String name, String direction, int km) {
+    return '$name ・ $direction ・ ${km}km';
+  }
+
+  @override
+  String get homeMaybeShort => '見えるかも';
+
+  @override
+  String get homeVisibleShort => '見えています';
+
+  @override
+  String homeNearestPlace(String place) {
+    return '（$place）';
+  }
+
+  @override
+  String get homeNowSky => 'いまの空';
+
+  @override
+  String homeAmedas(String time) {
+    return '近くのアメダス $time';
+  }
+
+  @override
+  String get homeNearestCloud => 'いちばん近い入道雲';
+
+  @override
+  String get homeNoneNationwide => '全国で見つかっていません';
+
+  @override
+  String homeNearestLine(String direction, int km, String place) {
+    return '$direction ${km}km$place';
+  }
+
+  @override
+  String homeNationwideNote(int count) {
+    return '全国で$countか所 ・ 押すと一覧';
+  }
+
+  @override
+  String get homeRecordLink => '見えた入道雲の記録';
+
+  @override
+  String homeCloudLine(String direction, int km) {
+    return '$direction ・ ${km}km';
+  }
+
+  @override
+  String homeSinceMaybe(String since) {
+    return '$sinceから ・ 見えるかも';
+  }
+
+  @override
+  String homeSinceVisible(String since) {
+    return '$sinceから見えています';
+  }
 }

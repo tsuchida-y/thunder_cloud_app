@@ -268,5 +268,110 @@
   "homeNotificationOffTitle": "通知がオフです",
   "homeNotificationOffBody": "アプリを開いたときだけ、雲の場所を確かめられます。",
   "homeEnableNotifications": "通知をオンにする",
-  "homeAddPlaceManually": "場所を手で登録する"
+  "homeAddPlaceManually": "場所を手で登録する",
+  "homeSkyOf": "{place}の空",
+  "@homeSkyOf": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "recordLabel": "記録",
+  "homeChipWithCloud": "{place}、入道雲あり",
+  "@homeChipWithCloud": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "homeAddPlace": "場所を追加",
+  "homeAddPlacePlus": "場所を追加。Plus の機能です",
+  "homeCurrentLocation": "現在地",
+  "homeOtherSpotLine": "{name} ・ {direction} ・ {km}km",
+  "@homeOtherSpotLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeMaybeShort": "見えるかも",
+  "homeVisibleShort": "見えています",
+  "homeNearestPlace": "（{place}）",
+  "@homeNearestPlace": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "homeNowSky": "いまの空",
+  "homeAmedas": "近くのアメダス {time}",
+  "@homeAmedas": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "homeNearestCloud": "いちばん近い入道雲",
+  "homeNoneNationwide": "全国で見つかっていません",
+  "homeNearestLine": "{direction} {km}km{place}",
+  "@homeNearestLine": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "homeNationwideNote": "全国で{count}か所 ・ 押すと一覧",
+  "@homeNationwideNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeRecordLink": "見えた入道雲の記録",
+  "homeCloudLine": "{direction} ・ {km}km",
+  "@homeCloudLine": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSinceMaybe": "{since}から ・ 見えるかも",
+  "@homeSinceMaybe": {
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  },
+  "homeSinceVisible": "{since}から見えています",
+  "@homeSinceVisible": {
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  }
 }
