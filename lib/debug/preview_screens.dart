@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_const_constructors
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 
 import '../models/finder_target.dart';
@@ -39,6 +41,7 @@ class PreviewScreens {
   static const List<String> names = [
     'welcome', 'intro', 'intro2', 'intro3', 'plus', 'loading', 'settings', 'places', 'data_source', 'record', 'finder',
     'home_clouds', 'home_plus', 'home_empty', 'home_night', 'home_offline', 'home_nopermission',
+    'permission_location', 'permission_notification',
     'sheet_whatsnew', 'sheet_always', 'sheet_quiet', 'sheet_addplace', 'sheet_nationwide', 'sheet_calibrate',
   ];
 
@@ -147,6 +150,7 @@ class PreviewScreens {
     if (!names.contains(name)) return null;
     if (name.startsWith('home_')) return HomeScreen(previewState: _state(name));
     if (name.startsWith('sheet_')) return _SheetLauncher(name);
+    if (name.startsWith('permission_')) return _PermissionLauncher(name);
     return switch (name) {
       'welcome' => const WelcomeScreen(),
       'intro' => const IntroScreen(fromSettings: true),
@@ -215,6 +219,32 @@ class _SheetLauncherState extends State<_SheetLauncher> {
           ]);
         case 'sheet_calibrate':
           await CalibrateSheet.show(context, Stream.value(const Heading(10, 40)));
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const LoadingView();
+}
+
+/// OS の許可ダイアログ（位置情報・通知）を、画面の準備ができたらすぐ出す。ダイアログの文言（英語・日本語）を確かめるため
+class _PermissionLauncher extends StatefulWidget {
+  final String name;
+  const _PermissionLauncher(this.name);
+
+  @override
+  State<_PermissionLauncher> createState() => _PermissionLauncherState();
+}
+
+class _PermissionLauncherState extends State<_PermissionLauncher> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (widget.name == 'permission_location') {
+        await Geolocator.requestPermission();
+      } else {
+        await FirebaseMessaging.instance.requestPermission();
       }
     });
   }
