@@ -1,0 +1,5 @@
+/* アプリの名前と、位置情報の許可のお願いに出す説明（日本語） */
+"CFBundleDisplayName" = "入道雲サーチ";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "「常に」を許可すると、アプリを閉じているあいだに大きく移動したときも、移動先の空を見張って入道雲が見えたらお知らせできます。位置は約1kmの細かさに丸めて保存します。";
+"NSLocationAlwaysUsageDescription" = "「常に」を許可すると、アプリを閉じているあいだに大きく移動したときも、移動先の空を見張って入道雲が見えたらお知らせできます。位置は約1kmの細かさに丸めて保存します。";
+"NSLocationWhenInUseUsageDescription" = "いまいる場所から見える空に入道雲があるかを調べ、その方角と距離を出すために位置情報を使います。位置は約1kmの細かさに丸めて保存します。";

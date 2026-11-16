@@ -14,7 +14,7 @@
 
 
     <application
-        android:label="入道雲サーチ"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -50,13 +50,13 @@
             </intent-filter>
         </activity>
         <!-- ホーム画面のウィジェット（Plus、CloudWidget.kt） -->
-        <receiver android:name=".CloudWidgetSmall" android:exported="false" android:label="入道雲（小）">
+        <receiver android:name=".CloudWidgetSmall" android:exported="false" android:label="@string/widget_small_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/cloud_widget_small_info" />
         </receiver>
-        <receiver android:name=".CloudWidgetMedium" android:exported="false" android:label="入道雲（中）">
+        <receiver android:name=".CloudWidgetMedium" android:exported="false" android:label="@string/widget_medium_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

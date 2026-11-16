@@ -326,7 +326,7 @@ class CloudWatchService {
   }
 
   async _send(uid, member, { cloud, point, view }, server, now) {
-    const message = appearedMessage(view, point.label);
+    const message = appearedMessage(view, point.label, member.locale === 'en' ? 'en' : 'ja');
     const result = await this.notifications.sendCloudNotification(member.fcmToken, message, {
       type: 'cloud_appeared',
       // アプリが「見えた」「見えなかった」の答えをどの雲に結びつけるかに使う

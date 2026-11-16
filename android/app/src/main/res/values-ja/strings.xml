@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">入道雲サーチ</string>
+    <string name="widget_small_label">入道雲（小）</string>
+    <string name="widget_medium_label">入道雲（中）</string>
+    <string name="widget_title">入道雲</string>
+    <string name="widget_compass_description">雲の方角</string>
+    <string name="widget_plus_only">Plus の機能です</string>
+    <string name="widget_headline_cloud">%1$sに入道雲</string>
+    <string name="widget_distance">約%1$skm先</string>
+    <string name="widget_distance_short">%1$skm</string>
+    <string name="widget_height">%1$sの高さ</string>
+    <string name="widget_night">見張りはお休み中</string>
+    <string name="widget_quiet">静かな空</string>
+    <string name="widget_open_app">アプリを開いて空を確かめてください</string>
+    <string name="widget_time_source">%1$s 時点 ・ 出典：気象庁</string>
+    <string name="configure_title">ウィジェットで見る場所</string>
+    <string name="configure_empty">アプリを一度開くと、見張っている場所から選べます。いまは、いまいる場所を出します。</string>
+    <string name="configure_hint">タップすると、その場所のホームが開きます。</string>
+    <string name="configure_current_location">現在地</string>
+    <string name="configure_place_with_name">%1$s（%2$s）</string>
+</resources>

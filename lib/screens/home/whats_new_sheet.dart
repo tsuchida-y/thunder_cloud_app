@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/common/app_buttons.dart';
@@ -36,11 +37,12 @@ class WhatsNewSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const points = [
-      '気象庁のデータをもとに、いま見えている入道雲の方角と距離をお知らせするようになりました。',
-      'ホームの「雲の方角を調べる」で、スマホを向けて入道雲のある方角を確かめられます。',
-      'みんなの写真を見るコミュニティと、写真を撮る機能は終わりました。これまでに投稿された写真は削除します。スマホの写真アプリに保存した写真は、そのまま残ります。',
-      '遠くの雲（90kmまで）や、よく行く場所も見張れる「Plus」ができました。',
+    final l10n = AppLocalizations.of(context);
+    final points = [
+      l10n.whatsNew1,
+      l10n.whatsNew2,
+      l10n.whatsNew3,
+      l10n.whatsNew4,
     ];
     return SafeArea(
       top: false,
@@ -61,7 +63,7 @@ class WhatsNewSheet extends StatelessWidget {
             Semantics(
               header: true,
               child: Text(
-                '入道雲サーチが\n新しくなりました。',
+                l10n.whatsNewTitle,
                 style: AppTextStyles.headline(color: AppColors.text, fontSize: 22).copyWith(height: 1.5),
               ),
             ),
@@ -84,7 +86,7 @@ class WhatsNewSheet extends StatelessWidget {
               const SizedBox(height: 10),
             ],
             const SizedBox(height: 6),
-            PrimaryButton(label: 'わかりました', onPressed: () => Navigator.of(context).pop()),
+            PrimaryButton(label: l10n.understood, onPressed: () => Navigator.of(context).pop()),
           ],
         ),
       ),

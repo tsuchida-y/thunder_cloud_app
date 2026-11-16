@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/member/member_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -69,29 +70,29 @@ class _QuietHoursSheetState extends State<QuietHoursSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            Text('通知しない時間', style: AppTextStyles.headline(color: AppColors.text, fontSize: 22)),
+            Text(AppLocalizations.of(context).settingsQuietHours, style: AppTextStyles.headline(color: AppColors.text, fontSize: 22)),
             const SizedBox(height: 6),
-            Text('空が暗いあいだ（夜）は自動で休みます', style: AppTextStyles.note()),
+            Text(AppLocalizations.of(context).settingsQuietHoursNote, style: AppTextStyles.note()),
             const SizedBox(height: 14),
             SettingsCard(
               children: [
                 SettingsRow.text(
-                  '通知しない時間を決める',
+                  AppLocalizations.of(context).quietSet,
                   trailing: SkySwitch(
                     value: _enabled,
-                    semanticLabel: '通知しない時間を決める',
+                    semanticLabel: AppLocalizations.of(context).quietSet,
                     onChanged: (v) => setState(() => _enabled = v),
                   ),
                 ),
                 if (_enabled) ...[
-                  SettingsRow.text('はじめ', trailing: SettingsValue(QuietHours.clock(_start)), onTap: () => _pick(true)),
-                  SettingsRow.text('おわり', trailing: SettingsValue(QuietHours.clock(_end)), onTap: () => _pick(false)),
+                  SettingsRow.text(AppLocalizations.of(context).quietStart, trailing: SettingsValue(QuietHours.clock(_start)), onTap: () => _pick(true)),
+                  SettingsRow.text(AppLocalizations.of(context).quietEnd, trailing: SettingsValue(QuietHours.clock(_end)), onTap: () => _pick(false)),
                 ],
               ],
             ),
             const SizedBox(height: 16),
             PrimaryButton(
-              label: '決める',
+              label: AppLocalizations.of(context).quietDone,
               onPressed: () => Navigator.of(context).pop((value: _enabled ? QuietHours(_start, _end) : null)),
             ),
           ],

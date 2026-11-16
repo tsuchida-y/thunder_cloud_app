@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../l10n/l10n.dart';
 import '../../models/finder_target.dart';
 import '../../utils/logger.dart';
 import '../member/member_service.dart';
@@ -23,7 +24,7 @@ class CloudNotifications {
   CloudNotifications._();
 
   static const String channelId = 'cloud_appeared';
-  static const String channelName = '入道雲のお知らせ';
+  static String get channelName => L.t.notificationChannelName;
   static const String seenAction = 'seen';
   static const String notSeenAction = 'not_seen';
 
@@ -100,15 +101,15 @@ class CloudNotifications {
         android: AndroidNotificationDetails(
           channelId,
           channelName,
-          channelDescription: '入道雲が見える範囲に現れたときのお知らせ',
+          channelDescription: L.t.notificationChannelDescription,
           importance: Importance.high,
           priority: Priority.high,
           // 同じ雲の通知は1つにまとめる
           tag: cloudId,
           category: AndroidNotificationCategory.recommendation,
-          actions: const [
-            AndroidNotificationAction(seenAction, '見えた'),
-            AndroidNotificationAction(notSeenAction, '見えなかった'),
+          actions: [
+            AndroidNotificationAction(seenAction, L.t.seen),
+            AndroidNotificationAction(notSeenAction, L.t.notSeen),
           ],
         ),
       ),

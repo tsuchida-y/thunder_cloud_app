@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/sky_geometry.dart';
@@ -49,8 +50,7 @@ class HeadingTape extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '方位テープ。いまは${SkyGeometry.directionName(headingDeg)}を向いていて、'
-          '入道雲は${SkyGeometry.directionName(targetDeg)}',
+      label: L.t.compassTapeLabel(SkyGeometry.directionName(headingDeg), SkyGeometry.directionName(targetDeg)),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.16),
@@ -295,7 +295,7 @@ class ElevationDiagram extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '地平線から約${elevationDeg.round()}度上に入道雲が見える',
+      label: L.t.elevationLabel(elevationDeg.round()),
       child: AspectRatio(
         aspectRatio: 316 / 104,
         child: CustomPaint(
@@ -327,7 +327,7 @@ class _ElevationPainter extends CustomPainter {
         ..color = AppColors.textSub.withValues(alpha: 0.5)
         ..strokeWidth = 1.5,
     );
-    final horizon = _text('地平線', labelStyle);
+    final horizon = _text(L.t.horizon, labelStyle);
     horizon.paint(canvas, Offset(306 - horizon.width, 92));
 
     const eye = Offset(22, 82);
@@ -390,7 +390,7 @@ class FigureEightDrawing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'スマホを8の字に動かす図',
+      label: L.t.figureEightLabel,
       child: CustomPaint(size: const Size(220, 130), painter: _FigureEightPainter()),
     );
   }

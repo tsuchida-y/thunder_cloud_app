@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/sky/report_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -34,7 +35,7 @@ class _RecordScreenState extends State<RecordScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageHeader(title: '記録'),
+              PageHeader(title: AppLocalizations.of(context).recordLabel),
               const SizedBox(height: 14),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -42,12 +43,12 @@ class _RecordScreenState extends State<RecordScreen> {
                   crossAxisAlignment: WrapCrossAlignment.end,
                   spacing: 8,
                   children: [
-                    Text('${DateTime.now().year}年', style: AppTextStyles.headline(color: AppColors.text, fontSize: 22)),
+                    Text(AppLocalizations.of(context).recordYear(DateTime.now().year), style: AppTextStyles.headline(color: AppColors.text, fontSize: 22)),
                     if (records != null)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          '入道雲を見た日 ${ReportService.countDays(records)}日',
+                          AppLocalizations.of(context).recordDays(ReportService.countDays(records)),
                           style: AppTextStyles.body(color: AppColors.textSub).copyWith(fontSize: 14, height: 1.2),
                         ),
                       ),
@@ -65,8 +66,8 @@ class _RecordScreenState extends State<RecordScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Text(
                     snap.hasError
-                        ? '記録を読み込めませんでした。電波の届く場所で、もう一度開いてください。'
-                        : 'まだ記録はありません。入道雲が見えたら、方角ガイドや通知で「見えた」を押すと、ここに残ります。',
+                        ? AppLocalizations.of(context).recordLoadFailed
+                        : AppLocalizations.of(context).recordEmpty,
                     style: AppTextStyles.body(color: AppColors.textSub).copyWith(fontSize: 14),
                   ),
                 )
@@ -92,7 +93,7 @@ class _SeenList extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-          child: Text('見えた入道雲', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
+          child: Text(AppLocalizations.of(context).homeTodayCloudSeen, style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
         ),
         for (final r in records) _SeenRow(record: r),
       ],
@@ -111,9 +112,9 @@ class _SeenRow extends StatelessWidget {
     final from = record.from;
     final to = record.to;
     final time = from != null && to != null
-        ? '${TimeText.clock(from)}〜${TimeText.clock(to)}'
-        : '${TimeText.clock(record.seenAt)}ごろ';
-    final text = '${SkyGeometry.directionName(record.bearingDeg)} ・ ${record.distanceKm.round()}km ・ $time';
+        ? AppLocalizations.of(context).timeRange(TimeText.clock(from), TimeText.clock(to))
+        : AppLocalizations.of(context).aroundTime(TimeText.clock(record.seenAt));
+    final text = AppLocalizations.of(context).recordRowText(SkyGeometry.directionName(record.bearingDeg), record.distanceKm.round(), time);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(

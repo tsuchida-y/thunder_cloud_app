@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/l10n.dart';
 import '../../models/lat_lng.dart';
 import '../../utils/logger.dart';
 import '../plus/plus_service.dart';
@@ -66,6 +67,8 @@ class MemberService {
     if (id == null) return;
     _db.collection(membersCollection).doc(id).set({
       'lastOpenedAt': FieldValue.serverTimestamp(),
+      // 通知の文を、この人の言語（'ja' か 'en'）で作るために、サーバーが読む
+      'locale': L.isEnglish ? 'en' : 'ja',
       if (location != null) ...{
         'location': {
           'latitude': _round2(location.latitude),
@@ -117,7 +120,7 @@ class MemberService {
         .whereType<Map>()
         .where((p) => p['latitude'] is num && p['longitude'] is num)
         .map((p) => WatchPlace(
-              label: (p['label'] as String?) ?? '登録した場所',
+              label: (p['label'] as String?) ?? L.t.savedPlace,
               name: p['name'] as String?,
               location: LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble()),
             ))
@@ -201,7 +204,7 @@ class QuietHours {
   static String clock(int minutes) => '${minutes ~/ 60}:${(minutes % 60).toString().padLeft(2, '0')}';
 
   /// 「22:00〜6:00」
-  String get label => '${clock(startMinutes)}〜${clock(endMinutes)}';
+  String get label => L.t.timeRange(clock(startMinutes), clock(endMinutes));
 }
 
 /// 設定画面で使う、members.settings の中身

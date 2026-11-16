@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
 import '../../services/notification/cloud_notifications.dart';
@@ -56,6 +57,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SkyPage(
       gradient: SkyGradient.day,
       padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
@@ -66,38 +68,38 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           const SizedBox(height: 16),
           Semantics(
             header: true,
-            child: Text('入道雲サーチ', style: AppTextStyles.headline(fontSize: 34).copyWith(height: 1.3)),
+            child: Text(l10n.appName, style: AppTextStyles.headline(fontSize: 34).copyWith(height: 1.3)),
           ),
           const SizedBox(height: 16),
           Text(
-            'あなたの場所から見える空に入道雲が現れたら、どの方角かをお知らせします。',
+            l10n.welcomeLead,
             style: AppTextStyles.body(color: Colors.white).copyWith(fontSize: 16),
           ),
           const Spacer(),
           const SizedBox(height: 16),
-          const SkyCard(
+          SkyCard(
             padding: EdgeInsets.zero,
             child: Column(
               children: [
                 _PermissionRow(
                   icon: Icons.place_outlined,
-                  title: '位置情報（アプリの使用中）',
-                  body: '開いた場所の空を調べ、その場所の空を見張ります。',
+                  title: l10n.welcomeLocationTitle,
+                  body: l10n.welcomeLocationBody,
                   divider: true,
                 ),
                 _PermissionRow(
                   icon: Icons.notifications_none_rounded,
-                  title: '通知',
-                  body: '入道雲が見えたときに、1つの雲につき1回だけお知らせします。',
+                  title: l10n.welcomeNotificationTitle,
+                  body: l10n.welcomeNotificationBody,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          PrimaryButton(label: '続ける', onPressed: _busy ? null : _allowAndStart),
+          PrimaryButton(label: l10n.welcomeContinue, onPressed: _busy ? null : _allowAndStart),
           const SizedBox(height: 16),
           Text(
-            '移動先の空も見張る設定は、あとでご案内します。',
+            l10n.welcomeLaterNote,
             textAlign: TextAlign.center,
             style: AppTextStyles.note(),
           ),

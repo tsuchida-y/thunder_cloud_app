@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
 import '../../navigation/app_routes.dart';
@@ -121,10 +122,10 @@ class _PlacesScreenState extends State<PlacesScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-        title: Text('「${places[index].label}」を消しますか？', style: AppTextStyles.pageTitle()),
+        title: Text(AppLocalizations.of(context).placesDeleteTitle(places[index].label), style: AppTextStyles.pageTitle()),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('やめる')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('消す')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(AppLocalizations.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(AppLocalizations.of(context).placesDeleteAction)),
         ],
       ),
     );
@@ -141,21 +142,21 @@ class _PlacesScreenState extends State<PlacesScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
-        title: Text('場所の名前', style: AppTextStyles.pageTitle()),
+        title: Text(AppLocalizations.of(context).placesNameTitle, style: AppTextStyles.pageTitle()),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: AddPlaceSheet.maxLabelLength,
-          decoration: const InputDecoration(hintText: '例：家、おばあちゃんの家、塾'),
+          decoration: InputDecoration(hintText: AppLocalizations.of(context).placesNameHint),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('やめる')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(AppLocalizations.of(context).cancel)),
           TextButton(
             onPressed: () {
               final text = controller.text.trim();
               Navigator.of(context).pop(text.isEmpty ? initial : text);
             },
-            child: const Text('登録する'),
+            child: Text(AppLocalizations.of(context).placesRegister),
           ),
         ],
       ),
@@ -175,19 +176,19 @@ class _PlacesScreenState extends State<PlacesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const PageHeader(title: '見張る場所'),
+            PageHeader(title: AppLocalizations.of(context).settingsPlaces),
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text('いまいる場所に加えて、よく行く場所を3か所まで見張れます。ホームの上のチップで切り替えて見られます。', style: note),
+              child: Text(AppLocalizations.of(context).placesIntro, style: note),
             ),
             const SizedBox(height: 14),
             SettingsCard(
               children: [
                 _PlaceRow(
                   icon: Icons.my_location_rounded,
-                  label: 'いまいる場所',
-                  placeName: _locationOff ? '位置情報がオフです' : _currentName,
+                  label: AppLocalizations.of(context).currentPlace,
+                  placeName: _locationOff ? AppLocalizations.of(context).homeLocationOffTitle : _currentName,
                   watched: _currentWatched,
                   hasCloud: _currentPoint != null && _hasCloudAt(_currentPoint!),
                 ),
@@ -214,7 +215,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('場所をさがす', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
+                        Text(AppLocalizations.of(context).placesSearchTitle, style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 10),
                         TextField(
                           controller: _query,
@@ -222,7 +223,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
                           onSubmitted: (text) => _openAdd(query: text),
                           style: AppTextStyles.body().copyWith(height: 1.3),
                           decoration: InputDecoration(
-                            hintText: '市町村名や住所',
+                            hintText: AppLocalizations.of(context).placesSearchHint,
                             filled: true,
                             fillColor: const Color(0xFFF7FAFD),
                             isDense: true,
@@ -247,7 +248,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
             const SizedBox(height: 14),
             Text.rich(
               TextSpan(children: [
-                const TextSpan(text: '無料プランは「いまいる場所」と、登録した1か所です。\n3か所の登録は '),
+                TextSpan(text: AppLocalizations.of(context).placesFreeNoteBefore),
                 WidgetSpan(
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
@@ -256,7 +257,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
                     child: Text('Plus', style: AppTextStyles.caption(color: AppColors.accent).copyWith(decoration: TextDecoration.underline, height: 1.6)),
                   ),
                 ),
-                const TextSpan(text: ' の機能です。'),
+                TextSpan(text: AppLocalizations.of(context).placesFreeNoteAfter),
               ]),
               textAlign: TextAlign.center,
               style: AppTextStyles.caption().copyWith(height: 1.6),
@@ -268,10 +269,10 @@ class _PlacesScreenState extends State<PlacesScreen> {
   }
 
   static IconData _iconFor(String label) => switch (label) {
-        '家' => Icons.home_outlined,
-        '学校' => Icons.school_outlined,
-        '職場' => Icons.work_outline_rounded,
-        '実家' => Icons.cottage_outlined,
+        '家' || 'Home' => Icons.home_outlined,
+        '学校' || 'School' => Icons.school_outlined,
+        '職場' || 'Work' => Icons.work_outline_rounded,
+        '実家' || "Parents' home" => Icons.cottage_outlined,
         _ => Icons.place_outlined,
       };
 }
@@ -299,11 +300,12 @@ class _PlaceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final note = AppTextStyles.note().copyWith(height: 1.4);
+    final l10n = AppLocalizations.of(context);
     final status = !watched
-        ? TextSpan(text: '見張っていません', style: note)
+        ? TextSpan(text: l10n.placesNotWatching, style: note)
         : hasCloud
-            ? TextSpan(text: '見えています', style: note.copyWith(color: AppColors.accent, fontWeight: FontWeight.w700))
-            : TextSpan(text: '静かな空', style: note);
+            ? TextSpan(text: l10n.homeVisibleShort, style: note.copyWith(color: AppColors.accent, fontWeight: FontWeight.w700))
+            : TextSpan(text: l10n.placesQuietSky, style: note);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
       child: Row(
@@ -317,7 +319,7 @@ class _PlaceRow extends StatelessWidget {
                 Text(label, style: AppTextStyles.item()),
                 const SizedBox(height: 2),
                 Text.rich(TextSpan(children: [
-                  if (placeName != null && placeName!.isNotEmpty) TextSpan(text: '$placeName ・ ', style: note),
+                  if (placeName != null && placeName!.isNotEmpty) TextSpan(text: l10n.badgePlace(placeName!), style: note),
                   status,
                 ])),
               ],
@@ -332,10 +334,10 @@ class _PlaceRow extends StatelessWidget {
                 textStyle: AppTextStyles.body(color: AppColors.accent)
                     .copyWith(fontSize: 14, decoration: TextDecoration.underline),
               ),
-              child: const Text('変更'),
+              child: Text(l10n.placesRename),
             ),
           if (onDelete != null)
-            IconTapButton(icon: Icons.delete_outline_rounded, semanticLabel: '$label を消す', onPressed: onDelete),
+            IconTapButton(icon: Icons.delete_outline_rounded, semanticLabel: l10n.placesDeleteLabel(label), onPressed: onDelete),
         ],
       ),
     );
@@ -360,7 +362,7 @@ class _AddPlaceButton extends StatelessWidget {
           onTap: onPressed,
           child: Center(
             child: Text(
-              '＋ 場所を追加（あと$remainingか所）',
+              AppLocalizations.of(context).placesAddButton(remaining),
               style: AppTextStyles.button(color: AppColors.accent, fontSize: 15),
             ),
           ),
