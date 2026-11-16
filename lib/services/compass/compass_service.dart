@@ -44,7 +44,19 @@ class CompassService {
 
   /// 開発中の確かめ用。デバッグ版で --dart-define=FAKE_HEADING=100 のように付けると、
   /// 方位センサーのないシミュレータでも、その方角を向いているとして動く
-  static const String _fakeHeading = kDebugMode ? String.fromEnvironment('FAKE_HEADING') : '';
+  /// dart-define がなければ、Mac の /tmp/thundercloud_fake_heading（シミュレータは Mac の /tmp を共有する）を、起動のたびに読む。
+  /// ストア用のスクリーンショットで、作り直さずに向きを変えるため（デバッグ版だけ）
+  static const String _fakeHeadingDefine = kDebugMode ? String.fromEnvironment('FAKE_HEADING') : '';
+
+  static String get _fakeHeading {
+    if (!kDebugMode) return '';
+    if (_fakeHeadingDefine.isNotEmpty) return _fakeHeadingDefine;
+    try {
+      return File('/tmp/thundercloud_fake_heading').readAsStringSync().trim();
+    } catch (_) {
+      return '';
+    }
+  }
 
   /// 方位センサーの値。センサーがない端末（シミュレータなど）では何も届かない
   ///

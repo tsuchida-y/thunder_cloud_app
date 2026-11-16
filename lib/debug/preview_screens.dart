@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../models/finder_target.dart';
 import '../models/lat_lng.dart';
 import '../models/sky_cloud.dart';
+import '../l10n/l10n.dart';
 import '../models/sky_now.dart';
+import '../utils/sky_geometry.dart';
 import '../screens/finder/calibrate_sheet.dart';
 import '../screens/finder/finder_screen.dart';
 import '../screens/home/always_allow_sheet.dart';
@@ -41,9 +43,16 @@ class PreviewScreens {
   ];
 
   static const LatLng _takizawa = LatLng(39.73, 141.07);
-  static const WatchSpot _now = WatchSpot(id: 'now', label: '現在地', placeName: '滝沢市', point: _takizawa, isCurrent: true);
-  static const WatchSpot _home =
-      WatchSpot(id: 'place0', label: '家', placeName: '盛岡市', point: LatLng(39.70, 141.15), isCurrent: false);
+  // 見本の地名。英語の端末では英語にする（ストアの英語のスクリーンショットを撮るため）
+  static String get _place => L.isEnglish ? 'Takizawa' : '滝沢市';
+  static WatchSpot get _now =>
+      WatchSpot(id: 'now', label: L.t.homeCurrentLocation, placeName: _place, point: _takizawa, isCurrent: true);
+  static WatchSpot get _home => WatchSpot(
+      id: 'place0',
+      label: L.isEnglish ? 'Home' : '家',
+      placeName: L.isEnglish ? 'Morioka' : '盛岡市',
+      point: const LatLng(39.70, 141.15),
+      isCurrent: false);
 
   static CloudView _cloud(String id, LatLng center, LatLng from) => CloudView(
         SkyCloud(
@@ -65,12 +74,12 @@ class PreviewScreens {
     final sky = SkyNow(observedAt: observed, tempC: 27, sun1h: 0.9, visibilityKm: 20);
     final chips = [SpotChip(_now, true), SpotChip(_home, true)];
     final nationwide = NationwideCloud(
-        id: 'n1', center: const LatLng(26.2, 127.7), directionName: '南西', distanceKm: 1900, placeName: '那覇市のあたり');
+        id: 'n1', center: const LatLng(26.2, 127.7), directionName: SkyGeometry.directionName(225), distanceKm: 1900, placeName: L.isEnglish ? 'Around Naha' : '那覇市のあたり');
     switch (name) {
       case 'home_plus':
         return HomeState(
           mode: HomeMode.clouds,
-          placeName: '滝沢市',
+          placeName: _place,
           spots: chips,
           selectedSpotId: 'now',
           otherSpotClouds: [OtherSpotCloud(_home, other)],
@@ -87,7 +96,7 @@ class PreviewScreens {
       case 'home_empty':
         return HomeState(
           mode: HomeMode.empty,
-          placeName: '滝沢市',
+          placeName: _place,
           spots: [SpotChip(_now, false)],
           selectedSpotId: 'now',
           observedAt: observed,
@@ -99,28 +108,28 @@ class PreviewScreens {
       case 'home_night':
         return HomeState(
           mode: HomeMode.night,
-          placeName: '滝沢市',
+          placeName: _place,
           spots: [SpotChip(_now, false)],
           selectedSpotId: 'now',
           nextSunrise: DateTime.now().add(const Duration(hours: 7)),
           todaysCloud: TodaysCloud(
               from: DateTime.now().subtract(const Duration(hours: 6)),
               to: DateTime.now().subtract(const Duration(hours: 5)),
-              directionName: '南東',
+              directionName: SkyGeometry.directionName(135),
               distanceKm: 42),
         );
       case 'home_offline':
         return HomeState(
           mode: HomeMode.offline,
-          placeName: '滝沢市',
-          lastSky: LastSky(checkedAt: observed, directionName: '南東', distanceKm: 42),
+          placeName: _place,
+          lastSky: LastSky(checkedAt: observed, directionName: SkyGeometry.directionName(135), distanceKm: 42),
         );
       case 'home_nopermission':
         return const HomeState(mode: HomeMode.noPermission, locationOff: true, notificationsOff: true);
       default:
         return HomeState(
           mode: HomeMode.clouds,
-          placeName: '滝沢市',
+          placeName: _place,
           spots: [SpotChip(_now, true)],
           selectedSpotId: 'now',
           clouds: [near],
@@ -194,7 +203,7 @@ class _SheetLauncherState extends State<_SheetLauncher> {
         case 'sheet_whatsnew':
           await WhatsNewSheet.show(context);
         case 'sheet_always':
-          await AlwaysAllowSheet.show(context, placeName: '滝沢市', onAllow: () async {});
+          await AlwaysAllowSheet.show(context, placeName: PreviewScreens._place, onAllow: () async {});
         case 'sheet_quiet':
           await QuietHoursSheet.show(context, MemberSettings.defaultQuietHours);
         case 'sheet_addplace':
