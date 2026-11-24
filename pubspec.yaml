@@ -1,7 +1,7 @@
 name: thunder_cloud_app
 description: "入道雲サーチアプリ - 美しい入道雲の発生を検出・通知する観賞・撮影支援アプリ"
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
-version: 2.0.1+14
+version: 2.0.1+15
 
 environment:
   sdk: ^3.5.3
@@ -44,6 +44,8 @@ dependencies:
   home_widget: ^0.10.0
   in_app_review: ^2.0.12
   firebase_app_check: ^0.3.2+10
+  firebase_analytics: ^11.6.0
+  firebase_crashlytics: ^4.3.10
 
 dev_dependencies:
   flutter_test:

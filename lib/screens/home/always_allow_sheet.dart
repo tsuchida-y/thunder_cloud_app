@@ -19,6 +19,7 @@ class AlwaysAllowSheet extends StatelessWidget {
   static Future<void> show(BuildContext context, {String? placeName, required Future<void> Function() onAllow}) {
     return showModalBottomSheet<void>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_always'),
       isScrollControlled: true,
       // 許可のお願いの前の案内なので、閉じて先送りはできない（必ず許可のお願いに進む。App Store 審査 5.1.1(iv)）
       isDismissible: false,

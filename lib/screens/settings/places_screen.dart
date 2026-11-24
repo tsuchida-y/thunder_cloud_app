@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
@@ -132,6 +133,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
     if (ok != true) return;
     places.removeAt(index);
     await MemberService.savePlaces(places);
+    AnalyticsService.placeRemoved(places.length);
   }
 
   /// 場所の名前（「家」「学校」）をたずねる。やめたら null
@@ -253,7 +255,7 @@ class _PlacesScreenState extends State<PlacesScreen> {
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
                   child: GestureDetector(
-                    onTap: () => AppRoutes.openPlus(context),
+                    onTap: () => AppRoutes.openPlus(context, source: 'places_note'),
                     child: Text('Plus', style: AppTextStyles.caption(color: AppColors.accent).copyWith(decoration: TextDecoration.underline, height: 1.6)),
                   ),
                 ),

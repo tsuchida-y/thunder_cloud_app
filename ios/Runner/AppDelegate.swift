@@ -75,6 +75,21 @@ import UserNotifications
       }
     }
     tapChannel = tap
+
+    // 計測で、TestFlight の版を本番と分けるため（lib/services/analytics/analytics_service.dart）
+    // TestFlight で入れたアプリは、購入の記録のファイル名が sandboxReceipt になる
+    let build = FlutterMethodChannel(
+      name: "thunder_cloud/build_channel",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    build.setMethodCallHandler { call, result in
+      if call.method == "channel" {
+        let testFlight = Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        result(testFlight ? "testflight" : "production")
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {

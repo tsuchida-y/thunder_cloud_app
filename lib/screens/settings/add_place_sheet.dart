@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
@@ -28,6 +29,7 @@ class AddPlaceSheet extends StatefulWidget {
   static Future<bool> show(BuildContext context, {required List<WatchPlace> places, required int maxPlaces, String initialQuery = ''}) async {
     final added = await showModalBottomSheet<bool>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_add_place'),
       isScrollControlled: true,
       backgroundColor: const Color(0xFFF4F8FC),
       barrierColor: const Color(0x730B1630),
@@ -96,7 +98,9 @@ class _AddPlaceSheetState extends State<AddPlaceSheet> {
     if (picked == null) return;
     setState(() => _saving = true);
     final places = [...widget.places, WatchPlace(label: _label, name: picked.shortName, location: picked.location)];
-    await MemberService.savePlaces(places.take(widget.maxPlaces).toList());
+    final saved = places.take(widget.maxPlaces).toList();
+    await MemberService.savePlaces(saved);
+    AnalyticsService.placeAdded(saved.length);
     if (mounted) Navigator.of(context).pop(true);
   }
 

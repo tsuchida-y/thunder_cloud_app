@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/location/current_place.dart';
 import '../../services/member/member_service.dart';
@@ -52,7 +53,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(WelcomeScreen._doneKey, true);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    AnalyticsService.onboardingCompleted();
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(settings: const RouteSettings(name: 'home'), builder: (_) => const HomeScreen()));
   }
 
   @override

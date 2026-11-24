@@ -27,6 +27,7 @@ class WhatsNewSheet extends StatelessWidget {
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_whats_new'),
       isScrollControlled: true,
       backgroundColor: Colors.white,
       barrierColor: const Color(0x730B1630),

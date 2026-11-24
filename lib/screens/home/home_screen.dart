@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _addSpot() async {
     final maxPlaces = SkyRules.maxPlaces(isPlus: _controller.state.isPlus);
     if (_controller.places.length >= maxPlaces) {
-      AppRoutes.openPlus(context);
+      AppRoutes.openPlus(context, source: 'home_add_place');
       return;
     }
     await AddPlaceSheet.show(context, places: _controller.places, maxPlaces: maxPlaces);

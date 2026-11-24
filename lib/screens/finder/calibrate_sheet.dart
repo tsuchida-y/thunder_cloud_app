@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/l10n.dart';
 import '../../services/compass/compass_service.dart';
 import '../../theme/app_colors.dart';
@@ -22,8 +23,10 @@ class CalibrateSheet extends StatelessWidget {
   static const double goodAccuracyDeg = 20;
 
   static Future<void> show(BuildContext context, Stream<Heading> headings) {
+    AnalyticsService.calibrateShown();
     return showModalBottomSheet<void>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_calibrate'),
       isScrollControlled: true,
       backgroundColor: Colors.white,
       barrierColor: const Color(0x730B1630), // rgba(11, 22, 48, 0.45)

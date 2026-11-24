@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/l10n.dart';
 import '../../models/lat_lng.dart';
 import '../../models/sky_cloud.dart';
@@ -380,16 +381,25 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     }, onError: (Object e) => AppLogger.warning('member_server を読めません: $e', tag: 'HomeController'));
   }
 
+  /// 計測: 雲の一覧の読み込みを始めてから、サーバーから届くまで
+  Stopwatch? _skyLoad;
+
   void _listenSky() {
+    if (_cloudSub == null) _skyLoad = Stopwatch()..start();
     _cloudSub ??= SkyRepository.watchActiveClouds().listen((snap) {
       _activeClouds = snap.docs.map(SkyCloud.fromDoc).whereType<SkyCloud>().toList();
       if (snap.metadata.isFromCache) {
         // つながっていないと、端末に残っている分だけが届く。しばらく待ってもサーバーから来なければ通信できない
         _offlineTimer ??= Timer(offlineAfter, () {
+          AnalyticsService.errorShown('network');
           _offline = true;
           _recompute();
         });
       } else {
+        if (_skyLoad != null) {
+          AnalyticsService.skyLoaded(_skyLoad!.elapsed, ok: true);
+          _skyLoad = null;
+        }
         _offlineTimer?.cancel();
         _offlineTimer = null;
         _offline = false;
@@ -397,6 +407,11 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       _recompute();
     }, onError: (Object e) {
       AppLogger.warning('雲の一覧を読めません: $e', tag: 'HomeController');
+      if (_skyLoad != null) {
+        AnalyticsService.skyLoaded(_skyLoad!.elapsed, ok: false);
+        _skyLoad = null;
+      }
+      AnalyticsService.errorShown('sky_load_failed');
       _offline = true;
       _recompute();
     });
@@ -561,10 +576,33 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
       if (selected.id == spots.first.id) _rememberSky(views, observedAt ?? now);
     }
 
+    _trackState(next, isPlus, placeCount);
     _state = next;
     notifyListeners();
     _updateWidget(next, spots, isPlus, rangeKm, now);
     if (next.mode != HomeMode.loading && next.mode != HomeMode.noPermission) _maybeAskAlways();
+  }
+
+  /// 計測: ホームの状態が変わったときと、Plus・場所の数が変わったときだけ送る（同じ値を何度も送らない）
+  String? _trackedMode;
+  String? _trackedUser;
+
+  void _trackState(HomeState next, bool isPlus, int placeCount) {
+    if (next.mode != HomeMode.loading) {
+      final mode = switch (next.mode) {
+        HomeMode.noPermission => 'no_permission',
+        _ => next.mode.name,
+      };
+      if (mode != _trackedMode) {
+        _trackedMode = mode;
+        AnalyticsService.homeStateShown(mode);
+      }
+    }
+    final user = '$isPlus/$placeCount/${L.isEnglish}';
+    if (user != _trackedUser) {
+      _trackedUser = user;
+      AnalyticsService.setUserState(isPlus: isPlus, placeCount: placeCount, lang: L.isEnglish ? 'en' : 'ja');
+    }
   }
 
   /// ウィジェットに、見張っているすべての場所の空を渡す（ウィジェットごとに見る場所を選べる）
