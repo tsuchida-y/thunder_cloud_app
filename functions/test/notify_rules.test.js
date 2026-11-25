@@ -102,6 +102,20 @@ test('通知の文面（Notify.html の文言、60kmより遠いときは控え�
   assert.match(appearedMessage(farView).body, /^約\d+km先なので、見えるかもしれません。/);
 });
 
+test('英語の通知の文面（端末の言語が英語の人）', () => {
+  const view = decideNotification({ ...base, isPlus: true, clouds: [mid] }).notify.view;
+  assert.deepEqual(appearedMessage(view, null, 'en'), {
+    title: 'A thunderhead appeared to the southeast',
+    body: 'About 42 km away. Look up about 1½ fists high.',
+  });
+  assert.equal(appearedMessage(view, '家', 'en').title, 'A thunderhead appeared to the southeast of 家');
+  assert.equal(appearedMessage(view, 'いまいる場所', 'en').title, 'A thunderhead appeared to the southeast');
+  const farView = decideNotification({ ...base, isPlus: true, clouds: [far] }).notify.view;
+  assert.match(appearedMessage(farView, null, 'en').body, /^About \d+ km away, so it may be visible\./);
+  // 言語を指定しなければ日本語のまま
+  assert.equal(appearedMessage(view).title, '南東の空に、入道雲が現れました');
+});
+
 test('登録した場所の雲は、通知の題に場所の名前を付ける', () => {
   const view = { distanceKm: 55, directionName: '北', fistsLabel: 'こぶし1つ' };
   assert.equal(appearedMessage(view, '家').title, '家の北の空に、入道雲が現れました');

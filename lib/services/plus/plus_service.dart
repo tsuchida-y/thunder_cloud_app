@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../analytics/analytics_service.dart';
 import '../../utils/logger.dart';
 
 /// Plus（月額200円・7日間無料と、買い切り1,200円。RevenueCat。2026-10-27 に年額をやめて買い切りにした）
@@ -108,21 +109,37 @@ class PlusService {
 
   /// 買う。Plus になったら true、やめたら false
   static Future<bool> purchase(Package package) async {
+    // 計測用の商品の種類（monthly / lifetime）
+    final product = package.packageType == PackageType.lifetime ? 'lifetime' : 'monthly';
+    AnalyticsService.purchaseStarted(product);
     try {
       final result = await Purchases.purchase(PurchaseParams.package(package));
       _updateActive(result.customerInfo);
+      AnalyticsService.purchaseResult(product, activeInStore.value ? 'success' : 'pending');
       return activeInStore.value;
     } on PlatformException catch (e) {
-      if (PurchasesErrorHelper.getErrorCode(e) == PurchasesErrorCode.purchaseCancelledError) return false;
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        AnalyticsService.purchaseResult(product, 'cancelled');
+        return false;
+      }
+      AnalyticsService.purchaseResult(product, code == PurchasesErrorCode.paymentPendingError ? 'pending' : 'failed');
+      AnalyticsService.errorShown('purchase_failed');
       rethrow;
     }
   }
 
   /// 購入を復元する。Plus なら true
   static Future<bool> restore() async {
-    final info = await Purchases.restorePurchases();
-    _updateActive(info);
-    return activeInStore.value;
+    try {
+      final info = await Purchases.restorePurchases();
+      _updateActive(info);
+      AnalyticsService.restoreResult(activeInStore.value ? 'success' : 'not_found');
+      return activeInStore.value;
+    } catch (e) {
+      AnalyticsService.restoreResult('failed');
+      rethrow;
+    }
   }
 }
 

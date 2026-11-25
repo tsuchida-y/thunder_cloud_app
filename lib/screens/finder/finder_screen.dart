@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/analytics/analytics_service.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/finder_target.dart';
 import '../../services/compass/compass_service.dart';
 import '../../services/location/current_place.dart';
@@ -47,6 +49,8 @@ class _FinderScreenState extends State<FinderScreen> {
   double? _heading;
   bool _noSensor = false;
   bool _aligned = false;
+  bool _alignedOnce = false;
+  final Stopwatch _opened = Stopwatch()..start();
   bool _calibrateShown = false;
   bool _answered = false;
 
@@ -63,7 +67,10 @@ class _FinderScreenState extends State<FinderScreen> {
 
   Future<void> _start() async {
     _noSensorTimer = Timer(noSensorAfter, () {
-      if (mounted && _heading == null) setState(() => _noSensor = true);
+      if (mounted && _heading == null) {
+        AnalyticsService.errorShown('compass_unavailable');
+        setState(() => _noSensor = true);
+      }
     });
     // Android は磁北が基準なので、いまいる場所の偏角で本当の北に直す（iPhone は 0）
     final declination = await CompassService.declination(await CurrentPlace.lastKnown());
@@ -78,7 +85,14 @@ class _FinderScreenState extends State<FinderScreen> {
     final smoothed = previous == null ? h.trueDeg : (previous + angleDiff(previous, h.trueDeg) * 0.25 + 360) % 360;
     final diff = angleDiff(smoothed, target.bearingDeg).abs();
     final aligned = _aligned ? diff <= alignLeaveDeg : diff <= alignEnterDeg;
-    if (aligned && !_aligned) HapticFeedback.mediumImpact();
+    if (aligned && !_aligned) {
+      HapticFeedback.mediumImpact();
+      // 計測: 開いてから最初に向きが合うまでの秒数（1回だけ）
+      if (!_alignedOnce) {
+        _alignedOnce = true;
+        AnalyticsService.finderAligned(_opened.elapsed.inSeconds);
+      }
+    }
 
     setState(() {
       _heading = smoothed;
@@ -115,7 +129,7 @@ class _FinderScreenState extends State<FinderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PageHeader(title: '${target.directionName}の入道雲へ'),
+          PageHeader(title: AppLocalizations.of(context).finderTitle(target.directionName)),
           const SizedBox(height: 16),
           ...(_aligned ? _alignedBody() : _guideBody()),
         ],
@@ -132,21 +146,21 @@ class _FinderScreenState extends State<FinderScreen> {
     final Widget headline;
     final String sub;
     if (diff == null) {
-      headline = Text('${target.directionName}の方角です', style: AppTextStyles.display());
-      sub = _noSensor ? 'この端末では方位センサーが使えません。' : '方角を調べています…';
+      headline = Text(AppLocalizations.of(context).finderDirectionIs(target.directionName), style: AppTextStyles.display());
+      sub = _noSensor ? AppLocalizations.of(context).finderNoSensor : AppLocalizations.of(context).finderChecking;
     } else if (behind) {
-      headline = Text('後ろを向いて', style: AppTextStyles.display());
-      sub = 'ゆっくり、体ごと後ろを向いて';
+      headline = Text(AppLocalizations.of(context).turnBehind, style: AppTextStyles.display());
+      sub = AppLocalizations.of(context).finderSubBehind;
     } else {
       final right = diff > 0;
       headline = Text.rich(
         TextSpan(children: [
-          TextSpan(text: right ? '右へ ' : '左へ '),
+          TextSpan(text: right ? AppLocalizations.of(context).turnRightPrefix : AppLocalizations.of(context).turnLeftPrefix),
           TextSpan(text: '${diff.abs().round()}°', style: AppTextStyles.number(fontSize: 34, color: Colors.white)),
         ]),
         style: AppTextStyles.display(),
       );
-      sub = 'ゆっくり、体ごと${right ? '右' : '左'}を向いて';
+      sub = right ? AppLocalizations.of(context).finderSubRight : AppLocalizations.of(context).finderSubLeft;
     }
 
     return [
@@ -171,11 +185,11 @@ class _FinderScreenState extends State<FinderScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('見上げる高さ', style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
+            Text(AppLocalizations.of(context).finderLookUpTitle, style: AppTextStyles.body().copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             ElevationDiagram(elevationDeg: target.elevationDeg),
             const SizedBox(height: 6),
-            Text('腕を伸ばして、${target.fistsLabel}くらい上。', style: AppTextStyles.body(color: AppColors.textSub).copyWith(fontSize: 14, height: 1.6)),
+            Text(AppLocalizations.of(context).finderLookUpHint(target.fistsLabel), style: AppTextStyles.body(color: AppColors.textSub).copyWith(fontSize: 14, height: 1.6)),
           ],
         ),
       ),
@@ -193,11 +207,11 @@ class _FinderScreenState extends State<FinderScreen> {
       const SizedBox(height: 10),
       Semantics(
         liveRegion: true,
-        child: Text('この方向です', textAlign: TextAlign.center, style: AppTextStyles.display()),
+        child: Text(AppLocalizations.of(context).alignedHere, textAlign: TextAlign.center, style: AppTextStyles.display()),
       ),
       const SizedBox(height: 6),
       Text(
-        '正面の空、${target.fistsLabel}くらい上を\n見上げてみてください。',
+        AppLocalizations.of(context).finderAlignedHint(target.fistsLabel),
         textAlign: TextAlign.center,
         style: AppTextStyles.body(color: Colors.white),
       ),
@@ -223,18 +237,18 @@ class _ReportCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('入道雲は見えましたか？', style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
+          Text(AppLocalizations.of(context).reportQuestion, style: AppTextStyles.item().copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
           if (answered)
-            Text('教えてくれて、ありがとうございます。', style: AppTextStyles.note())
+            Text(AppLocalizations.of(context).reportThanks, style: AppTextStyles.note())
           else ...[
-            Text('教えてもらうと、お知らせの精度が上がります。', style: AppTextStyles.note()),
+            Text(AppLocalizations.of(context).reportWhy, style: AppTextStyles.note()),
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: ChoiceButton(label: '見えた', onPressed: () => onAnswer(true))),
+                Expanded(child: ChoiceButton(label: AppLocalizations.of(context).seen, onPressed: () => onAnswer(true))),
                 const SizedBox(width: 8),
-                Expanded(child: ChoiceButton(label: '見えなかった', onPressed: () => onAnswer(false))),
+                Expanded(child: ChoiceButton(label: AppLocalizations.of(context).notSeen, onPressed: () => onAnswer(false))),
               ],
             ),
           ],

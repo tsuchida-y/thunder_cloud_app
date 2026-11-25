@@ -16,7 +16,7 @@
  */
 
 const { NOTIFY_RULES } = require('../../constants');
-const { describeCloud, nearestDistanceKm } = require('../geo/sky_geometry');
+const { describeCloud, nearestDistanceKm, directionName, fistsLabel } = require('../geo/sky_geometry');
 const { isDaytime } = require('../geo/sun_times');
 
 /**
@@ -176,14 +176,27 @@ function nextHistory(history, cloudId, now) {
 /** いまいる場所の見張りの名前（cloud_watch_service.js の watchPointsOf と同じ） */
 const CURRENT_PLACE_LABEL = 'いまいる場所';
 
-function appearedMessage(view, pointLabel = null) {
+function appearedMessage(view, pointLabel = null, lang = 'ja') {
   const km = Math.round(view.distanceKm);
+  if (lang === 'en') return appearedMessageEn(view, pointLabel, km);
   // 登録した場所の雲は「家の北の空に」のように場所の名前を付ける（場所の見せ方_画面一覧.png の「通知（場所名つき）」）
   const place = pointLabel && pointLabel !== CURRENT_PLACE_LABEL ? `${pointLabel}の` : '';
   const title = `${place}${view.directionName}の空に、入道雲が現れました`;
   const body = view.distanceKm > NOTIFY_RULES.MAYBE_VISIBLE_KM
     ? `約${km}km先なので、見えるかもしれません。${view.fistsLabel}の高さを見上げてみて。`
     : `約${km}km先。${view.fistsLabel}の高さを見上げてみて。`;
+  return { title, body };
+}
+
+/** 英語の通知の文面（端末の言語が英語の人。members.locale が 'en'） */
+function appearedMessageEn(view, pointLabel, km) {
+  const direction = directionName(view.bearingDeg, 'en');
+  const fists = fistsLabel(view.fists, 'en');
+  const place = pointLabel && pointLabel !== CURRENT_PLACE_LABEL ? ` of ${pointLabel}` : '';
+  const title = `A thunderhead appeared to the ${direction}${place}`;
+  const body = view.distanceKm > NOTIFY_RULES.MAYBE_VISIBLE_KM
+    ? `About ${km} km away, so it may be visible. Look up about ${fists} high.`
+    : `About ${km} km away. Look up about ${fists} high.`;
   return { title, body };
 }
 

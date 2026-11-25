@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/common/app_buttons.dart';
@@ -18,6 +19,7 @@ class AlwaysAllowSheet extends StatelessWidget {
   static Future<void> show(BuildContext context, {String? placeName, required Future<void> Function() onAllow}) {
     return showModalBottomSheet<void>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_always'),
       isScrollControlled: true,
       // 許可のお願いの前の案内なので、閉じて先送りはできない（必ず許可のお願いに進む。App Store 審査 5.1.1(iv)）
       isDismissible: false,
@@ -31,7 +33,8 @@ class AlwaysAllowSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final place = placeName == null ? '' : '（$placeName）';
+    final l10n = AppLocalizations.of(context);
+    final place = placeName == null ? '' : l10n.homeNearestPlace(placeName!);
     return SafeArea(
       top: false,
       child: Padding(
@@ -61,14 +64,13 @@ class AlwaysAllowSheet extends StatelessWidget {
             Semantics(
               header: true,
               child: Text(
-                '出かけた先の空も、\n見張りましょうか。',
+                l10n.alwaysTitle,
                 style: AppTextStyles.headline(color: AppColors.text, fontSize: 22).copyWith(height: 1.5),
               ),
             ),
             const SizedBox(height: 14),
             Text(
-              'いまは、最後にアプリを開いた場所$placeの空を見張っています。'
-              '位置情報を「常に」にすると、移動しても、いまいる場所の空を見張れます。',
+              l10n.alwaysBody(place),
               style: AppTextStyles.body(),
             ),
             const SizedBox(height: 14),
@@ -77,14 +79,14 @@ class AlwaysAllowSheet extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Text(
-                  '次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。',
+                  l10n.alwaysHint,
                   style: AppTextStyles.note(),
                 ),
               ),
             ),
             const SizedBox(height: 14),
             PrimaryButton(
-              label: '続ける',
+              label: l10n.welcomeContinue,
               onPressed: () async {
                 Navigator.of(context).pop();
                 await onAllow();

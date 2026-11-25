@@ -1,0 +1,795 @@
+{
+  "@@locale": "ja",
+  "appName": "入道雲サーチ",
+  "welcomeLead": "あなたの場所から見える空に入道雲が現れたら、どの方角かをお知らせします。",
+  "welcomeLocationTitle": "位置情報（アプリの使用中）",
+  "welcomeLocationBody": "開いた場所の空を調べ、その場所の空を見張ります。",
+  "welcomeNotificationTitle": "通知",
+  "welcomeNotificationBody": "入道雲が見えたときに、1つの雲につき1回だけお知らせします。",
+  "welcomeContinue": "続ける",
+  "welcomeLaterNote": "移動先の空も見張る設定は、あとでご案内します。",
+  "cancel": "やめる",
+  "none": "なし",
+  "currentPlace": "いまいる場所",
+  "daysCount": "{count}日",
+  "@daysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "kmValue": "{km}km",
+  "@kmValue": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "rangePlusOption": "{km}km（Plus）",
+  "@rangePlusOption": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "freeTrial7Days": "7日間無料",
+  "settingsTitle": "設定",
+  "settingsSectionNotification": "通知",
+  "settingsNotifyAppeared": "入道雲が見えたら知らせる",
+  "settingsSectionRange": "どこまでの空を見守るか",
+  "settingsRangeNote": "60kmより遠い雲は「見えるかもしれません」とお知らせします。山や建物で隠れることもあります。",
+  "settingsSectionOther": "そのほか",
+  "settingsQuietHours": "通知しない時間",
+  "settingsQuietHoursNote": "空が暗いあいだ（夜）は自動で休みます",
+  "settingsRecord": "記録（見えた雲）",
+  "settingsPlaces": "見張る場所",
+  "settingsSectionAbout": "このアプリについて",
+  "settingsHowToUse": "使い方",
+  "settingsDataSource": "データの出典",
+  "settingsTerms": "利用規約",
+  "settingsPrivacy": "プライバシーポリシー",
+  "settingsDeleteData": "データを削除",
+  "settingsDeleting": "削除しています…",
+  "settingsDeleteDataNote": "見張る場所・設定・記録をサーバーから消します",
+  "settingsDeleteConfirmTitle": "データを削除しますか",
+  "settingsDeleteConfirmBody": "見張る場所、設定、通知の宛先、見えた雲の記録を、サーバーから削除します。元には戻せません。\n\nPlus の購入は消えません。削除したあとも、Plus はそのまま使えます。",
+  "settingsDeleteAction": "削除する",
+  "settingsDeletedTitle": "削除しました",
+  "settingsDeletedBody": "もう一度はじめから使えます。",
+  "settingsDeleteFailed": "削除できませんでした。通信を確かめて、もう一度お試しください。",
+  "settingsPlusManage": "プランの確認・解約",
+  "settingsPlusInUse": "利用中",
+  "settingsPlusBanner": "Plus で、もっと遠くまで見張る",
+  "dirN": "北",
+  "dirNE": "北東",
+  "dirE": "東",
+  "dirSE": "南東",
+  "dirS": "南",
+  "dirSW": "南西",
+  "dirW": "西",
+  "dirNW": "北西",
+  "fistsWhole": "こぶし{n}つ",
+  "@fistsWhole": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "fistsHalfMore": "{n, plural, =0{こぶし半分} other{こぶし{n}つ半}}",
+  "@fistsHalfMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoMinutes": "{n}分前",
+  "@agoMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoHours": "{n}時間前",
+  "@agoHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "agoDays": "{n}日前",
+  "@agoDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "morningSameDay": "朝 {time} ごろ",
+  "@morningSameDay": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "morningNextDay": "あすの朝 {time} ごろ",
+  "@morningNextDay": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "skySunny": "日が差しています",
+  "skySometimesSunny": "ときどき日が差しています",
+  "skyNoSun": "日が差していません",
+  "skyTemp": "気温{c}℃",
+  "@skyTemp": {
+    "placeholders": {
+      "c": {
+        "type": "int"
+      }
+    }
+  },
+  "skyVisibilityMax": "見通し{km}km以上",
+  "@skyVisibilityMax": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "skyVisibility": "見通し約{km}km",
+  "@skyVisibility": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "spotBadgeName": "{label}（{place}）",
+  "@spotBadgeName": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "listSeparator": " ・ ",
+  "badgePlace": "{place} ・ ",
+  "@badgePlace": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "skyObservedAgo": "{ago}に空を見ました",
+  "@skyObservedAgo": {
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCloudBodyMaybe": "約{km}km先なので、見えるかもしれません。{fists}くらいの高さに立っています。",
+  "@homeCloudBodyMaybe": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      },
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCloudBody": "約{km}km先。{fists}くらいの高さに立っています。",
+  "@homeCloudBody": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      },
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "homeBadgeMaybe": "見えるかもしれません",
+  "homeBadgeVisible": "いま、見えています",
+  "homeCloudTitle": "{direction}の空に、\n入道雲。",
+  "@homeCloudTitle": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "homeFindDirection": "雲の方角を調べる",
+  "homeBadgeWatching": "空を見守っています",
+  "homeCalmTitle": "いまは、\n静かな空です。",
+  "homeCalmBody": "入道雲が現れたら、すぐにお知らせします。",
+  "homeBadgeResting": "見張りはお休み中",
+  "homeNightTitle": "いまは夜。\n空が暗くて見えません。",
+  "homeNightBody": "明るくなったら見張りを再開します。夜のあいだは通知しません。",
+  "homeNightBodyResume": "{when}、明るくなったら見張りを再開します。夜のあいだは通知しません。",
+  "@homeNightBodyResume": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "homeTodayCloud": "きょう見えた入道雲",
+  "homeTodayCloudDetail": "{from} から {to} まで、{direction}の空（約{km}km先）",
+  "@homeTodayCloudDetail": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeOffline": "オフライン",
+  "homeOfflineTitle": "空の情報が\n受け取れません。",
+  "homeOfflineBody": "電波の届く場所で、もう一度読み込んでください。",
+  "homeLastSky": "最後に見た空（{time}）",
+  "@homeLastSky": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "homeLastCloud": "{direction}の空に入道雲（約{km}km先）",
+  "@homeLastCloud": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeLastUnknown": "いまも見えるかは分かりません。",
+  "homeReload": "もう一度読み込む",
+  "homeNoPlace": "場所が分かりません",
+  "homeNoPermissionTitle": "このままでは\n空を見張れません。",
+  "homeNoPermissionBody": "下の2つをオンにすると、入道雲が現れたときにお知らせできます。",
+  "homeLocationOffTitle": "位置情報がオフです",
+  "homeLocationOffBody": "設定アプリで「位置情報」を「使用中のみ」か「常に」にしてください。",
+  "homeOpenSettings": "設定アプリを開く",
+  "homeNotificationOffTitle": "通知がオフです",
+  "homeNotificationOffBody": "アプリを開いたときだけ、雲の場所を確かめられます。",
+  "homeEnableNotifications": "通知をオンにする",
+  "homeAddPlaceManually": "場所を手で登録する",
+  "homeSkyOf": "{place}の空",
+  "@homeSkyOf": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "recordLabel": "記録",
+  "homeChipWithCloud": "{place}、入道雲あり",
+  "@homeChipWithCloud": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "homeAddPlace": "場所を追加",
+  "homeAddPlacePlus": "場所を追加。Plus の機能です",
+  "homeCurrentLocation": "現在地",
+  "homeOtherSpotLine": "{name} ・ {direction} ・ {km}km",
+  "@homeOtherSpotLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeMaybeShort": "見えるかも",
+  "homeVisibleShort": "見えています",
+  "homeNearestPlace": "（{place}）",
+  "@homeNearestPlace": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "homeNowSky": "いまの空",
+  "homeAmedas": "近くのアメダス {time}",
+  "@homeAmedas": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "homeNearestCloud": "いちばん近い入道雲",
+  "homeNoneNationwide": "全国で見つかっていません",
+  "homeNearestLine": "{direction} {km}km{place}",
+  "@homeNearestLine": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "homeNationwideNote": "全国で{count}か所 ・ 押すと一覧",
+  "@homeNationwideNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeRecordLink": "見えた入道雲の記録",
+  "homeCloudLine": "{direction} ・ {km}km",
+  "@homeCloudLine": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "homeSinceMaybe": "{since}から ・ 見えるかも",
+  "@homeSinceMaybe": {
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  },
+  "homeSinceVisible": "{since}から見えています",
+  "@homeSinceVisible": {
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  },
+  "close": "閉じる",
+  "plusPurchaseFailed": "購入できませんでした。時間をおいて、もう一度お試しください。",
+  "plusRestoreNone": "復元できる Plus の購入が見つかりませんでした。",
+  "plusRestoreFailed": "復元できませんでした。時間をおいて、もう一度お試しください。",
+  "plusFallbackMonthly": "200円",
+  "plusFallbackLifetime": "1,200円",
+  "plusBuy": "Plus を買う",
+  "plusBuyLifetimeNote": "{price}（1回だけのお支払い）",
+  "@plusBuyLifetimeNote": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusTryFree": "7日間 無料で試す",
+  "plusTryFreeNote": "そのあと月額{price}（自動更新）",
+  "@plusTryFreeNote": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusStart": "Plus をはじめる",
+  "plusStartNote": "月額{price}（自動更新）",
+  "@plusStartNote": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusHeadline": "もっと遠くまで、\nいくつもの空を。",
+  "plusPlanMonthly": "月額 {price}",
+  "@plusPlanMonthly": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusPlanMonthlyNote": "いつでも解約できます",
+  "plusPlanLifetime": "買い切り {price}",
+  "@plusPlanLifetime": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "plusPlanLifetimeNote": "1回払いでずっと使える",
+  "plusNotReady": "いまは購入の準備中です。",
+  "plusTermsLifetime": "買い切りは1回のお支払いで、自動更新はありません。\nあとから追加の料金はかかりません。",
+  "plusTermsTrial": "終了24時間前までの解約なら、料金はかかりません。\n更新はストアの設定からいつでも止められます。",
+  "plusTermsMonthly": "期間が終わる24時間前までに解約しないと、自動で更新されます。\n更新はストアの設定からいつでも止められます。",
+  "plusRestore": "購入を復元",
+  "plusPrivacy": "プライバシー",
+  "plusFeaturePlaces": "いまいる場所＋3か所",
+  "plusFeaturePlacesNote": "家や学校、職場の空も見張って、ホームで切り替え",
+  "plusFeatureRange": "90km先まで見張る",
+  "plusFeatureRangeNote": "無料は30kmまで",
+  "plusFeatureWidget": "ホーム画面のウィジェット",
+  "plusFeatureWidgetNote": "アプリを開かずに方角と距離が分かる",
+  "plusActiveLifetime": "買い切り（ずっと使えます。追加の料金はかかりません）",
+  "plusActiveCancelledTitle": "月額（解約済み）",
+  "plusActiveCancelledUntil": "{day}まで使えます。それ以降は料金がかかりません",
+  "@plusActiveCancelledUntil": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "plusActiveTrial": "7日間の無料体験中",
+  "plusActiveMonthly": "月額（自動更新）",
+  "plusRenewsOn": "{day}に更新されます",
+  "@plusRenewsOn": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "plusActiveThanks": "Plus を使っています。ありがとうございます。",
+  "plusActiveManageNote": "月額の更新や解約は、ストアの設定から行えます。",
+  "plusManageSubscription": "サブスクリプションを管理",
+  "dateFull": "{year}年{month}月{day}日",
+  "@dateFull": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "placesDeleteTitle": "「{label}」を消しますか？",
+  "@placesDeleteTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "placesDeleteAction": "消す",
+  "placesNameTitle": "場所の名前",
+  "placesNameHint": "例：家、おばあちゃんの家、塾",
+  "placesRegister": "登録する",
+  "placesIntro": "いまいる場所に加えて、よく行く場所を3か所まで見張れます。ホームの上のチップで切り替えて見られます。",
+  "placesSearchTitle": "場所をさがす",
+  "placesSearchHint": "市町村名や住所",
+  "placesFreeNoteBefore": "無料プランは「いまいる場所」と、登録した1か所です。\n3か所の登録は ",
+  "placesFreeNoteAfter": " の機能です。",
+  "placesNotWatching": "見張っていません",
+  "placesQuietSky": "静かな空",
+  "placesRename": "変更",
+  "placesDeleteLabel": "{label} を消す",
+  "@placesDeleteLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "placesAddButton": "＋ 場所を追加（あと{remaining}か所）",
+  "@placesAddButton": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "addPlaceIntro": "追加した場所は、ホームの上から切り替えて見られます。雲が出たら通知も届きます。",
+  "addPlaceSearchHint": "例：盛岡市、滝沢市役所、盛岡駅",
+  "addPlaceSearchTooltip": "さがす",
+  "addPlaceSearchHelp": "市・町・村の名前、住所、駅や学校の名前でさがせます。入れたら「→」かキーボードの「検索」を押してください。",
+  "addPlaceNotFound": "見つかりませんでした。別の書き方でさがしてください。",
+  "addPlaceLabelTitle": "呼び名",
+  "addPlaceLabelHint": "場所を選ぶと地名が入ります",
+  "addPlaceButton": "この場所を追加（あと{remaining}か所）",
+  "@addPlaceButton": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "finderTitle": "{direction}の入道雲へ",
+  "@finderTitle": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "finderDirectionIs": "{direction}の方角です",
+  "@finderDirectionIs": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "finderNoSensor": "この端末では方位センサーが使えません。",
+  "finderChecking": "方角を調べています…",
+  "turnBehind": "後ろを向いて",
+  "finderSubBehind": "ゆっくり、体ごと後ろを向いて",
+  "turnRightPrefix": "右へ ",
+  "turnLeftPrefix": "左へ ",
+  "finderSubRight": "ゆっくり、体ごと右を向いて",
+  "finderSubLeft": "ゆっくり、体ごと左を向いて",
+  "finderLookUpTitle": "見上げる高さ",
+  "finderLookUpHint": "腕を伸ばして、{fists}くらい上。",
+  "@finderLookUpHint": {
+    "placeholders": {
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "alignedHere": "この方向です",
+  "finderAlignedHint": "正面の空、{fists}くらい上を\n見上げてみてください。",
+  "@finderAlignedHint": {
+    "placeholders": {
+      "fists": {
+        "type": "String"
+      }
+    }
+  },
+  "reportQuestion": "入道雲は見えましたか？",
+  "reportThanks": "教えてくれて、ありがとうございます。",
+  "reportWhy": "教えてもらうと、お知らせの精度が上がります。",
+  "seen": "見えた",
+  "notSeen": "見えなかった",
+  "introSkip": "スキップ",
+  "introStart": "はじめる",
+  "introNext": "次へ",
+  "introNotifyTitle": "入道雲が出たら、\n通知でお知らせ。",
+  "introNotifyBody": "あなたの場所から見える空に入道雲が現れたら、方角と距離を通知します。1つの雲につき1回、1日3回までです。夜は通知しません。",
+  "introNow": "いま",
+  "introNotifyHeadline": "南東の空に、入道雲が現れました",
+  "introNotifyDetail": "約42km先。こぶし1つ半の高さを見上げてみて。",
+  "introFinderTitle": "どっちを見るか、\n矢印で案内。",
+  "introFinderBody": "ホームの「雲の方角を調べる」でスマホを向けると、「右へ35°」のように案内します。向きが合うと軽く振動します。見上げる高さは、腕を伸ばした「こぶしいくつ分」で伝えます。",
+  "introFinderSample": "見本です。スマホの向きを変えると、矢印が変わります。",
+  "introPlacesTitle": "家や学校の空も、\n見張れます。",
+  "introPlacesBody": "いまいる場所のほかに、よく行く場所を1か所まで登録できます。ホーム上のチップで切り替えます。Plus なら3か所まで、見える範囲も90kmまで広がります。",
+  "introMockHome": "家",
+  "introPageOf": "{page}ページ目、全{count}ページ",
+  "@introPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "introBack": "前のページに戻る",
+  "dataSourceCredit": "出典：気象庁ホームページ（加工して作成）",
+  "dataSourceClouds": "雲の場所は、気象庁ホームページの「高解像度降水ナウキャスト」と「雷ナウキャスト」をもとに、このアプリが強い雨や雷のある場所をまとめて作っています。",
+  "dataSourceHeights": "雲の背の高さは気象庁ホームページの「ひまわり」の赤外画像から、空が一面の曇りかと遠くまで見通せるかは「アメダス」の観測から、このアプリが見積もっています。",
+  "dataSourceFetch": "気象庁のデータは、このアプリのサーバーが5分ごとにまとめて受け取っています。",
+  "dataSourceDisclaimer": "アプリの表示は気象庁が発表したものではありません。入道雲が見えるかどうかは、山や建物、ほかの雲によって変わります。",
+  "dataSourceJmaTerms": "気象庁ホームページの利用規約",
+  "recordYear": "{year}年",
+  "@recordYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "recordDays": "入道雲を見た日 {days}日",
+  "@recordDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "recordLoadFailed": "記録を読み込めませんでした。電波の届く場所で、もう一度開いてください。",
+  "recordEmpty": "まだ記録はありません。入道雲が見えたら、方角ガイドや通知で「見えた」を押すと、ここに残ります。",
+  "homeTodayCloudSeen": "見えた入道雲",
+  "timeRange": "{from}〜{to}",
+  "@timeRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "aroundTime": "{time}ごろ",
+  "@aroundTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "recordRowText": "{direction} ・ {km}km ・ {time}",
+  "@recordRowText": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "quietSet": "通知しない時間を決める",
+  "quietStart": "はじめ",
+  "quietEnd": "おわり",
+  "quietDone": "決める",
+  "nationwideTitle": "全国で見えている入道雲（{count}か所）",
+  "@nationwideTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nationwideOrder": "見張っている場所から近い順です。",
+  "nationwideMore": "ほか{count}か所",
+  "@nationwideMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "nationwideNote": "場所は、雲の真ん中の位置のおおよその目安です。",
+  "nationwideSearching": "場所を調べています",
+  "nationwideSince": "{since}から見えています",
+  "@nationwideSince": {
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  },
+  "whatsNew1": "気象庁のデータをもとに、いま見えている入道雲の方角と距離をお知らせするようになりました。",
+  "whatsNew2": "ホームの「雲の方角を調べる」で、スマホを向けて入道雲のある方角を確かめられます。",
+  "whatsNew3": "みんなの写真を見るコミュニティと、写真を撮る機能は終わりました。これまでに投稿された写真は削除します。スマホの写真アプリに保存した写真は、そのまま残ります。",
+  "whatsNew4": "遠くの雲（90kmまで）や、よく行く場所も見張れる「Plus」ができました。",
+  "whatsNewTitle": "入道雲サーチが\n新しくなりました。",
+  "understood": "わかりました",
+  "alwaysTitle": "出かけた先の空も、\n見張りましょうか。",
+  "alwaysBody": "いまは、最後にアプリを開いた場所{place}の空を見張っています。位置情報を「常に」にすると、移動しても、いまいる場所の空を見張れます。",
+  "@alwaysBody": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "alwaysHint": "次の画面で「常に許可」を選んでください。Androidでは設定アプリが開くので、「常に許可」を選んで戻ってください。",
+  "compassTapeLabel": "方位テープ。いまは{heading}を向いていて、入道雲は{target}",
+  "@compassTapeLabel": {
+    "placeholders": {
+      "heading": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "elevationLabel": "地平線から約{deg}度上に入道雲が見える",
+  "@elevationLabel": {
+    "placeholders": {
+      "deg": {
+        "type": "int"
+      }
+    }
+  },
+  "horizon": "地平線",
+  "figureEightLabel": "スマホを8の字に動かす図",
+  "calibrateTitle": "方位がずれています",
+  "calibrateBody": "スマホを大きく8の字に、3回ほど動かしてください。磁石や金属の近くから離れると直りやすくなります。",
+  "calibrateAccuracy": "方位の精度: もう少し",
+  "calibrateContinue": "このまま続ける",
+  "radarEmptyLabel": "空のレーダー。雲は見つかっていません",
+  "radarCloudLabel": "{direction}{km}kmに入道雲",
+  "@radarCloudLabel": {
+    "placeholders": {
+      "direction": {
+        "type": "String"
+      },
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "radarLabel": "現在地を中心にした空のレーダー。{parts}",
+  "@radarLabel": {
+    "placeholders": {
+      "parts": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceJma": "出典：気象庁",
+  "loadingSemantic": "読み込んでいます",
+  "loading": "読み込み中",
+  "backToHome": "ホームに戻る",
+  "notificationChannelDescription": "入道雲が見える範囲に現れたときのお知らせ",
+  "notificationChannelName": "入道雲のお知らせ",
+  "savedPlace": "登録した場所",
+  "areaAround": "{place}のあたり",
+  "@areaAround": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "areaOver": "{place}の上",
+  "@areaOver": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "areaOffshore": "{place}の沖",
+  "@areaOffshore": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  }
+}

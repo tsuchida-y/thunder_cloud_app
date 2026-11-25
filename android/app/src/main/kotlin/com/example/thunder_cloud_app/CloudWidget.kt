@@ -87,28 +87,32 @@ object CloudWidgetViews {
 
         // 上の見出し: 小は「家」、中は「いま ・ 滝沢市」
         val heading = when {
-            spot == null -> "入道雲"
+            spot == null -> context.getString(R.string.widget_title)
             medium && placeName.isNotEmpty() -> "$label ・ $placeName"
             else -> label
         }
         views.setTextViewText(R.id.widget_label, heading)
 
         val (headline, sub, detail) = when {
-            !plus -> Triple("Plus の機能です", "", "")
+            !plus -> Triple(context.getString(R.string.widget_plus_only), "", "")
             mode == "clouds" -> if (medium) {
-                Triple("${direction}に入道雲", "約${km}km先", "${fists}の高さ")
+                Triple(
+                    context.getString(R.string.widget_headline_cloud, direction),
+                    context.getString(R.string.widget_distance, km.toString()),
+                    context.getString(R.string.widget_height, fists)
+                )
             } else {
-                Triple(direction, "${km}km", "")
+                Triple(direction, context.getString(R.string.widget_distance_short, km.toString()), "")
             }
-            mode == "night" -> Triple("見張りはお休み中", "", "")
-            mode == "empty" -> Triple("静かな空", "", "")
-            else -> Triple("アプリを開いて空を確かめてください", "", "")
+            mode == "night" -> Triple(context.getString(R.string.widget_night), "", "")
+            mode == "empty" -> Triple(context.getString(R.string.widget_quiet), "", "")
+            else -> Triple(context.getString(R.string.widget_open_app), "", "")
         }
         views.setTextViewText(R.id.widget_headline, headline)
         setOptional(views, R.id.widget_sub, sub)
         if (medium) setOptional(views, R.id.widget_detail, detail)
         // 気象庁のデータから出した中身なので、出典を出す（CLAUDE.md）
-        setOptional(views, R.id.widget_time, if (plus && time.isNotEmpty()) "$time 時点 ・ 出典：気象庁" else "")
+        setOptional(views, R.id.widget_time, if (plus && time.isNotEmpty()) context.getString(R.string.widget_time_source, time) else "")
 
         // 小さな方位の丸（北が上、雲の方角に点）。小は雲があるときだけ、中はいつも
         val showCompass = plus && (medium || hasCloud)

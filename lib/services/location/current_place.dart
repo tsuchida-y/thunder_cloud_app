@@ -6,6 +6,8 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../analytics/analytics_service.dart';
+import '../../l10n/l10n.dart';
 import '../../models/lat_lng.dart';
 import '../../models/prefectures.dart';
 import '../../utils/logger.dart';
@@ -30,7 +32,11 @@ class CurrentPlace {
   CurrentPlace._();
 
   static final Geocoding _geocoding = Geocoding();
-  static const Locale _japanese = Locale('ja', 'JP');
+  /// 場所の名前を調べるときの言語（アプリの言語に合わせる）
+  static Locale get _japanese => L.isEnglish ? const Locale('en', 'US') : const Locale('ja', 'JP');
+
+  /// 保存した名前の鍵。日本語の鍵は今までと同じ（英語だけ前に en_ を付ける）
+  static String get _langPrefix => L.isEnglish ? 'en_' : '';
 
   static Future<LocationAccess> access() async {
     if (!await Geolocator.isLocationServiceEnabled()) return LocationAccess.off;
@@ -68,6 +74,13 @@ class CurrentPlace {
   /// 「常に」はいきなり聞かない（CLAUDE.md）。iOS は Info.plist に「使用中」の説明があるので geolocator で「使用中」だけを聞く。
   /// Android は geolocator だと Android 10 で「常に」も一緒に聞いてしまうので、MainActivity の「使用中」だけのお願いを使う。
   static Future<LocationAccess> request() async {
+    AnalyticsService.permissionPromptShown('location');
+    final access = await _request();
+    AnalyticsService.permissionResult('location', granted: access == LocationAccess.granted);
+    return access;
+  }
+
+  static Future<LocationAccess> _request() async {
     if (Platform.isAndroid) {
       final granted = await _foreground.invokeMethod<bool>('request') ?? false;
       return granted ? LocationAccess.granted : LocationAccess.off;
@@ -86,6 +99,13 @@ class CurrentPlace {
   /// iOS は確認の画面を出す。iOS がもう聞かせてくれないとき（2回目以降）と Android は設定アプリを開く。
   /// 「常に」になったら true
   static Future<bool> requestAlways() async {
+    AnalyticsService.permissionPromptShown('location_always');
+    final always = await _requestAlways();
+    AnalyticsService.permissionResult('location_always', granted: always);
+    return always;
+  }
+
+  static Future<bool> _requestAlways() async {
     if (Platform.isIOS) {
       final result = await _always.invokeMethod<String>('requestAlways');
       if (result == 'always') return true;
@@ -107,6 +127,7 @@ class CurrentPlace {
     } catch (e) {
       AppLogger.warning('いまの位置が取れませんでした: $e', tag: 'CurrentPlace');
       final last = await Geolocator.getLastKnownPosition();
+      if (last == null) AnalyticsService.errorShown('location_unavailable');
       return last == null ? null : LatLng(last.latitude, last.longitude);
     }
   }
@@ -125,7 +146,7 @@ class CurrentPlace {
   ///
   /// 端末の地名検索（iOS は Apple、Android は Google）を使う。同じ場所（約1km）なら前の結果を使う。
   static Future<String?> placeName(LatLng location) async {
-    final key = 'place_name_${location.latitude.toStringAsFixed(2)}_${location.longitude.toStringAsFixed(2)}';
+    final key = '${_langPrefix}place_name_${location.latitude.toStringAsFixed(2)}_${location.longitude.toStringAsFixed(2)}';
     try {
       final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString(key);
@@ -140,6 +161,7 @@ class CurrentPlace {
       return name;
     } catch (e) {
       AppLogger.warning('場所の名前が分かりませんでした: $e', tag: 'CurrentPlace');
+      AnalyticsService.errorShown('geocode_failed');
       return null;
     }
   }
@@ -150,7 +172,7 @@ class CurrentPlace {
   /// いちばん近い都道府県庁から「〜の沖」とする。同じ場所（約10km）なら前の結果を使う。
   /// 端末の地名検索は一度に1つしか調べられないので、順番に調べる。
   static Future<String> areaName(LatLng location) async {
-    final key = 'area_name_${location.latitude.toStringAsFixed(1)}_${location.longitude.toStringAsFixed(1)}';
+    final key = '${_langPrefix}area_name_${location.latitude.toStringAsFixed(1)}_${location.longitude.toStringAsFixed(1)}';
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString(key);
     if (cached != null) return cached;
@@ -175,11 +197,11 @@ class CurrentPlace {
       final other = pick((m) => m.name);
       final String area;
       if (city != null) {
-        area = '$cityのあたり';
+        area = L.t.areaAround(city);
       } else if (prefecture != null) {
-        area = '$prefectureのあたり';
+        area = L.t.areaAround(prefecture);
       } else if (other != null && !RegExp(r'^[\d\s.,\-]+$').hasMatch(other)) {
-        area = '$otherの上';
+        area = L.t.areaOver(other);
       } else {
         area = offshoreName(location);
       }
@@ -196,13 +218,13 @@ class CurrentPlace {
     var best = prefectureOffices.first;
     var bestKm = double.infinity;
     for (final office in prefectureOffices) {
-      final km = SkyGeometry.distanceKm(location, office.$2);
+      final km = SkyGeometry.distanceKm(location, office.$3);
       if (km < bestKm) {
         best = office;
         bestKm = km;
       }
     }
-    return '${best.$1}の沖';
+    return L.t.areaOffshore(L.isEnglish ? best.$2 : best.$1);
   }
 
   /// 地名や住所から場所をさがす（見張る場所の登録。地図は使わない）
@@ -223,7 +245,12 @@ class CurrentPlace {
             .whereType<String>()
             .where((p) => p.isNotEmpty)
             .toList();
-        final name = parts.isEmpty ? text : parts.toSet().join();
+        // 日本語は大きい順につなぐ（岩手県盛岡市）。英語は小さい順にコンマでつなぐ（Morioka, Iwate）
+        final name = parts.isEmpty
+            ? text
+            : L.isEnglish
+                ? parts.reversed.toSet().join(', ')
+                : parts.toSet().join();
         if (seen.add(name)) {
           candidates.add(PlaceCandidate(
             name: name,

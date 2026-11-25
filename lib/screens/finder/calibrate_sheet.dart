@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/analytics/analytics_service.dart';
+import '../../l10n/l10n.dart';
 import '../../services/compass/compass_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -21,8 +23,10 @@ class CalibrateSheet extends StatelessWidget {
   static const double goodAccuracyDeg = 20;
 
   static Future<void> show(BuildContext context, Stream<Heading> headings) {
+    AnalyticsService.calibrateShown();
     return showModalBottomSheet<void>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_calibrate'),
       isScrollControlled: true,
       backgroundColor: Colors.white,
       barrierColor: const Color(0x730B1630), // rgba(11, 22, 48, 0.45)
@@ -59,13 +63,13 @@ class CalibrateSheet extends StatelessWidget {
                 const SizedBox(height: 14),
                 Semantics(
                   header: true,
-                  child: Text('方位がずれています', style: AppTextStyles.headline(color: AppColors.text, fontSize: 24)),
+                  child: Text(L.t.calibrateTitle, style: AppTextStyles.headline(color: AppColors.text, fontSize: 24)),
                 ),
                 const SizedBox(height: 14),
                 const FigureEightDrawing(),
                 const SizedBox(height: 14),
                 Text(
-                  'スマホを大きく8の字に、3回ほど動かしてください。磁石や金属の近くから離れると直りやすくなります。',
+                  L.t.calibrateBody,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.body(),
                 ),
@@ -80,11 +84,11 @@ class CalibrateSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('方位の精度: もう少し', style: AppTextStyles.note()),
+                Text(L.t.calibrateAccuracy, style: AppTextStyles.note()),
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinePillButton(label: 'このまま続ける', onPressed: () => Navigator.of(context).maybePop()),
+                  child: OutlinePillButton(label: L.t.calibrateContinue, onPressed: () => Navigator.of(context).maybePop()),
                 ),
               ],
             );

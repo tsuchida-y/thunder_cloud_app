@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/finder_target.dart';
 import '../../utils/logger.dart';
+import '../analytics/analytics_service.dart';
 import '../member/member_service.dart';
 
 /// 「見えた」「見えなかった」の答え（Firestore の reports）
@@ -144,6 +145,7 @@ class ReportService {
   }) async {
     final uid = MemberService.uid;
     if (uid == null) return;
+    AnalyticsService.cloudReport(seen: seen, source: source);
     try {
       if (cloudId != null) {
         final prefs = await SharedPreferences.getInstance();

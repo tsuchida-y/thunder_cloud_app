@@ -44,13 +44,21 @@ enum SharedSky {
   static var time: String { defaults?.string(forKey: "time") ?? "" }
 }
 
+// MARK: - 言語
+
+/// 端末の言語が日本語なら日本語、それ以外は英語（アプリの文言の決め方と同じ）
+private let isJapanese = (Locale.preferredLanguages.first ?? "en").hasPrefix("ja")
+
+private func tr(_ ja: String, _ en: String) -> String { isJapanese ? ja : en }
+
 // MARK: - 見る場所を選ぶ設定
 
 struct SpotEntity: AppEntity {
   let id: String
   let title: String
 
-  static var typeDisplayRepresentation: TypeDisplayRepresentation = "場所"
+  // ウィジェットの設定の項目名は、App Intents の決まりで固定の文字列にする（日本語と英語を併記）
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "場所 / Place"
   static var defaultQuery = SpotQuery()
 
   var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(title)") }
@@ -60,7 +68,7 @@ struct SpotQuery: EntityQuery {
   private func all() -> [SpotEntity] {
     let spots = SharedSky.spots().map { SpotEntity(id: $0.id, title: $0.title) }
     // アプリをまだ開いていないときも、いまいる場所は選べるようにする
-    return spots.isEmpty ? [SpotEntity(id: "now", title: "現在地")] : spots
+    return spots.isEmpty ? [SpotEntity(id: "now", title: tr("現在地", "Current location"))] : spots
   }
 
   func entities(for identifiers: [String]) async throws -> [SpotEntity] {
@@ -73,10 +81,10 @@ struct SpotQuery: EntityQuery {
 }
 
 struct SelectSpotIntent: WidgetConfigurationIntent {
-  static var title: LocalizedStringResource = "見る場所"
-  static var description = IntentDescription("ウィジェットで見る場所を選びます。タップすると、その場所のホームが開きます。")
+  static var title: LocalizedStringResource = "見る場所 / Place to watch"
+  static var description = IntentDescription("ウィジェットで見る場所を選びます。 / Choose the place this widget watches.")
 
-  @Parameter(title: "場所")
+  @Parameter(title: "場所 / Place")
   var spot: SpotEntity?
 }
 
@@ -90,8 +98,8 @@ struct SkyEntry: TimelineEntry {
 
   static let placeholder = SkyEntry(
     date: Date(), plus: true, time: "15:21",
-    spot: SpotData(id: "now", label: "現在地", placeName: "滝沢市", mode: "clouds", direction: "南東",
-                   bearingDeg: 135, km: 42, fists: "こぶし1つ半"))
+    spot: SpotData(id: "now", label: tr("現在地", "Current location"), placeName: tr("滝沢市", "Takizawa"), mode: "clouds",
+                   direction: tr("南東", "Southeast"), bearingDeg: 135, km: 42, fists: tr("こぶし1つ半", "1½ fists")))
 
   static func load(spotId: String?) -> SkyEntry {
     let spots = SharedSky.spots()
@@ -138,7 +146,7 @@ struct CompassView: View {
       }
       .frame(width: size, height: size)
     }
-    .accessibilityLabel("雲の方角")
+    .accessibilityLabel(tr("雲の方角", "Direction of the cloud"))
   }
 }
 
@@ -165,7 +173,7 @@ struct CloudWidgetView: View {
       } else {
         VStack(alignment: .leading, spacing: 2) {
           HStack(alignment: .top) {
-            Text(spot?.label ?? "入道雲").font(.system(size: 12, weight: .bold)).lineLimit(1)
+            Text(spot?.label ?? tr("入道雲", "Thunderhead")).font(.system(size: 12, weight: .bold)).lineLimit(1)
             Spacer(minLength: 0)
             if hasCloud { CompassView(bearingDeg: bearing).frame(width: 40, height: 40) }
           }
@@ -189,35 +197,35 @@ struct CloudWidgetView: View {
 
   /// 中の見出し「現在地 ・ 滝沢市」
   private var mediumHeading: String {
-    guard let spot = spot else { return "入道雲" }
+    guard let spot = spot else { return tr("入道雲", "Thunderhead") }
     return spot.placeName.isEmpty ? spot.label : "\(spot.label) ・ \(spot.placeName)"
   }
 
   @ViewBuilder private var footer: some View {
     // 気象庁のデータから出した中身なので、出典を出す（CLAUDE.md）
     if entry.plus && !entry.time.isEmpty {
-      Text("\(entry.time) 時点 ・ 出典：気象庁").font(.system(size: 10)).opacity(0.8).lineLimit(1).minimumScaleFactor(0.8)
+      Text(tr("\(entry.time) 時点 ・ 出典：気象庁", "As of \(entry.time) · Source: Japan Meteorological Agency")).font(.system(size: 10)).opacity(0.8).lineLimit(1).minimumScaleFactor(0.8)
     }
   }
 
   @ViewBuilder private var content: some View {
     if !entry.plus {
-      Text("Plus の機能です").font(.system(size: 16, weight: .bold))
+      Text(tr("Plus の機能です", "A Plus feature")).font(.system(size: 16, weight: .bold))
     } else if let spot = spot, spot.mode == "clouds" {
       if family == .systemMedium {
-        Text("\(spot.direction)に入道雲").font(.system(size: 20, weight: .bold))
-        Text("約\(spot.km)km先").font(.system(size: 13))
-        Text("\(spot.fists)の高さ").font(.system(size: 13))
+        Text(tr("\(spot.direction)に入道雲", "Thunderhead to the \(spot.direction)")).font(.system(size: 20, weight: .bold))
+        Text(tr("約\(spot.km)km先", "About \(spot.km) km away")).font(.system(size: 13))
+        Text(tr("\(spot.fists)の高さ", "\(spot.fists) high")).font(.system(size: 13))
       } else {
         Text(spot.direction).font(.system(size: 26, weight: .bold))
-        Text("\(spot.km)km").font(.system(size: 15, weight: .semibold))
+        Text(tr("\(spot.km)km", "\(spot.km) km")).font(.system(size: 15, weight: .semibold))
       }
     } else if spot?.mode == "night" {
-      Text("見張りはお休み中").font(.system(size: 16, weight: .bold))
+      Text(tr("見張りはお休み中", "Watch is resting")).font(.system(size: 16, weight: .bold))
     } else if spot?.mode == "empty" {
-      Text("静かな空").font(.system(size: 18, weight: .bold))
+      Text(tr("静かな空", "Quiet sky")).font(.system(size: 18, weight: .bold))
     } else {
-      Text("アプリを開いて空を確かめてください").font(.system(size: 14, weight: .bold))
+      Text(tr("アプリを開いて空を確かめてください", "Open the app to check the sky")).font(.system(size: 14, weight: .bold))
     }
   }
 }
@@ -228,8 +236,10 @@ struct CloudWidget: Widget {
     AppIntentConfiguration(kind: "CloudWidget", intent: SelectSpotIntent.self, provider: SkyProvider()) { entry in
       CloudWidgetView(entry: entry)
     }
-    .configurationDisplayName("入道雲")
-    .description("アプリを開かずに、入道雲の方角と距離が分かります。見る場所は、ウィジェットごとに選べます。")
+    .configurationDisplayName(tr("入道雲", "Thunderhead"))
+    .description(tr(
+      "アプリを開かずに、入道雲の方角と距離が分かります。見る場所は、ウィジェットごとに選べます。",
+      "See the direction and distance of thunderheads without opening the app. You can choose the place for each widget."))
     .supportedFamilies([.systemSmall, .systemMedium])
   }
 }
