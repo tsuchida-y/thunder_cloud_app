@@ -79,6 +79,11 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="cloud_appeared" />
+        <!-- 計測（Firebase Analytics・Crashlytics）は最初は止めておき、リリース版だけ Dart（AnalyticsService.init）でオンにする -->
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
+        <meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />
+        <!-- 広告用の ID は使わない -->
+        <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

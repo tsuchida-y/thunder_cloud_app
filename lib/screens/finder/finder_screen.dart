@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/finder_target.dart';
 import '../../services/compass/compass_service.dart';
@@ -48,6 +49,8 @@ class _FinderScreenState extends State<FinderScreen> {
   double? _heading;
   bool _noSensor = false;
   bool _aligned = false;
+  bool _alignedOnce = false;
+  final Stopwatch _opened = Stopwatch()..start();
   bool _calibrateShown = false;
   bool _answered = false;
 
@@ -64,7 +67,10 @@ class _FinderScreenState extends State<FinderScreen> {
 
   Future<void> _start() async {
     _noSensorTimer = Timer(noSensorAfter, () {
-      if (mounted && _heading == null) setState(() => _noSensor = true);
+      if (mounted && _heading == null) {
+        AnalyticsService.errorShown('compass_unavailable');
+        setState(() => _noSensor = true);
+      }
     });
     // Android は磁北が基準なので、いまいる場所の偏角で本当の北に直す（iPhone は 0）
     final declination = await CompassService.declination(await CurrentPlace.lastKnown());
@@ -79,7 +85,14 @@ class _FinderScreenState extends State<FinderScreen> {
     final smoothed = previous == null ? h.trueDeg : (previous + angleDiff(previous, h.trueDeg) * 0.25 + 360) % 360;
     final diff = angleDiff(smoothed, target.bearingDeg).abs();
     final aligned = _aligned ? diff <= alignLeaveDeg : diff <= alignEnterDeg;
-    if (aligned && !_aligned) HapticFeedback.mediumImpact();
+    if (aligned && !_aligned) {
+      HapticFeedback.mediumImpact();
+      // 計測: 開いてから最初に向きが合うまでの秒数（1回だけ）
+      if (!_alignedOnce) {
+        _alignedOnce = true;
+        AnalyticsService.finderAligned(_opened.elapsed.inSeconds);
+      }
+    }
 
     setState(() {
       _heading = smoothed;

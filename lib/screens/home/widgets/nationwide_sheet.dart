@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/analytics/analytics_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/sky_cloud.dart';
 import '../../../services/location/current_place.dart';
@@ -21,14 +22,18 @@ class NationwideSheet extends StatelessWidget {
 
   const NationwideSheet({super.key, required this.views});
 
-  static Future<void> show(BuildContext context, List<CloudView> views) => showModalBottomSheet<void>(
+  static Future<void> show(BuildContext context, List<CloudView> views) {
+    AnalyticsService.nationwideOpened(views.length);
+    return showModalBottomSheet<void>(
         context: context,
+        routeSettings: const RouteSettings(name: 'sheet_nationwide'),
         isScrollControlled: true,
         backgroundColor: const Color(0xFFF4F8FC),
         barrierColor: const Color(0x730B1630),
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
         builder: (_) => NationwideSheet(views: views),
       );
+  }
 
   @override
   Widget build(BuildContext context) {

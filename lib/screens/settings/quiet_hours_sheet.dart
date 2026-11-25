@@ -19,6 +19,7 @@ class QuietHoursSheet extends StatefulWidget {
   static Future<({bool changed, QuietHours? value})> show(BuildContext context, QuietHours? current) async {
     final result = await showModalBottomSheet<({QuietHours? value})>(
       context: context,
+      routeSettings: const RouteSettings(name: 'sheet_quiet_hours'),
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => QuietHoursSheet(current: current),

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../analytics/analytics_service.dart';
 import '../../l10n/l10n.dart';
 import '../../models/finder_target.dart';
 import '../../utils/logger.dart';
@@ -153,6 +154,7 @@ class CloudNotifications {
   }
 
   static void _openFromData(Map<String, dynamic> data) {
+    AnalyticsService.notificationOpened('tap');
     final target = FinderTarget.fromNotification(data);
     if (target != null) _opened.add(target);
   }
@@ -169,9 +171,11 @@ class CloudNotifications {
 
   /// 通知の許可をお願いする（はじめての起動の画面と、許可がないときの画面から）。許可されたら宛先を登録する
   static Future<bool> request() async {
+    AnalyticsService.permissionPromptShown('notification');
     final settings = await FirebaseMessaging.instance.requestPermission();
     final ok = settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional;
+    AnalyticsService.permissionResult('notification', granted: ok);
     if (ok) await registerToken();
     return ok;
   }

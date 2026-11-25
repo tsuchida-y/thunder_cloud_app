@@ -16,6 +16,8 @@ import 'firebase_options.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/intro/intro_screen.dart';
 import 'screens/welcome/welcome_screen.dart';
+import 'services/analytics/analytics_route_observer.dart';
+import 'services/analytics/analytics_service.dart';
 import 'services/notification/cloud_notifications.dart';
 import 'theme/app_theme.dart';
 import 'utils/logger.dart';
@@ -57,6 +59,8 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await _activateAppCheck();
+  // 利用状況の計測（リリース版だけ送る）。落ちたときの記録もここで始める
+  await AnalyticsService.init();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   // 通知の準備は画面を出すのと並べて進める（iOS で返事が遅いことがあるため、待たない）
   unawaited(CloudNotifications.initialize());
@@ -93,9 +97,18 @@ class MyApp extends StatelessWidget {
     }
   }
 
+  /// 画面の行き来を見て、画面の表示を計測する（作り直さないよう1つだけ）
+  static final AnalyticsRouteObserver _analyticsObserver = AnalyticsRouteObserver();
+
   @override
   Widget build(BuildContext context) {
+    AnalyticsService.rootScreen = showIntro
+        ? 'intro_1'
+        : showWelcome
+            ? 'welcome'
+            : 'home';
     return MaterialApp(
+      navigatorObservers: [_analyticsObserver],
       onGenerateTitle: (context) => AppLocalizations.of(context).appName,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

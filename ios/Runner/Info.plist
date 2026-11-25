@@ -107,5 +107,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- 計測（Firebase Analytics・Crashlytics）は最初は止めておき、リリース版だけ Dart（AnalyticsService.init）でオンにする。デバッグ版のデータを本番に混ぜないため -->
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<key>FirebaseCrashlyticsCollectionEnabled</key>
+	<false/>
 </dict>
 </plist>

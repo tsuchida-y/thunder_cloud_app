@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/compass/compass_service.dart';
 import '../../theme/app_colors.dart';
@@ -56,7 +57,8 @@ class _IntroScreenState extends State<IntroScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(IntroScreen._doneKey, true);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const WelcomeScreen()));
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(settings: const RouteSettings(name: 'welcome'), builder: (_) => const WelcomeScreen()));
   }
 
   void _next() {
@@ -95,7 +97,10 @@ class _IntroScreenState extends State<IntroScreen> {
           Expanded(
             child: PageView(
               controller: _pages,
-              onPageChanged: (i) => setState(() => _index = i),
+              onPageChanged: (i) {
+                AnalyticsService.screen('intro_${i + 1}');
+                setState(() => _index = i);
+              },
               children: const [_NotifyPage(), _FinderPage(), _PlacesPage()],
             ),
           ),

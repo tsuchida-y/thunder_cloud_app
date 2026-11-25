@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../analytics/analytics_service.dart';
 import '../../l10n/l10n.dart';
 import '../../models/lat_lng.dart';
 import '../../models/prefectures.dart';
@@ -73,6 +74,13 @@ class CurrentPlace {
   /// 「常に」はいきなり聞かない（CLAUDE.md）。iOS は Info.plist に「使用中」の説明があるので geolocator で「使用中」だけを聞く。
   /// Android は geolocator だと Android 10 で「常に」も一緒に聞いてしまうので、MainActivity の「使用中」だけのお願いを使う。
   static Future<LocationAccess> request() async {
+    AnalyticsService.permissionPromptShown('location');
+    final access = await _request();
+    AnalyticsService.permissionResult('location', granted: access == LocationAccess.granted);
+    return access;
+  }
+
+  static Future<LocationAccess> _request() async {
     if (Platform.isAndroid) {
       final granted = await _foreground.invokeMethod<bool>('request') ?? false;
       return granted ? LocationAccess.granted : LocationAccess.off;
@@ -91,6 +99,13 @@ class CurrentPlace {
   /// iOS は確認の画面を出す。iOS がもう聞かせてくれないとき（2回目以降）と Android は設定アプリを開く。
   /// 「常に」になったら true
   static Future<bool> requestAlways() async {
+    AnalyticsService.permissionPromptShown('location_always');
+    final always = await _requestAlways();
+    AnalyticsService.permissionResult('location_always', granted: always);
+    return always;
+  }
+
+  static Future<bool> _requestAlways() async {
     if (Platform.isIOS) {
       final result = await _always.invokeMethod<String>('requestAlways');
       if (result == 'always') return true;
@@ -112,6 +127,7 @@ class CurrentPlace {
     } catch (e) {
       AppLogger.warning('いまの位置が取れませんでした: $e', tag: 'CurrentPlace');
       final last = await Geolocator.getLastKnownPosition();
+      if (last == null) AnalyticsService.errorShown('location_unavailable');
       return last == null ? null : LatLng(last.latitude, last.longitude);
     }
   }
@@ -145,6 +161,7 @@ class CurrentPlace {
       return name;
     } catch (e) {
       AppLogger.warning('場所の名前が分かりませんでした: $e', tag: 'CurrentPlace');
+      AnalyticsService.errorShown('geocode_failed');
       return null;
     }
   }

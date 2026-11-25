@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/analytics/analytics_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/sky_cloud.dart';
 import '../../navigation/app_routes.dart';
@@ -109,6 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _editQuietHours(QuietHours? current) async {
     final result = await QuietHoursSheet.show(context, current);
     if (!result.changed) return;
+    AnalyticsService.quietHoursChanged();
     await MemberService.updateSettings({'quietHours': result.value?.toMap()});
   }
 
@@ -136,7 +138,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: SkySwitch(
                   value: settings.notifyAppeared,
                   semanticLabel: l10n.settingsNotifyAppeared,
-                  onChanged: (v) => MemberService.updateSettings({'notifyAppeared': v}),
+                  onChanged: (v) {
+                    AnalyticsService.notifyToggled(v);
+                    MemberService.updateSettings({'notifyAppeared': v});
+                  },
                 ),
               ),
             ],
@@ -147,7 +152,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _RangeSelector(
             rangeKm: rangeKm,
             isPlus: isPlus,
-            onSelect: (km) => isPlus ? MemberService.updateSettings({'rangeKm': km}) : AppRoutes.openPlus(context),
+            onSelect: (km) {
+              if (!isPlus) {
+                AppRoutes.openPlus(context, source: 'settings_range');
+                return;
+              }
+              AnalyticsService.rangeChanged(km);
+              MemberService.updateSettings({'rangeKm': km});
+            },
           ),
           const SizedBox(height: 14),
           Padding(
@@ -217,12 +229,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Plus',
                   subtitle: l10n.settingsPlusManage,
                   trailing: SettingsValue(l10n.settingsPlusInUse),
-                  onTap: () => AppRoutes.openPlus(context),
+                  onTap: () => AppRoutes.openPlus(context, source: 'settings_manage'),
                 ),
               ],
             )
           else
-            _PlusBanner(onTap: () => AppRoutes.openPlus(context)),
+            _PlusBanner(onTap: () => AppRoutes.openPlus(context, source: 'settings_banner')),
         ],
       ),
     );

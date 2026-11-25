@@ -74,15 +74,18 @@ class CloudWatchService {
    * @param {{images:Map, validtime:string, ensureAround:function}|null} [sky.infrared] - ひまわりの赤外画像（雲の量に使う）
    * @param {{rain:string, thunder:string}|null} [sky.times] - ナウキャストの解析時刻（記録用）
    * @param {string|null} [sky.amedasTime] - アメダスの観測時刻（記録用）
+   * @param {Array|null} [sky.visibleClouds] - 書いた直後の見えている雲（{id, ...clouds の項目}）。なければ Firestore から読む
    * @returns {Promise<{checked:number, sent:number, skipped:Object<string,number>}>}
    */
   async run(now = new Date(), {
     rainLookup = null, amedasStations = null, infrared = null, times = null, amedasTime = null,
+    visibleClouds = null,
   } = {}) {
-    const cloudSnap = await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
-      .where('status', '==', 'active').get();
-    const clouds = cloudSnap.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
+    // 雲の一覧を書いた直後（updateNowcastClouds）は、書いた中身が渡されるので、読み直さない（読み取りの料金を減らす）。
+    // 渡されなければ（テストなど）、今までどおり Firestore から読む
+    const activeClouds = visibleClouds || (await this.firestore.collection(JMA_NOWCAST.CLOUDS_COLLECTION)
+      .where('status', '==', 'active').get()).docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const clouds = activeClouds
       .filter((c) => c.isVisible)
       .map((c) => ({
         id: c.id,
