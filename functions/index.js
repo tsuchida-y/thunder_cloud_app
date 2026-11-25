@@ -69,14 +69,6 @@ exports.cleanupOldClouds = onSchedule({
 });
 
 /**
- * 期限切れ写真削除処理
- * スケジュール: 毎日午前1時
- * 処理内容: 保存期限が切れた写真をStorage & Firestoreから削除
- * v1 から本番で動いている関数なので、名前と設定（リージョン・時刻）は v1 のまま
- */
-exports.cleanupExpiredPhotos = onSchedule('0 1 * * *', () => cleanupService.cleanupExpiredPhotos());
-
-/**
  * Plus の購入・更新・期限切れ（RevenueCat の webhook）
  * 処理内容: member_server/{uid} の isPlus と plusExpiresAt を書く
  */
