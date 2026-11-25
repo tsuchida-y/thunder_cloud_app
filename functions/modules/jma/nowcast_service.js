@@ -215,7 +215,7 @@ class NowcastService {
    * 5分ごとの本処理: 雲の一覧を更新する
    *
    * @returns {Promise<{rainLookup:RainLookup, amedasStations:Array|null, infrared:Object|null,
-   *   times:Object, amedasTime:string|null}|null>}
+   *   times:Object, amedasTime:string|null, visibleClouds:Array}|null>}
    *   新しい解析値で雲の一覧を書き換えたら、見張りで使うもの。書き換えなかったら null
    */
   async updateClouds() {
@@ -265,7 +265,10 @@ class NowcastService {
       console.log(`✅ [JMA_NOWCAST] ${times.rain} の雲: ${clusters.length}個、背が低いので外した塊${detected.lowClusterCount}個 ` +
         `（続き${result.updated} 新規${result.created} 見えない${result.hidden} 終了${result.ended}、` +
         `気象庁へのリクエスト${requestCount + 2}回）`);
-      return { rainLookup, amedasStations, infrared, times: { rain: times.rain, thunder: times.thunder }, amedasTime };
+      return {
+        rainLookup, amedasStations, infrared, times: { rain: times.rain, thunder: times.thunder }, amedasTime,
+        visibleClouds: result.visible,
+      };
     } catch (error) {
       await this._recordFailure(statusRef, status, error);
       return null;
@@ -282,8 +285,10 @@ class NowcastService {
         latitude: data.center.latitude,
         longitude: data.center.longitude,
         lastSeenAt: data.lastSeenAt.toDate(),
+        isVisible: data.isVisible !== false,
       };
     });
+    const hiddenAlready = new Set(activeClouds.filter((c) => !c.isVisible).map((c) => c.id));
 
     const { updated, created, hidden, ended } = trackClouds(activeClouds, clusters, observedAt);
     const seenAt = admin.firestore.Timestamp.fromDate(observedAt);
@@ -307,14 +312,24 @@ class NowcastService {
       updatedAt: now,
     });
 
+    // 通知の判定（CloudWatchService.run）が、書いた直後の「見えている雲」をもう一度読まずに済むよう、書いた中身を返す。
+    // 追っている雲は必ず「続き・新規・見えない・終了」のどれか1つになるので、見えている雲は「続き」と「新規」だけ。
+    const visible = [];
     const writes = [
-      ...updated.map((u) => (batch) => batch.update(collection.doc(u.id), fieldsOf(u.cluster))),
-      ...created.map((c) => (batch) => batch.set(collection.doc(), {
-        ...fieldsOf(c.cluster),
-        firstSeenAt: seenAt,
-        status: 'active',
-      })),
-      ...hidden.map((h) => (batch) => batch.update(collection.doc(h.id), { isVisible: false, updatedAt: now })),
+      ...updated.map((u) => {
+        const fields = fieldsOf(u.cluster);
+        visible.push({ id: u.id, ...fields });
+        return (batch) => batch.update(collection.doc(u.id), fields);
+      }),
+      ...created.map((c) => {
+        const ref = collection.doc();
+        const fields = fieldsOf(c.cluster);
+        visible.push({ id: ref.id, ...fields });
+        return (batch) => batch.set(ref, { ...fields, firstSeenAt: seenAt, status: 'active' });
+      }),
+      // すでに見えなくしてある雲は、書き直さない（書き直しても変わるのは updatedAt だけで、どこからも読まれない）
+      ...hidden.filter((h) => !hiddenAlready.has(h.id))
+        .map((h) => (batch) => batch.update(collection.doc(h.id), { isVisible: false, updatedAt: now })),
       ...ended.map((e) => (batch) => batch.update(collection.doc(e.id), {
         isVisible: false,
         status: 'ended',
@@ -328,7 +343,7 @@ class NowcastService {
       await batch.commit();
     }
 
-    return { updated: updated.length, created: created.length, hidden: hidden.length, ended: ended.length };
+    return { updated: updated.length, created: created.length, hidden: hidden.length, ended: ended.length, visible };
   }
 
   /**

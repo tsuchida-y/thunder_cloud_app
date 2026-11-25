@@ -54,18 +54,33 @@ exports.updateNowcastClouds = onSchedule({
 });
 
 /**
- * 終わった雲の削除と、保存期間が過ぎた通知の判断の記録の削除
+ * 毎日の片付け（定期実行を1つにまとめている。Cloud Scheduler は請求先で3つまで無料なので、数を増やさない）
  * スケジュール: 毎日 3:30（日本時間）
+ * 処理内容:
+ * - 終わった雲の削除と、保存期間が過ぎた通知の判断の記録の削除
+ * - 最後にアプリを開いてから1年たった利用者の情報の削除（プライバシーポリシーの「保存する期間」）
+ * どれか1つが失敗しても、残りは続ける。
  */
 exports.cleanupOldClouds = onSchedule({
   schedule: '30 3 * * *',
   timeZone: 'Asia/Tokyo',
-  region: 'asia-northeast1'
+  region: 'asia-northeast1',
+  timeoutSeconds: 300,
 }, async () => {
-  await cleanupService.cleanupOldClouds();
-  // 保存期間（1年）が過ぎた通知の判断の記録も、毎日ここで消す
-  await cleanupService.cleanupOldNotificationLogs();
-  await cleanupService.cleanupOldSkyValidation();
+  const tasks = [
+    ['終わった雲', () => cleanupService.cleanupOldClouds()],
+    // 保存期間（1年）が過ぎた通知の判断の記録も、毎日ここで消す
+    ['通知の判断の記録', () => cleanupService.cleanupOldNotificationLogs()],
+    ['空の検証の記録', () => cleanupService.cleanupOldSkyValidation()],
+    ['1年開いていない利用者', () => cleanupService.cleanupInactiveMembers()],
+  ];
+  for (const [name, task] of tasks) {
+    try {
+      await task();
+    } catch (error) {
+      console.error(`❌ [CLEANUP] ${name}の削除に失敗しました（残りは続けます）:`, error);
+    }
+  }
 });
 
 /**
@@ -76,16 +91,6 @@ exports.revenuecatWebhook = onRequest({
   region: 'asia-northeast1',
   secrets: [revenuecatWebhookAuth],
 }, (req, res) => handleWebhook(req, res, { authToken: revenuecatWebhookAuth.value() }));
-
-/**
- * 最後にアプリを開いてから1年たった利用者の情報の削除（プライバシーポリシーの「保存する期間」）
- * スケジュール: 毎日 4:00（日本時間）
- */
-exports.cleanupInactiveMembers = onSchedule({
-  schedule: '0 4 * * *',
-  timeZone: 'Asia/Tokyo',
-  region: 'asia-northeast1',
-}, () => cleanupService.cleanupInactiveMembers());
 
 /**
  * 自分のデータの削除（設定の「データを削除」）
